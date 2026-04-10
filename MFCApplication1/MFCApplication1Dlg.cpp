@@ -3500,16 +3500,57 @@ void CMFCApplication1Dlg::OnBnClickedButton30()
 
 void CMFCApplication1Dlg::OnBnClickedButton31()
 {
-    // Launch Git Bash
-    CString path = _T("D:\\Git\\git-bash.exe");
-    if (GetFileAttributes(path) != INVALID_FILE_ATTRIBUTES)
-    {
-        ::ShellExecute(NULL, _T("open"), path, NULL, NULL, SW_SHOWNORMAL);
-    }
-    else
+    // Launch Git Bash. If a valid path is displayed in IDC_STATIC_PATH, use it as
+    // the process working directory so the shell starts there. Otherwise fall back
+    // to the default behaviour.
+    CString exe = _T("D:\\Git\\git-bash.exe");
+    if (GetFileAttributes(exe) == INVALID_FILE_ATTRIBUTES)
     {
         MessageBox(_T("找不到 git-bash.exe，请检查路径 D:\\Git\\git-bash.exe 是否存在。"), _T("错误"), MB_OK | MB_ICONERROR);
+        return;
     }
+
+    // Read displayed path from static control. It may be a file path (dropped file)
+    // or a directory. If it's a file, use its parent directory.
+    CString displayed;
+    CWnd* pStatic = GetDlgItem(IDC_STATIC_PATH);
+    if (pStatic) pStatic->GetWindowText(displayed);
+
+    CString workDir;
+    if (!displayed.IsEmpty())
+    {
+        DWORD attr = GetFileAttributes(displayed);
+        if (attr != INVALID_FILE_ATTRIBUTES)
+        {
+            if (attr & FILE_ATTRIBUTE_DIRECTORY)
+                workDir = displayed;
+            else
+            {
+                int pos = displayed.ReverseFind(_T('\\'));
+                if (pos != -1)
+                    workDir = displayed.Left(pos);
+            }
+        }
+    }
+
+    // If we have a valid working directory, try CreateProcess with lpCurrentDirectory
+    if (!workDir.IsEmpty() && GetFileAttributes(workDir) != INVALID_FILE_ATTRIBUTES)
+    {
+        STARTUPINFO si = {0}; si.cb = sizeof(si);
+        PROCESS_INFORMATION pi = {0};
+        // CreateProcess expects writable command line buffer if provided; we pass NULL.
+        BOOL ok = CreateProcess(exe, NULL, NULL, NULL, FALSE, 0, NULL, workDir, &si, &pi);
+        if (ok)
+        {
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
+            return;
+        }
+        // on failure, fall through to ShellExecute as a fallback
+    }
+
+    // Fallback: let ShellExecute open git-bash (uses default start directory)
+    ::ShellExecute(NULL, _T("open"), exe, NULL, NULL, SW_SHOWNORMAL);
 }
 
 // Clear the displayed dropped file path when IDC_BUTTON32 is clicked
