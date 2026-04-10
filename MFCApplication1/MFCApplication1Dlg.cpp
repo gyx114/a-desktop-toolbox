@@ -37,34 +37,132 @@ static LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
     switch (uMsg)
     {
     case WM_LBUTTONDOWN:
-    {
-        POINTS pts = MAKEPOINTS(lParam);
-        POINT pt = { pts.x, pts.y };
-        ::ClientToScreen(hwnd, &pt);
-        // hide our overlay first so WindowFromPoint returns the underlying window
-        ::ShowWindow(hwnd, SW_HIDE);
-        HWND hTarget = ::WindowFromPoint(pt);
-        if (pDlg) pDlg->OnTargetSelected(hTarget, pt);
-        if (::GetCapture() == hwnd) ::ReleaseCapture();
-        ::DestroyWindow(hwnd);
-        return 0;
-    }
-
-
-
-
-
-
-
-
-
-
-        if (::GetCapture() == hwnd) ::ReleaseCapture();
-        if (pDlg) pDlg->m_hCaptureWnd = NULL;
+        {
+            POINTS pts = MAKEPOINTS(lParam);
+            POINT pt = { pts.x, pts.y };
+            ::ClientToScreen(hwnd, &pt);
+            // hide our overlay first so WindowFromPoint returns the underlying window
+            ::ShowWindow(hwnd, SW_HIDE);
+            HWND hTarget = ::WindowFromPoint(pt);
+            if (pDlg) pDlg->OnTargetSelected(hTarget, pt);
+            if (::GetCapture() == hwnd) ::ReleaseCapture();
+            ::DestroyWindow(hwnd);
+            return 0;
+        }
+    default:
         break;
     }
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
+
+// Helper: copy Unicode text to clipboard
+static void CopyToClipboard(HWND hwnd, const CString& text)
+{
+    if (text.IsEmpty()) return;
+    if (!OpenClipboard(hwnd)) return;
+    ::EmptyClipboard();
+    int len = (text.GetLength() + 1);
+    HGLOBAL hMem = ::GlobalAlloc(GMEM_MOVEABLE, len * sizeof(WCHAR));
+    if (hMem)
+    {
+        LPWSTR p = (LPWSTR)::GlobalLock(hMem);
+        if (p)
+        {
+            wcscpy_s(p, len, text);
+            ::GlobalUnlock(hMem);
+            ::SetClipboardData(CF_UNICODETEXT, hMem);
+        }
+        else
+        {
+            ::GlobalFree(hMem);
+        }
+    }
+    CloseClipboard();
+}
+
+// Command handler for context menu "复制命令"
+void CMFCApplication1Dlg::OnCopyGitCommand()
+{
+    CWnd* pWnd = GetDlgItem(IDC_LIST4);
+    if (!pWnd || !::IsWindow(pWnd->GetSafeHwnd())) return;
+    TCHAR cls[64] = {0};
+    GetClassName(pWnd->GetSafeHwnd(), cls, _countof(cls));
+    CString className = cls;
+    if (className.CompareNoCase(_T("SysListView32")) == 0)
+    {
+        CListCtrl* pListCtrl = (CListCtrl*)pWnd;
+        int idx = pListCtrl->GetNextItem(-1, LVNI_SELECTED);
+        if (idx != -1)
+        {
+            CString cmd = pListCtrl->GetItemText(idx, 1);
+            if (cmd.IsEmpty())
+            {
+                CString combined = pListCtrl->GetItemText(idx, 0);
+                int sep = combined.Find(_T('|'));
+                if (sep != -1) cmd = combined.Mid(sep + 1);
+            }
+            CopyToClipboard(m_hWnd, cmd);
+        }
+    }
+    else if (className.CompareNoCase(_T("ListBox")) == 0)
+    {
+        CListBox* pBox = (CListBox*)pWnd;
+        int sel = pBox->GetCurSel();
+        if (sel != LB_ERR)
+        {
+            CString item; pBox->GetText(sel, item);
+            int sep = item.Find(_T('|'));
+            CString cmd;
+            if (sep != -1) cmd = item.Mid(sep + 1);
+            else
+            {
+                sep = item.Find(_T('\t'));
+                if (sep != -1) cmd = item.Mid(sep + 1);
+                else cmd = item;
+            }
+            CopyToClipboard(m_hWnd, cmd);
+        }
+    }
+}
+
+// Double-click on CListCtrl: copy command
+void CMFCApplication1Dlg::OnNMDblclkList4(NMHDR* pNMHDR, LRESULT* pResult)
+{
+    CWnd* pWnd = GetDlgItem(IDC_LIST4);
+    if (pWnd && ::IsWindow(pWnd->GetSafeHwnd()))
+    {
+        TCHAR cls[64] = {0};
+        GetClassName(pWnd->GetSafeHwnd(), cls, _countof(cls));
+        if (CString(cls).CompareNoCase(_T("SysListView32")) == 0)
+            OnCopyGitCommand();
+    }
+    *pResult = 0;
+}
+
+// Double-click on CListBox: copy command
+void CMFCApplication1Dlg::OnLbnDblclkList4()
+{
+    CWnd* pWnd = GetDlgItem(IDC_LIST4);
+    if (pWnd && ::IsWindow(pWnd->GetSafeHwnd()))
+    {
+        TCHAR cls[64] = {0};
+        GetClassName(pWnd->GetSafeHwnd(), cls, _countof(cls));
+        if (CString(cls).CompareNoCase(_T("ListBox")) == 0)
+            OnCopyGitCommand();
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 // The capture overlay window is created dynamically via CreateWindowEx using
 // the class name "MyCaptureOverlayClass" and routed to OverlayWndProc.
@@ -835,6 +933,9 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_BN_CLICKED(IDC_BUTTON29, &CMFCApplication1Dlg::OnBnClickedButton29)
     ON_BN_CLICKED(IDC_BUTTON30, &CMFCApplication1Dlg::OnBnClickedButton30)
     ON_BN_CLICKED(IDC_BUTTON31, &CMFCApplication1Dlg::OnBnClickedButton31)
+    ON_COMMAND(40001, &CMFCApplication1Dlg::OnCopyGitCommand)
+    ON_NOTIFY(NM_DBLCLK, IDC_LIST4, &CMFCApplication1Dlg::OnNMDblclkList4)
+    ON_LBN_DBLCLK(IDC_LIST4, &CMFCApplication1Dlg::OnLbnDblclkList4)
 END_MESSAGE_MAP()
 
 
@@ -920,12 +1021,15 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
     // 控件可见性初始化：根据当前选中页显示对应的 List
     CListCtrl* pList1 = (CListCtrl*)GetDlgItem(IDC_LIST1);
     CListCtrl* pList2 = (CListCtrl*)GetDlgItem(IDC_LIST2);
+    // git commands list (tab6)
+    CListCtrl* pList4 = (CListCtrl*)GetDlgItem(IDC_LIST4);
     CListCtrl* pList3 = (CListCtrl*)GetDlgItem(IDC_LIST3);
     int nCur = 0;
     if (pTab) nCur = pTab->GetCurSel();
     if (pList1) pList1->ShowWindow(nCur == 0 ? SW_SHOW : SW_HIDE);
     if (pList2) pList2->ShowWindow(nCur == 1 ? SW_SHOW : SW_HIDE);
     if (pList3) pList3->ShowWindow(nCur == 2 ? SW_SHOW : SW_HIDE);
+    if (pList4) pList4->ShowWindow(nCur == 5 ? SW_SHOW : SW_HIDE);
 
     // File management controls: only visible when tab index 4 selected
     CWnd* pStaticPathCtrl = GetDlgItem(IDC_STATIC_PATH);
@@ -998,6 +1102,86 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
         pList3->ModifyStyle(0, LVS_REPORT);
         pList3->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
         pList3->InsertColumn(0, _T("文本内容(双击复制)"), LVCFMT_LEFT, 780);
+    }
+
+    // 初始化 git 常用命令列表（List4），属于 tab6 (index 5)
+    if (pList4)
+    {
+        pList4->ModifyStyle(0, LVS_REPORT);
+        pList4->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
+        // Make first column half width of previous (approx 190)
+        pList4->InsertColumn(0, _T("说明"), LVCFMT_LEFT, 190);
+        pList4->InsertColumn(1, _T("命令"), LVCFMT_LEFT, 400);
+
+        // Load commands from config.ini in application directory. If missing, create defaults.
+        const TCHAR* section = _T("GitCommands");
+        TCHAR exePath[MAX_PATH] = {0};
+        GetModuleFileName(NULL, exePath, MAX_PATH);
+        CString exeDir = exePath;
+        int p = exeDir.ReverseFind(_T('\\'));
+        CString configPath;
+        if (p != -1) configPath.Format(_T("%s\\config.ini"), exeDir.Left(p));
+        else configPath = _T("config.ini");
+
+        const int BUF = 1024;
+        CString firstVal;
+        {
+            TCHAR buf[BUF] = {0};
+            GetPrivateProfileString(section, _T("Cmd1"), _T(""), buf, BUF, configPath);
+            firstVal = buf;
+        }
+
+        if (firstVal.IsEmpty())
+        {
+            // write defaults to INI
+            WritePrivateProfileString(section, _T("Cmd1"), _T("初始化本地仓库|git init"), configPath);
+            WritePrivateProfileString(section, _T("Cmd2"), _T("添加所有文件到暂存区|git add ."), configPath);
+            WritePrivateProfileString(section, _T("Cmd3"), _T("提交到本地仓库|git commit -m \"第一次提交\""), configPath);
+            WritePrivateProfileString(section, _T("Cmd4"), _T("添加远程仓库地址|git remote add origin <地址>"), configPath);
+            WritePrivateProfileString(section, _T("Cmd5"), _T("重命名分支为main|git branch -M main"), configPath);
+            WritePrivateProfileString(section, _T("Cmd6"), _T("首次推送并建立关联|git push -u origin main"), configPath);
+            WritePrivateProfileString(section, _T("Cmd7"), _T("拉取远程更新|git pull"), configPath);
+            WritePrivateProfileString(section, _T("Cmd8"), _T("克隆远程仓库到本地|git clone <地址>"), configPath);
+            WritePrivateProfileString(section, _T("Cmd9"), _T("查看当前状态|git status"), configPath);
+            WritePrivateProfileString(section, _T("Cmd10"), _T("添加所有修改到暂存区|git add ."), configPath);
+            WritePrivateProfileString(section, _T("Cmd11"), _T("提交到本地仓库|git commit -m \"说明\""), configPath);
+            WritePrivateProfileString(section, _T("Cmd12"), _T("推送到远程仓库|git push"), configPath);
+            WritePrivateProfileString(section, _T("Cmd13"), _T("查看所有分支含远程|git branch -a"), configPath);
+            WritePrivateProfileString(section, _T("Cmd14"), _T("创建并切换分支|git checkout -b <分支名>"), configPath);
+            WritePrivateProfileString(section, _T("Cmd15"), _T("切换分支|git checkout <分支名>"), configPath);
+            WritePrivateProfileString(section, _T("Cmd16"), _T("合并指定分支到当前分支|git merge <分支名>"), configPath);
+            WritePrivateProfileString(section, _T("Cmd17"), _T("删除已合并的分支|git branch -d <分支名>"), configPath);
+            WritePrivateProfileString(section, _T("Cmd18"), _T("查看简洁版提交历史|git log --oneline"), configPath);
+            WritePrivateProfileString(section, _T("Cmd19"), _T("撤销工作区修改|git restore <文件>"), configPath);
+            WritePrivateProfileString(section, _T("Cmd20"), _T("把暂存区文件撤回来|git restore --staged <文件>"), configPath);
+        }
+
+        // populate list from INI until an empty key is found
+        pList4->DeleteAllItems();
+        for (int i = 1; i <= 99; ++i)
+        {
+            CString key; key.Format(_T("Cmd%d"), i);
+            TCHAR buf[BUF] = {0};
+            GetPrivateProfileString(section, key, _T(""), buf, BUF, configPath);
+            CString val = buf;
+            if (val.IsEmpty()) break;
+            int sep = val.Find(_T('|'));
+            CString desc, cmd;
+            if (sep != -1)
+            {
+                desc = val.Left(sep);
+                cmd = val.Mid(sep + 1);
+            }
+            else
+            {
+                desc = val;
+                cmd = _T("");
+            }
+            int idx = pList4->InsertItem(i - 1, desc);
+            pList4->SetItemText(idx, 1, cmd);
+        }
+        // register for right-click/context menu and double-click notifications
+        // The list control uses NM_RCLICK and NM_DBLCLK notifications handled in message map below
     }
 
     // Ensure git tool buttons exist in dialog and are hidden unless tab6 selected
@@ -1967,8 +2151,11 @@ void CMFCApplication1Dlg::OnTcnSelchangeTab1(NMHDR *pNMHDR, LRESULT *pResult)
         }
         // list3 for clipboard
         CListCtrl* pList3 = (CListCtrl*)GetDlgItem(IDC_LIST3);
+        CListCtrl* pList4 = (CListCtrl*)GetDlgItem(IDC_LIST4); // git commands
         if (pList3)
             pList3->ShowWindow(nSel == 2 ? SW_SHOW : SW_HIDE);
+        if (pList4)
+            pList4->ShowWindow(nSel == 5 ? SW_SHOW : SW_HIDE);
 
         // show only the locate button and helper static for tab4 (button20/21 unused)
         CWnd* pB19 = GetDlgItem(IDC_BUTTON19);
@@ -2054,6 +2241,17 @@ void CMFCApplication1Dlg::OnContextMenu(CWnd* pWnd, CPoint point)
         if (nSel != -1)
             menu.AppendMenu(MF_STRING, 32773, _T("删除启动项"));
 
+        menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
+        return;
+    }
+
+    // 右键在 git 工具列表上 (复制指令)
+    CWnd* pList4 = GetDlgItem(IDC_LIST4);
+    if (pList4 && hClicked == pList4->GetSafeHwnd())
+    {
+        CMenu menu;
+        menu.CreatePopupMenu();
+        menu.AppendMenu(MF_STRING, 40001, _T("复制指令"));
         menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
         return;
     }

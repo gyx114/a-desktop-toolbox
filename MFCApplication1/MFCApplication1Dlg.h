@@ -159,4 +159,8 @@ public:
 	afx_msg void OnBnClickedButton29();
   afx_msg void OnBnClickedButton30();
 	afx_msg void OnBnClickedButton31();
+    // Git list handlers
+	afx_msg void OnCopyGitCommand();
+	afx_msg void OnNMDblclkList4(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnLbnDblclkList4();
 };
