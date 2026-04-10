@@ -57,6 +57,8 @@ static LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
 
 
 
+
+
         if (::GetCapture() == hwnd) ::ReleaseCapture();
         if (pDlg) pDlg->m_hCaptureWnd = NULL;
         break;
@@ -831,6 +833,8 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_BN_CLICKED(IDC_BUTTON27, &CMFCApplication1Dlg::OnBnClickedButton27)
     ON_BN_CLICKED(IDC_BUTTON28, &CMFCApplication1Dlg::OnBnClickedButton28)
     ON_BN_CLICKED(IDC_BUTTON29, &CMFCApplication1Dlg::OnBnClickedButton29)
+    ON_BN_CLICKED(IDC_BUTTON30, &CMFCApplication1Dlg::OnBnClickedButton30)
+    ON_BN_CLICKED(IDC_BUTTON31, &CMFCApplication1Dlg::OnBnClickedButton31)
 END_MESSAGE_MAP()
 
 
@@ -909,6 +913,8 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
         pTab->InsertItem(3, _T("窗口处理"));
         // 第五个选项卡：文件管理
         pTab->InsertItem(4, _T("文件管理"));
+        // 第六个选项卡：git 工具
+        pTab->InsertItem(5, _T("git工具"));
 	}
 
     // 控件可见性初始化：根据当前选中页显示对应的 List
@@ -961,6 +967,11 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
         if (pBtn) pBtn->ShowWindow(nCur == 3 ? SW_SHOW : SW_HIDE);
         CWnd* pStatic = GetDlgItem(IDC_STATIC12);
         if (pStatic) pStatic->ShowWindow(nCur == 3 ? SW_SHOW : SW_HIDE);
+        // tab6: Git 工具按钮，仅在 tab index 5 (第六个标签) 可见
+        CWnd* pBtn30 = GetDlgItem(IDC_BUTTON30);
+        if (pBtn30) pBtn30->ShowWindow(nCur == 5 ? SW_SHOW : SW_HIDE);
+        CWnd* pBtn31 = GetDlgItem(IDC_BUTTON31);
+        if (pBtn31) pBtn31->ShowWindow(nCur == 5 ? SW_SHOW : SW_HIDE);
     }
 
     // Initialize list control columns and styles
@@ -987,6 +998,14 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
         pList3->ModifyStyle(0, LVS_REPORT);
         pList3->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
         pList3->InsertColumn(0, _T("文本内容(双击复制)"), LVCFMT_LEFT, 780);
+    }
+
+    // Ensure git tool buttons exist in dialog and are hidden unless tab6 selected
+    {
+        CWnd* pBtn30 = GetDlgItem(IDC_BUTTON30);
+        CWnd* pBtn31 = GetDlgItem(IDC_BUTTON31);
+        if (pBtn30) pBtn30->ShowWindow(nCur == 5 ? SW_SHOW : SW_HIDE);
+        if (pBtn31) pBtn31->ShowWindow(nCur == 5 ? SW_SHOW : SW_HIDE);
     }
 
     // 初始时将置顶/定位按钮隐藏（Tab4 中显示）; 按钮20/21 已弃用
@@ -1956,6 +1975,12 @@ void CMFCApplication1Dlg::OnTcnSelchangeTab1(NMHDR *pNMHDR, LRESULT *pResult)
         if (pB19) pB19->ShowWindow(nSel == 3 ? SW_SHOW : SW_HIDE);
         CWnd* pStatic = GetDlgItem(IDC_STATIC12);
         if (pStatic) pStatic->ShowWindow(nSel == 3 ? SW_SHOW : SW_HIDE);
+
+        // Git tools (tab6) only visible on index 5
+        CWnd* pBtn30 = GetDlgItem(IDC_BUTTON30);
+        CWnd* pBtn31 = GetDlgItem(IDC_BUTTON31);
+        if (pBtn30) pBtn30->ShowWindow(nSel == 5 ? SW_SHOW : SW_HIDE);
+        if (pBtn31) pBtn31->ShowWindow(nSel == 5 ? SW_SHOW : SW_HIDE);
 
         // File management controls: show/hide static path and edit/button if tab 4 unavailable
         CWnd* pStaticPath = GetDlgItem(IDC_STATIC_PATH);
@@ -3218,5 +3243,30 @@ void CMFCApplication1Dlg::OnBnClickedButton29()
     if ((INT_PTR)h <= 32)
     {
         MessageBox(_T("无法打开链接，请手动访问 https://leetcode.cn/problemset/"), _T("错误"), MB_OK | MB_ICONERROR);
+    }
+}
+
+void CMFCApplication1Dlg::OnBnClickedButton30()
+{
+    // Open GitHub
+    CString url = _T("https://github.com/");
+    HINSTANCE h = ::ShellExecute(m_hWnd, _T("open"), url, NULL, NULL, SW_SHOWNORMAL);
+    if ((INT_PTR)h <= 32)
+    {
+        MessageBox(_T("无法打开链接，请手动访问 https://github.com/"), _T("错误"), MB_OK | MB_ICONERROR);
+    }
+}
+
+void CMFCApplication1Dlg::OnBnClickedButton31()
+{
+    // Launch Git Bash
+    CString path = _T("D:\\Git\\git-bash.exe");
+    if (GetFileAttributes(path) != INVALID_FILE_ATTRIBUTES)
+    {
+        ::ShellExecute(NULL, _T("open"), path, NULL, NULL, SW_SHOWNORMAL);
+    }
+    else
+    {
+        MessageBox(_T("找不到 git-bash.exe，请检查路径 D:\\Git\\git-bash.exe 是否存在。"), _T("错误"), MB_OK | MB_ICONERROR);
     }
 }
