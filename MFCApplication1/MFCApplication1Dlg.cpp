@@ -128,13 +128,37 @@ void CMFCApplication1Dlg::OnCopyGitCommand()
 // Double-click on CListCtrl: copy command
 void CMFCApplication1Dlg::OnNMDblclkList4(NMHDR* pNMHDR, LRESULT* pResult)
 {
-    CWnd* pWnd = GetDlgItem(IDC_LIST4);
-    if (pWnd && ::IsWindow(pWnd->GetSafeHwnd()))
+    // Use the item activation info to determine which row was double-clicked
+    LPNMITEMACTIVATE pItem = (LPNMITEMACTIVATE)pNMHDR;
+    int idx = (pItem) ? pItem->iItem : -1;
+    if (idx >= 0)
     {
-        TCHAR cls[64] = {0};
-        GetClassName(pWnd->GetSafeHwnd(), cls, _countof(cls));
-        if (CString(cls).CompareNoCase(_T("SysListView32")) == 0)
-            OnCopyGitCommand();
+        CWnd* pWnd = GetDlgItem(IDC_LIST4);
+        if (pWnd && ::IsWindow(pWnd->GetSafeHwnd()))
+        {
+            TCHAR cls[64] = {0};
+            GetClassName(pWnd->GetSafeHwnd(), cls, _countof(cls));
+            if (CString(cls).CompareNoCase(_T("SysListView32")) == 0)
+            {
+                CListCtrl* pListCtrl = (CListCtrl*)pWnd;
+                // Prefer the command column (subitem 1). If empty, try to parse from
+                // the first column (description) using common separators.
+                CString cmd = pListCtrl->GetItemText(idx, 1);
+                if (cmd.IsEmpty())
+                {
+                    CString combined = pListCtrl->GetItemText(idx, 0);
+                    int sep = combined.Find(_T('|'));
+                    if (sep != -1) cmd = combined.Mid(sep + 1);
+                    else
+                    {
+                        sep = combined.Find(_T('\t'));
+                        if (sep != -1) cmd = combined.Mid(sep + 1);
+                        else cmd = combined; // fallback: copy whole text
+                    }
+                }
+                if (!cmd.IsEmpty()) CopyToClipboard(m_hWnd, cmd);
+            }
+        }
     }
     *pResult = 0;
 }
