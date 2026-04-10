@@ -933,6 +933,7 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_BN_CLICKED(IDC_BUTTON29, &CMFCApplication1Dlg::OnBnClickedButton29)
     ON_BN_CLICKED(IDC_BUTTON30, &CMFCApplication1Dlg::OnBnClickedButton30)
     ON_BN_CLICKED(IDC_BUTTON31, &CMFCApplication1Dlg::OnBnClickedButton31)
+    ON_BN_CLICKED(IDC_BUTTON32, &CMFCApplication1Dlg::OnBnClickedButton32)
     ON_COMMAND(40001, &CMFCApplication1Dlg::OnCopyGitCommand)
     ON_NOTIFY(NM_DBLCLK, IDC_LIST4, &CMFCApplication1Dlg::OnNMDblclkList4)
     ON_LBN_DBLCLK(IDC_LIST4, &CMFCApplication1Dlg::OnLbnDblclkList4)
@@ -1042,7 +1043,7 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
     CWnd* pEdit8 = GetDlgItem(IDC_EDIT8);
     CWnd* pBtn23 = GetDlgItem(IDC_BUTTON23);
     CWnd* pBtn24 = GetDlgItem(IDC_BUTTON24);
-    if (pStaticPathCtrl) pStaticPathCtrl->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
+    if (pStaticPathCtrl) pStaticPathCtrl->ShowWindow((nCur == 4 || nCur == 5) ? SW_SHOW : SW_HIDE);
     if (pEdit4Ctrl) pEdit4Ctrl->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
     if (pBtn3Ctrl) pBtn3Ctrl->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
     if (pStatic7Ctrl) pStatic7Ctrl->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
@@ -1059,7 +1060,7 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
     if (pBtn25) pBtn25->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
     if (pBtn26) pBtn26->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
     if (pBrowse) pBrowse->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
-    if (nCur == 4 && pStaticPathCtrl)
+    if ((nCur == 4 || nCur == 5) && pStaticPathCtrl)
     {
         CString stDisplay = m_strDroppedFilePath.IsEmpty() ? _T("拖拽文件到此") : m_strDroppedFilePath;
         pStaticPathCtrl->SetWindowText(stDisplay);
@@ -1188,8 +1189,23 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
     {
         CWnd* pBtn30 = GetDlgItem(IDC_BUTTON30);
         CWnd* pBtn31 = GetDlgItem(IDC_BUTTON31);
+        CWnd* pBtn32 = GetDlgItem(IDC_BUTTON32);
         if (pBtn30) pBtn30->ShowWindow(nCur == 5 ? SW_SHOW : SW_HIDE);
         if (pBtn31) pBtn31->ShowWindow(nCur == 5 ? SW_SHOW : SW_HIDE);
+        if (pBtn32)
+        {
+            if (nCur == 5)
+            {
+                pBtn32->ShowWindow(SW_SHOW);
+                pBtn32->EnableWindow(TRUE);
+                pBtn32->BringWindowToTop();
+                pBtn32->SetWindowPos(&wndTop, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
+            }
+            else
+            {
+                pBtn32->ShowWindow(SW_HIDE);
+            }
+        }
     }
 
     // 初始时将置顶/定位按钮隐藏（Tab4 中显示）; 按钮20/21 已弃用
@@ -2166,8 +2182,10 @@ void CMFCApplication1Dlg::OnTcnSelchangeTab1(NMHDR *pNMHDR, LRESULT *pResult)
         // Git tools (tab6) only visible on index 5
         CWnd* pBtn30 = GetDlgItem(IDC_BUTTON30);
         CWnd* pBtn31 = GetDlgItem(IDC_BUTTON31);
+        CWnd* pBtn32 = GetDlgItem(IDC_BUTTON32);
         if (pBtn30) pBtn30->ShowWindow(nSel == 5 ? SW_SHOW : SW_HIDE);
         if (pBtn31) pBtn31->ShowWindow(nSel == 5 ? SW_SHOW : SW_HIDE);
+        if (pBtn32) pBtn32->ShowWindow(nSel == 5 ? SW_SHOW : SW_HIDE);
 
         // File management controls: show/hide static path and edit/button if tab 4 unavailable
         CWnd* pStaticPath = GetDlgItem(IDC_STATIC_PATH);
@@ -2179,9 +2197,10 @@ void CMFCApplication1Dlg::OnTcnSelchangeTab1(NMHDR *pNMHDR, LRESULT *pResult)
     CWnd* pEdit8b = GetDlgItem(IDC_EDIT8);
     CWnd* pBtn23b = GetDlgItem(IDC_BUTTON23);
     CWnd* pBtn24b = GetDlgItem(IDC_BUTTON24);
-        // We treat file management as available regardless of tab count; show only when selected index equals 4
+        // We treat file management controls as available only on tab index 4.
+        // However the path static (IDC_STATIC_PATH) should also be visible on tab index 5 (git tools).
         BOOL showFile = (nSel == 4);
-        if (pStaticPath) pStaticPath->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+        if (pStaticPath) pStaticPath->ShowWindow((nSel == 4 || nSel == 5) ? SW_SHOW : SW_HIDE);
         if (pEdit4) pEdit4->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
         if (pBtn3) pBtn3->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
         if (pStatic7) pStatic7->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
@@ -2198,7 +2217,7 @@ void CMFCApplication1Dlg::OnTcnSelchangeTab1(NMHDR *pNMHDR, LRESULT *pResult)
     if (pBtn25b) pBtn25b->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
     if (pBtn26b) pBtn26b->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
     if (pBrowseb) pBrowseb->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
-        if (showFile)
+        if (showFile || nSel == 5)
         {
             CString stDisplay = m_strDroppedFilePath.IsEmpty() ? _T("拖拽文件到此") : m_strDroppedFilePath;
             SetDlgItemText(IDC_STATIC_PATH, stDisplay);
@@ -3466,5 +3485,18 @@ void CMFCApplication1Dlg::OnBnClickedButton31()
     else
     {
         MessageBox(_T("找不到 git-bash.exe，请检查路径 D:\\Git\\git-bash.exe 是否存在。"), _T("错误"), MB_OK | MB_ICONERROR);
+    }
+}
+
+// Clear the displayed dropped file path when IDC_BUTTON32 is clicked
+void CMFCApplication1Dlg::OnBnClickedButton32()
+{
+    // Clear stored path and update static control text
+    m_strDroppedFilePath.Empty();
+    CWnd* pStatic = GetDlgItem(IDC_STATIC_PATH);
+    if (pStatic && ::IsWindow(pStatic->GetSafeHwnd()))
+    {
+        // Show placeholder to indicate no file
+        pStatic->SetWindowText(_T("拖拽文件到此"));
     }
 }
