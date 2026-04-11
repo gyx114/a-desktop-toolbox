@@ -1040,7 +1040,7 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
         // 第五个选项卡：文件管理
         pTab->InsertItem(4, _T("文件管理"));
         // 第六个选项卡：git 工具
-        pTab->InsertItem(5, _T("git工具"));
+        pTab->InsertItem(5, _T("git工具箱"));
 	}
 
     // 控件可见性初始化：根据当前选中页显示对应的 List
