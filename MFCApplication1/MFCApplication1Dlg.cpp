@@ -517,6 +517,16 @@ void CMFCApplication1Dlg::OnTargetSelected(HWND hTarget, POINT pt)
         return;
     }
 
+    // When a target window is selected via the overlay, treat it as "located":
+    // switch to the "窗口处理" tab and refresh the list to show this window's info.
+    CTabCtrl* pTab = (CTabCtrl*)GetDlgItem(IDC_TAB1);
+    if (pTab)
+    {
+        pTab->SetCurSel(3);
+        LRESULT res = 0;
+        OnTcnSelchangeTab1(NULL, &res);
+    }
+
     // 弹出操作菜单
     CMenu menu;
     menu.CreatePopupMenu();
@@ -1049,12 +1059,22 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
     // git commands list (tab6)
     CListCtrl* pList4 = (CListCtrl*)GetDlgItem(IDC_LIST4);
     CListCtrl* pList3 = (CListCtrl*)GetDlgItem(IDC_LIST3);
+    CListCtrl* pList5 = (CListCtrl*)GetDlgItem(IDC_LIST5);
     int nCur = 0;
     if (pTab) nCur = pTab->GetCurSel();
     if (pList1) pList1->ShowWindow(nCur == 0 ? SW_SHOW : SW_HIDE);
     if (pList2) pList2->ShowWindow(nCur == 1 ? SW_SHOW : SW_HIDE);
     if (pList3) pList3->ShowWindow(nCur == 2 ? SW_SHOW : SW_HIDE);
     if (pList4) pList4->ShowWindow(nCur == 5 ? SW_SHOW : SW_HIDE);
+    if (pList5)
+    {
+        pList5->ShowWindow(nCur == 3 ? SW_SHOW : SW_HIDE);
+        if (nCur == 3)
+        {
+            ::SetWindowPos(pList5->GetSafeHwnd(), HWND_TOP, 0,0,0,0, SWP_NOMOVE | SWP_NOSIZE);
+            pList5->BringWindowToTop();
+        }
+    }
 
     // File management controls: only visible when tab index 4 selected
     CWnd* pStaticPathCtrl = GetDlgItem(IDC_STATIC_PATH);
@@ -1127,6 +1147,16 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
         pList3->ModifyStyle(0, LVS_REPORT);
         pList3->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
         pList3->InsertColumn(0, _T("文本内容(双击复制)"), LVCFMT_LEFT, 780);
+    }
+
+    // Initialize window info list (List5) used by the "窗口处理" tab (index 3)
+    // Use a compact two-column layout: 列0 = 句柄, 列1 = 详细信息 (进程名 | PID | 路径 | 窗口标题)
+    if (pList5)
+    {
+        pList5->ModifyStyle(0, LVS_REPORT);
+        pList5->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
+        pList5->InsertColumn(0, _T("字段"), LVCFMT_LEFT, 140);
+        pList5->InsertColumn(1, _T("值"), LVCFMT_LEFT, 980);
     }
 
     // 初始化 git 常用命令列表（List4），属于 tab6 (index 5)
@@ -2192,10 +2222,13 @@ void CMFCApplication1Dlg::OnTcnSelchangeTab1(NMHDR *pNMHDR, LRESULT *pResult)
         // list3 for clipboard
         CListCtrl* pList3 = (CListCtrl*)GetDlgItem(IDC_LIST3);
         CListCtrl* pList4 = (CListCtrl*)GetDlgItem(IDC_LIST4); // git commands
+        CListCtrl* pList5 = (CListCtrl*)GetDlgItem(IDC_LIST5); // window info list (tab4)
         if (pList3)
             pList3->ShowWindow(nSel == 2 ? SW_SHOW : SW_HIDE);
         if (pList4)
             pList4->ShowWindow(nSel == 5 ? SW_SHOW : SW_HIDE);
+        if (pList5)
+            pList5->ShowWindow(nSel == 3 ? SW_SHOW : SW_HIDE);
 
         // show only the locate button and helper static for tab4 (button20/21 unused)
         CWnd* pB19 = GetDlgItem(IDC_BUTTON19);
@@ -2245,6 +2278,72 @@ void CMFCApplication1Dlg::OnTcnSelchangeTab1(NMHDR *pNMHDR, LRESULT *pResult)
         {
             CString stDisplay = m_strDroppedFilePath.IsEmpty() ? _T("拖拽文件到此") : m_strDroppedFilePath;
             SetDlgItemText(IDC_STATIC_PATH, stDisplay);
+        }
+
+        // If switched to tab index 3 (窗口处理), populate IDC_LIST5 with window info
+        if (nSel == 3)
+        {
+            CListCtrl* pList5 = (CListCtrl*)GetDlgItem(IDC_LIST5);
+            if (pList5)
+            {
+                pList5->DeleteAllItems();
+                int idx = 0;
+                // If the user has located a specific window, show only that window's info.
+                if (m_hSelectedWnd && ::IsWindow(m_hSelectedWnd))
+                {
+                    HWND h = m_hSelectedWnd;
+                    DWORD pid = 0; GetWindowThreadProcessId(h, &pid);
+
+                    CString procName = _T("");
+                    CString procPath = _T("");
+                    HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+                    if (hProc)
+                    {
+                        TCHAR buf[MAX_PATH] = {0};
+                        DWORD size = _countof(buf);
+                        if (QueryFullProcessImageName(hProc, 0, buf, &size)) procPath = buf;
+                        int psep = procPath.ReverseFind(_T('\\'));
+                        if (psep != -1) procName = procPath.Mid(psep + 1);
+                        CloseHandle(hProc);
+                    }
+
+                    CString title;
+                    ::GetWindowText(h, title.GetBuffer(512), 512);
+                    title.ReleaseBuffer();
+
+                // Insert as two-column key/value rows
+                int row = 0;
+                CString key, val;
+
+                key = _T("句柄"); val.Format(_T("0x%08X"), (UINT_PTR)h);
+                pList5->InsertItem(row, key);
+                pList5->SetItemText(row, 1, val);
+                row++;
+
+                key = _T("进程名"); val = procName;
+                pList5->InsertItem(row, key);
+                pList5->SetItemText(row, 1, val);
+                row++;
+
+                key = _T("PID"); val.Format(_T("%u"), pid);
+                pList5->InsertItem(row, key);
+                pList5->SetItemText(row, 1, val);
+                row++;
+
+                key = _T("路径"); val = procPath;
+                pList5->InsertItem(row, key);
+                pList5->SetItemText(row, 1, val);
+                row++;
+
+                key = _T("窗口标题"); val = title;
+                pList5->InsertItem(row, key);
+                pList5->SetItemText(row, 1, val);
+                }
+                else
+                {
+                    // No located window available; clear list (or optionally enumerate top-level windows)
+                }
+            }
         }
     }
 
