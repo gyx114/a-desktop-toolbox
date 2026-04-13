@@ -55,6 +55,110 @@ static LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
+// Trigger next track in Bilibili player if found; otherwise send global media next key as fallback
+void CMFCApplication1Dlg::OnBiliNext()
+{
+    // Helper: find candidate window that likely belongs to Bilibili
+    auto FindBiliWindow = []() -> HWND {
+        for (HWND h = ::GetTopWindow(NULL); h != NULL; h = ::GetNextWindow(h, GW_HWNDNEXT))
+        {
+            if (!::IsWindowVisible(h)) continue;
+
+            TCHAR title[512] = {0};
+            ::GetWindowText(h, title, _countof(title));
+            CString sTitle = title;
+            sTitle.MakeLower();
+            if (sTitle.Find(_T("哔哩")) != -1 || sTitle.Find(_T("bilibili")) != -1 || sTitle.Find(_T("b站")) != -1)
+                return h;
+
+            // check process image path for name containing bilibili
+            DWORD pid = 0; GetWindowThreadProcessId(h, &pid);
+            if (pid != 0)
+            {
+                HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+                if (hProc)
+                {
+                    TCHAR buf[MAX_PATH] = {0};
+                    DWORD sz = _countof(buf);
+                    if (QueryFullProcessImageName(hProc, 0, buf, &sz))
+                    {
+                        CString p = buf; p.MakeLower();
+                        if (p.Find(_T("bilibili")) != -1 || p.Find(_T("bili")) != -1)
+                        {
+                            CloseHandle(hProc);
+                            return h;
+                        }
+                    }
+                    CloseHandle(hProc);
+                }
+            }
+        }
+        return NULL;
+    };
+
+    HWND hBili = FindBiliWindow();
+    if (hBili)
+    {
+        // Bring the player window to foreground (restore if minimized), send ']' key, then re-minimize.
+        // Try to set foreground safely by attaching thread input.
+        if (::IsIconic(hBili)) ::ShowWindow(hBili, SW_RESTORE);
+
+        DWORD curTid = GetCurrentThreadId();
+        DWORD targetPid = 0; DWORD targetTid = GetWindowThreadProcessId(hBili, &targetPid);
+        // attach input threads to allow SetForegroundWindow
+        AttachThreadInput(curTid, targetTid, TRUE);
+        ::SetForegroundWindow(hBili);
+        ::SetActiveWindow(hBili);
+        AttachThreadInput(curTid, targetTid, FALSE);
+
+        // small delay to ensure window receives focus
+        Sleep(120);
+
+        // Determine virtual-key and modifier from current layout for ']'
+        SHORT vkAndState = VkKeyScanW((WCHAR)']');
+        BYTE vk = LOBYTE(vkAndState);
+        BYTE shiftState = HIBYTE(vkAndState);
+
+        // Build inputs: press modifiers, keydown, keyup, release modifiers
+        std::vector<INPUT> inputs;
+        inputs.reserve(6);
+        auto pushKey = [&](WORD vkCode, DWORD flags){ INPUT in = {}; in.type = INPUT_KEYBOARD; in.ki.wVk = vkCode; in.ki.dwFlags = flags; inputs.push_back(in); };
+
+        // modifiers: SHIFT (1), CTRL (2), ALT (4) per VkKeyScan return
+        if (shiftState & 1) pushKey(VK_SHIFT, 0);
+        if (shiftState & 2) pushKey(VK_CONTROL, 0);
+        if (shiftState & 4) pushKey(VK_MENU, 0);
+
+        // key down + up
+        if (vk != 0xFF)
+        {
+            pushKey(vk, 0);
+            pushKey(vk, KEYEVENTF_KEYUP);
+        }
+
+        // release modifiers in reverse order
+        if (shiftState & 4) pushKey(VK_MENU, KEYEVENTF_KEYUP);
+        if (shiftState & 2) pushKey(VK_CONTROL, KEYEVENTF_KEYUP);
+        if (shiftState & 1) pushKey(VK_SHIFT, KEYEVENTF_KEYUP);
+
+        if (!inputs.empty()) SendInput((UINT)inputs.size(), inputs.data(), sizeof(INPUT));
+
+        // give the app a moment to process and then minimize it again
+        Sleep(80);
+        ::ShowWindow(hBili, SW_MINIMIZE);
+        return;
+    }
+
+    // Fallback: send a global media next key via SendInput
+    INPUT inputs[2] = {};
+    inputs[0].type = INPUT_KEYBOARD;
+    inputs[0].ki.wVk = VK_MEDIA_NEXT_TRACK;
+    inputs[1].type = INPUT_KEYBOARD;
+    inputs[1].ki.wVk = VK_MEDIA_NEXT_TRACK;
+    inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+    SendInput(2, inputs, sizeof(INPUT));
+}
+
 // Helper: copy Unicode text to clipboard
 static void CopyToClipboard(HWND hwnd, const CString& text)
 {
@@ -235,6 +339,8 @@ void CMFCApplication1Dlg::OnBnClickedButton24()
         MessageBox(err, _T("错误"), MB_OK | MB_ICONERROR);
     }
 }
+
+// (No wrapper here — IDC_BUTTON15 already has an existing handler elsewhere.)
 
 // File management (drag/drop) and DropHelper removed
 
@@ -968,6 +1074,11 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_BN_CLICKED(IDC_BUTTON30, &CMFCApplication1Dlg::OnBnClickedButton30)
     ON_BN_CLICKED(IDC_BUTTON31, &CMFCApplication1Dlg::OnBnClickedButton31)
     ON_BN_CLICKED(IDC_BUTTON32, &CMFCApplication1Dlg::OnBnClickedButton32)
+    // Bind IDC_BUTTON33 to the bilibili "next" handler if the control exists
+#ifdef IDC_BUTTON33
+    ON_BN_CLICKED(IDC_BUTTON33, &CMFCApplication1Dlg::OnBiliNext)
+#endif
+    ON_COMMAND(41001, &CMFCApplication1Dlg::OnBiliNext)
     ON_COMMAND(40001, &CMFCApplication1Dlg::OnCopyGitCommand)
     ON_NOTIFY(NM_DBLCLK, IDC_LIST4, &CMFCApplication1Dlg::OnNMDblclkList4)
     ON_LBN_DBLCLK(IDC_LIST4, &CMFCApplication1Dlg::OnLbnDblclkList4)

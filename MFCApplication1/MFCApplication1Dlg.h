@@ -160,6 +160,7 @@ public:
   afx_msg void OnBnClickedButton30();
 	afx_msg void OnBnClickedButton31();
     afx_msg void OnBnClickedButton32();
+    afx_msg void OnBiliNext();
     // Git list handlers
 	afx_msg void OnCopyGitCommand();
 	afx_msg void OnNMDblclkList4(NMHDR* pNMHDR, LRESULT* pResult);
