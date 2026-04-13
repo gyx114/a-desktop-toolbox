@@ -58,8 +58,10 @@ static LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
 // Trigger next track in Bilibili player if found; otherwise send global media next key as fallback
 void CMFCApplication1Dlg::OnBiliNext()
 {
-    // Helper: find candidate window that likely belongs to Bilibili
-    auto FindBiliWindow = []() -> HWND {
+    // Helper: find candidate window(s) that likely belong to Bilibili. Collect all candidates
+    // and prefer the one with the largest HWND value when multiple exist.
+    auto FindBiliWindow = [this]() -> HWND {
+        std::vector<HWND> candidates;
         for (HWND h = ::GetTopWindow(NULL); h != NULL; h = ::GetNextWindow(h, GW_HWNDNEXT))
         {
             if (!::IsWindowVisible(h)) continue;
@@ -68,34 +70,51 @@ void CMFCApplication1Dlg::OnBiliNext()
             ::GetWindowText(h, title, _countof(title));
             CString sTitle = title;
             sTitle.MakeLower();
+            bool matched = false;
             if (sTitle.Find(_T("哔哩")) != -1 || sTitle.Find(_T("bilibili")) != -1 || sTitle.Find(_T("b站")) != -1)
-                return h;
+                matched = true;
 
             // check process image path for name containing bilibili
-            DWORD pid = 0; GetWindowThreadProcessId(h, &pid);
-            if (pid != 0)
+            if (!matched)
             {
-                HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
-                if (hProc)
+                DWORD pid = 0; GetWindowThreadProcessId(h, &pid);
+                if (pid != 0)
                 {
-                    TCHAR buf[MAX_PATH] = {0};
-                    DWORD sz = _countof(buf);
-                    if (QueryFullProcessImageName(hProc, 0, buf, &sz))
+                    HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+                    if (hProc)
                     {
-                        CString p = buf; p.MakeLower();
-                        if (p.Find(_T("bilibili")) != -1 || p.Find(_T("bili")) != -1)
+                        TCHAR buf[MAX_PATH] = {0};
+                        DWORD sz = _countof(buf);
+                        if (QueryFullProcessImageName(hProc, 0, buf, &sz))
                         {
-                            CloseHandle(hProc);
-                            return h;
+                            CString p = buf; p.MakeLower();
+                            if (p.Find(_T("bilibili")) != -1 || p.Find(_T("bili")) != -1)
+                                matched = true;
                         }
+                        CloseHandle(hProc);
                     }
-                    CloseHandle(hProc);
                 }
             }
+
+            if (matched)
+                candidates.push_back(h);
         }
-        return NULL;
+
+        if (candidates.empty()) return NULL;
+
+        // If only one candidate, return it. If multiple, pick the one with smallest HWND value.
+        HWND best = candidates.front();
+        if (candidates.size() > 1)
+        {
+            for (HWND c : candidates)
+            {
+                if ((UINT_PTR)c < (UINT_PTR)best) best = c;
+            }
+        }
+        return best;
     };
 
+    // Do NOT prefer user-selected window; instead select candidate by smallest HWND value
     HWND hBili = FindBiliWindow();
     if (hBili)
     {
