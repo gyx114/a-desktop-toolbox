@@ -998,6 +998,93 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
 END_MESSAGE_MAP()
 
+/////////////////////////////////////////////////////////////////////////////
+// CSettingsDlg dialog - configuration
+
+class CSettingsDlg : public CDialogEx
+{
+public:
+    CSettingsDlg(CWnd* pParent = nullptr) : CDialogEx(IDD_SETTINGS_DIALOG, pParent) {}
+    virtual BOOL OnInitDialog();
+    virtual void OnOK();
+    void OnBrowseBili() { BrowseFile(IDC_EDIT_BILI_PATH, _T("选择Bilibili可执行文件")); }
+    void OnBrowseWeChat() { BrowseFile(IDC_EDIT_WECHAT_PATH, _T("选择微信可执行文件")); }
+    void OnBrowseQQ() { BrowseFile(IDC_EDIT_QQ_PATH, _T("选择QQ可执行文件")); }
+    void OnBrowseVSCode() { BrowseFile(IDC_EDIT_VSCODE_PATH, _T("选择VS Code可执行文件")); }
+    void OnBrowseVS() { BrowseFile(IDC_EDIT_VS_PATH, _T("选择Visual Studio可执行文件")); }
+    void OnBrowseGitBash() { BrowseFile(IDC_EDIT_GITBASH_PATH, _T("选择Git Bash可执行文件")); }
+    void OnBrowseYuanbao() { BrowseFile(IDC_EDIT_YUANBAO_PATH, _T("选择元宝可执行文件")); }
+    void OnBrowseStudy() { BrowseFolder(IDC_EDIT_STUDY_PATH, _T("选择学习文件夹")); }
+    void OnBrowseDownload() { BrowseFolder(IDC_EDIT_DOWNLOAD_PATH, _T("选择下载文件夹")); }
+private:
+    void BrowseFile(UINT id, LPCTSTR title);
+    void BrowseFolder(UINT id, LPCTSTR title);
+    DECLARE_MESSAGE_MAP()
+};
+
+BEGIN_MESSAGE_MAP(CSettingsDlg, CDialogEx)
+    ON_BN_CLICKED(IDC_BROWSE_BILI, &CSettingsDlg::OnBrowseBili)
+    ON_BN_CLICKED(IDC_BROWSE_WECHAT, &CSettingsDlg::OnBrowseWeChat)
+    ON_BN_CLICKED(IDC_BROWSE_QQ, &CSettingsDlg::OnBrowseQQ)
+    ON_BN_CLICKED(IDC_BROWSE_VSCODE, &CSettingsDlg::OnBrowseVSCode)
+    ON_BN_CLICKED(IDC_BROWSE_VS, &CSettingsDlg::OnBrowseVS)
+    ON_BN_CLICKED(IDC_BROWSE_GITBASH, &CSettingsDlg::OnBrowseGitBash)
+    ON_BN_CLICKED(IDC_BROWSE_YUANBAO, &CSettingsDlg::OnBrowseYuanbao)
+    ON_BN_CLICKED(IDC_BROWSE_STUDY, &CSettingsDlg::OnBrowseStudy)
+    ON_BN_CLICKED(IDC_BROWSE_DOWNLOAD, &CSettingsDlg::OnBrowseDownload)
+END_MESSAGE_MAP()
+
+BOOL CSettingsDlg::OnInitDialog()
+{
+    CDialogEx::OnInitDialog();
+    SetDlgItemText(IDC_EDIT_DEFAULT_NAME, AfxGetApp()->GetProfileString(_T("Template"), _T("DefaultReportName"), _T("实验报告")));
+    SetDlgItemText(IDC_EDIT_BILI_PATH, AfxGetApp()->GetProfileString(_T("Paths"), _T("BiliPath"), _T("")));
+    SetDlgItemText(IDC_EDIT_WECHAT_PATH, AfxGetApp()->GetProfileString(_T("Paths"), _T("WeChatPath"), _T("")));
+    SetDlgItemText(IDC_EDIT_QQ_PATH, AfxGetApp()->GetProfileString(_T("Paths"), _T("QQPath"), _T("")));
+    SetDlgItemText(IDC_EDIT_VSCODE_PATH, AfxGetApp()->GetProfileString(_T("Paths"), _T("VSCodePath"), _T("")));
+    SetDlgItemText(IDC_EDIT_VS_PATH, AfxGetApp()->GetProfileString(_T("Paths"), _T("VSPath"), _T("")));
+    SetDlgItemText(IDC_EDIT_GITBASH_PATH, AfxGetApp()->GetProfileString(_T("Paths"), _T("GitBashPath"), _T("")));
+    SetDlgItemText(IDC_EDIT_YUANBAO_PATH, AfxGetApp()->GetProfileString(_T("Paths"), _T("YuanbaoPath"), _T("")));
+    SetDlgItemText(IDC_EDIT_STUDY_PATH, AfxGetApp()->GetProfileString(_T("Paths"), _T("StudyFolder"), _T("")));
+    SetDlgItemText(IDC_EDIT_DOWNLOAD_PATH, AfxGetApp()->GetProfileString(_T("Paths"), _T("DownloadFolder"), _T("")));
+    SetDlgItemText(IDC_EDIT_MOOC_URL, AfxGetApp()->GetProfileString(_T("Sites"), _T("MoocUrl"), _T("")));
+    SetDlgItemText(IDC_EDIT_SDUCS_URL, AfxGetApp()->GetProfileString(_T("Sites"), _T("Sducs"), _T("")));
+    return TRUE;
+}
+
+void CSettingsDlg::OnOK()
+{
+    CString v;
+    GetDlgItemText(IDC_EDIT_DEFAULT_NAME, v); AfxGetApp()->WriteProfileString(_T("Template"), _T("DefaultReportName"), v);
+    GetDlgItemText(IDC_EDIT_BILI_PATH, v); AfxGetApp()->WriteProfileString(_T("Paths"), _T("BiliPath"), v);
+    GetDlgItemText(IDC_EDIT_WECHAT_PATH, v); AfxGetApp()->WriteProfileString(_T("Paths"), _T("WeChatPath"), v);
+    GetDlgItemText(IDC_EDIT_QQ_PATH, v); AfxGetApp()->WriteProfileString(_T("Paths"), _T("QQPath"), v);
+    GetDlgItemText(IDC_EDIT_VSCODE_PATH, v); AfxGetApp()->WriteProfileString(_T("Paths"), _T("VSCodePath"), v);
+    GetDlgItemText(IDC_EDIT_VS_PATH, v); AfxGetApp()->WriteProfileString(_T("Paths"), _T("VSPath"), v);
+    GetDlgItemText(IDC_EDIT_GITBASH_PATH, v); AfxGetApp()->WriteProfileString(_T("Paths"), _T("GitBashPath"), v);
+    GetDlgItemText(IDC_EDIT_YUANBAO_PATH, v); AfxGetApp()->WriteProfileString(_T("Paths"), _T("YuanbaoPath"), v);
+    GetDlgItemText(IDC_EDIT_STUDY_PATH, v); AfxGetApp()->WriteProfileString(_T("Paths"), _T("StudyFolder"), v);
+    GetDlgItemText(IDC_EDIT_DOWNLOAD_PATH, v); AfxGetApp()->WriteProfileString(_T("Paths"), _T("DownloadFolder"), v);
+    GetDlgItemText(IDC_EDIT_MOOC_URL, v); AfxGetApp()->WriteProfileString(_T("Sites"), _T("MoocUrl"), v);
+    GetDlgItemText(IDC_EDIT_SDUCS_URL, v); AfxGetApp()->WriteProfileString(_T("Sites"), _T("Sducs"), v);
+    CDialogEx::OnOK();
+}
+
+void CSettingsDlg::BrowseFile(UINT id, LPCTSTR title)
+{
+    CFileDialog dlg(TRUE, NULL, NULL, OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST, NULL, this);
+    dlg.m_ofn.lpstrTitle = title;
+    if (dlg.DoModal() == IDOK) SetDlgItemText(id, dlg.GetPathName());
+}
+
+void CSettingsDlg::BrowseFolder(UINT id, LPCTSTR title)
+{
+    CFolderPickerDialog dlg(NULL, 0, this);
+    dlg.m_ofn.lpstrTitle = title;
+    if (dlg.DoModal() == IDOK) SetDlgItemText(id, dlg.GetPathName());
+}
+
+
 
 // CMFCApplication1Dlg 对话框
 
@@ -1098,6 +1185,9 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_COMMAND(40001, &CMFCApplication1Dlg::OnCopyGitCommand)
     ON_NOTIFY(NM_DBLCLK, IDC_LIST4, &CMFCApplication1Dlg::OnNMDblclkList4)
     ON_LBN_DBLCLK(IDC_LIST4, &CMFCApplication1Dlg::OnLbnDblclkList4)
+    ON_COMMAND(ID_FILE_SETTINGS, &CMFCApplication1Dlg::OnFileSettings)
+    ON_COMMAND(ID_FILE_EXIT, &CMFCApplication1Dlg::OnFileExit)
+    ON_COMMAND(ID_HELP_ABOUT, &CMFCApplication1Dlg::OnHelpAbout)
 END_MESSAGE_MAP()
 
 
@@ -1134,6 +1224,11 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
+    // Load menu bar
+    CMenu menu;
+    menu.LoadMenu(IDR_MAIN_MENU);
+    SetMenu(&menu);
+    menu.Detach();
 
     // 文件管理模块已移除；仍保留最小化到托盘默认设置
     m_bMinimizeOnClose = true;
@@ -3768,4 +3863,24 @@ void CMFCApplication1Dlg::OnBnClickedButton32()
         // Show placeholder to indicate no file
         pStatic->SetWindowText(_T("拖拽文件到此"));
     }
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// CMFCApplication1Dlg menu command handlers
+
+void CMFCApplication1Dlg::OnFileSettings()
+{
+    CSettingsDlg dlg(this);
+    dlg.DoModal();
+}
+
+void CMFCApplication1Dlg::OnFileExit()
+{
+    DestroyWindow();
+}
+
+void CMFCApplication1Dlg::OnHelpAbout()
+{
+    CAboutDlg dlgAbout;
+    dlgAbout.DoModal();
 }

@@ -67,14 +67,42 @@
 #define IDC_BUTTON32                    1075
 #define IDC_LIST5                       1076
 #define IDC_BUTTON33                    1077
+#define ID_FILE_SETTINGS                32775
+#define ID_FILE_EXIT                   32776
+#define ID_HELP_ABOUT                   32777
+
+#define IDD_SETTINGS_DIALOG             133
+#define IDR_MAIN_MENU                   132
+
+#define IDC_EDIT_DEFAULT_NAME           1078
+#define IDC_EDIT_BILI_PATH              1079
+#define IDC_BROWSE_BILI                 1080
+#define IDC_EDIT_WECHAT_PATH            1081
+#define IDC_BROWSE_WECHAT               1082
+#define IDC_EDIT_QQ_PATH                1083
+#define IDC_BROWSE_QQ                   1084
+#define IDC_EDIT_VSCODE_PATH            1085
+#define IDC_BROWSE_VSCODE               1086
+#define IDC_EDIT_VS_PATH                1087
+#define IDC_BROWSE_VS                   1088
+#define IDC_EDIT_GITBASH_PATH           1089
+#define IDC_BROWSE_GITBASH              1090
+#define IDC_EDIT_YUANBAO_PATH           1091
+#define IDC_BROWSE_YUANBAO              1092
+#define IDC_EDIT_STUDY_PATH             1093
+#define IDC_BROWSE_STUDY                1094
+#define IDC_EDIT_DOWNLOAD_PATH          1095
+#define IDC_BROWSE_DOWNLOAD             1096
+#define IDC_EDIT_MOOC_URL               1097
+#define IDC_EDIT_SDUCS_URL              1098
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        133
-#define _APS_NEXT_COMMAND_VALUE         32774
-#define _APS_NEXT_CONTROL_VALUE         1078
+#define _APS_NEXT_COMMAND_VALUE         32778
+#define _APS_NEXT_CONTROL_VALUE         1099
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

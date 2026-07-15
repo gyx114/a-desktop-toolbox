@@ -163,4 +163,7 @@ public:
 	afx_msg void OnCopyGitCommand();
 	afx_msg void OnNMDblclkList4(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnLbnDblclkList4();
+    afx_msg void OnFileSettings();
+    afx_msg void OnFileExit();
+    afx_msg void OnHelpAbout();
 };
