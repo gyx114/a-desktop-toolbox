@@ -1037,7 +1037,7 @@ END_MESSAGE_MAP()
 BOOL CSettingsDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
-    SetDlgItemText(IDC_EDIT_DEFAULT_NAME, AfxGetApp()->GetProfileString(_T("Template"), _T("DefaultReportName"), _T("实验报告")));
+    SetDlgItemText(IDC_EDIT_DEFAULT_NAME, AfxGetApp()->GetProfileString(_T("Template"), _T("DefaultReportName"), _T("")));
     SetDlgItemText(IDC_EDIT_BILI_PATH, AfxGetApp()->GetProfileString(_T("Paths"), _T("BiliPath"), _T("")));
     SetDlgItemText(IDC_EDIT_WECHAT_PATH, AfxGetApp()->GetProfileString(_T("Paths"), _T("WeChatPath"), _T("")));
     SetDlgItemText(IDC_EDIT_QQ_PATH, AfxGetApp()->GetProfileString(_T("Paths"), _T("QQPath"), _T("")));
@@ -1235,7 +1235,7 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
     m_bMinimizeOnClose = true;
     // 文件管理：默认副本名称
     m_strDroppedFilePath.Empty();
-    SetDlgItemText(IDC_EDIT4, AfxGetApp()->GetProfileString(_T("Template"), _T("DefaultReportName"), _T("实验报告")));
+    SetDlgItemText(IDC_EDIT4, AfxGetApp()->GetProfileString(_T("Template"), _T("DefaultReportName"), _T("")));
 
     // Ensure common path/url defaults exist in config (do not overwrite existing)
     CString tmp = AfxGetApp()->GetProfileString(_T("Paths"), _T("BiliPath"), _T(""));
@@ -2776,7 +2776,7 @@ void CMFCApplication1Dlg::OnDropFiles(HDROP hDropInfo)
         else
             ;
         // restore edit IDC_EDIT4 to default content whenever a new file is dropped
-        SetDlgItemText(IDC_EDIT4, AfxGetApp()->GetProfileString(_T("Template"), _T("DefaultReportName"), _T("实验报告")));
+        SetDlgItemText(IDC_EDIT4, AfxGetApp()->GetProfileString(_T("Template"), _T("DefaultReportName"), _T("")));
 
         // Automatically switch to tab 5 (index 4) when a file is dropped
         CTabCtrl* pTab = (CTabCtrl*)GetDlgItem(IDC_TAB1);
@@ -2829,7 +2829,13 @@ void CMFCApplication1Dlg::OnBnClickedButton3()
     newName.Trim();
     if (newName.IsEmpty())
     {
-        newName = AfxGetApp()->GetProfileString(_T("Template"), _T("DefaultReportName"), _T("实验报告"));
+        newName = AfxGetApp()->GetProfileString(_T("Template"), _T("DefaultReportName"), _T(""));
+        if (newName.IsEmpty())
+        {
+            MessageBox(_T("请先在 文件→设置→文件命名 中配置默认文件名。"), _T("提示"), MB_OK | MB_ICONWARNING);
+            SetDlgItemText(IDC_EDIT4, newName);
+            return;
+        }
         SetDlgItemText(IDC_EDIT4, newName);
     }
 
