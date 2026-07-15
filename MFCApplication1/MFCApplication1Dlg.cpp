@@ -1184,6 +1184,7 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_COMMAND(41001, &CMFCApplication1Dlg::OnBiliNext)
     ON_COMMAND(40001, &CMFCApplication1Dlg::OnCopyGitCommand)
     ON_NOTIFY(NM_DBLCLK, IDC_LIST4, &CMFCApplication1Dlg::OnNMDblclkList4)
+    ON_NOTIFY(NM_DBLCLK, IDC_LIST5, &CMFCApplication1Dlg::OnNMDblclkList5)
     ON_LBN_DBLCLK(IDC_LIST4, &CMFCApplication1Dlg::OnLbnDblclkList4)
     ON_COMMAND(ID_FILE_SETTINGS, &CMFCApplication1Dlg::OnFileSettings)
     ON_COMMAND(ID_FILE_EXIT, &CMFCApplication1Dlg::OnFileExit)
@@ -2609,6 +2610,26 @@ void CMFCApplication1Dlg::OnContextMenu(CWnd* pWnd, CPoint point)
         return;
     }
 
+
+    // 右键在窗口处理列表上 (复制值)
+    CListCtrl* pList5 = (CListCtrl*)GetDlgItem(IDC_LIST5);
+    if (pList5 && hClicked == pList5->GetSafeHwnd())
+    {
+        int nSel = pList5->GetNextItem(-1, LVNI_SELECTED);
+        if (nSel != -1)
+        {
+            CMenu menu;
+            menu.CreatePopupMenu();
+            menu.AppendMenu(MF_STRING, 40002, _T("复制值"));
+            int cmd = menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON | TPM_RETURNCMD, point.x, point.y, this);
+            if (cmd == 40002)
+            {
+                CString val = pList5->GetItemText(nSel, 1);
+                if (!val.IsEmpty()) CopyToClipboard(m_hWnd, val);
+            }
+        }
+        return;
+    }
     // 右键在 git 工具列表上 (复制指令)
     CWnd* pList4 = GetDlgItem(IDC_LIST4);
     if (pList4 && hClicked == pList4->GetSafeHwnd())
@@ -3883,4 +3904,16 @@ void CMFCApplication1Dlg::OnHelpAbout()
 {
     CAboutDlg dlgAbout;
     dlgAbout.DoModal();
+}
+
+void CMFCApplication1Dlg::OnNMDblclkList5(NMHDR* pNMHDR, LRESULT* pResult)
+{
+    LPNMITEMACTIVATE pItem = (LPNMITEMACTIVATE)pNMHDR;
+    CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST5);
+    if (pList && pItem->iItem >= 0)
+    {
+        CString val = pList->GetItemText(pItem->iItem, 1);
+        if (!val.IsEmpty()) CopyToClipboard(m_hWnd, val);
+    }
+    *pResult = 0;
 }
