@@ -359,7 +359,6 @@ void CMFCApplication1Dlg::OnBnClickedButton24()
     }
 }
 
-// (No wrapper here — IDC_BUTTON15 already has an existing handler elsewhere.)
 
 // File management (drag/drop) and DropHelper removed
 
@@ -1067,8 +1066,6 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_MESSAGE(WM_REFRESH_PROCESSES_DONE, &CMFCApplication1Dlg::OnRefreshProcessesDone)
     ON_MESSAGE(WM_REFRESH_STARTUPS_DONE, &CMFCApplication1Dlg::OnRefreshStartupsDone)
     ON_WM_HOTKEY()
-    ON_BN_CLICKED(IDC_BUTTON15, &CMFCApplication1Dlg::OnBnClickedButton15)
-    ON_BN_CLICKED(IDC_BUTTON16, &CMFCApplication1Dlg::OnBnClickedButton16)
     ON_BN_CLICKED(IDC_CHECK3, &CMFCApplication1Dlg::OnBnClickedCheck3)
     ON_BN_CLICKED(IDC_CHECK4, &CMFCApplication1Dlg::OnBnClickedCheck4)
     ON_BN_CLICKED(IDC_CHECK5, &CMFCApplication1Dlg::OnBnClickedCheck5)
@@ -3406,29 +3403,7 @@ void CMFCApplication1Dlg::OnLocateProcess()
     }
 }
 
-void CMFCApplication1Dlg::OnBnClickedButton15()
-{
-    // TODO: 在此添加控件通知处理程序代码
-    if (SetMasterVolumePercent(60))
-    {
-        CEdit* pEditVol = (CEdit*)GetDlgItem(IDC_EDIT5);
-        CSliderCtrl* pSlider = (CSliderCtrl*)GetDlgItem(IDC_SLIDER1);
-        if (pEditVol) pEditVol->SetWindowText(_T("60"));
-        if (pSlider) pSlider->SetPos(60);
-    }
-}
 
-void CMFCApplication1Dlg::OnBnClickedButton16()
-{
-    // TODO: 在此添加控件通知处理程序代码
-    if (SetMasterVolumePercent(100))
-    {
-        CEdit* pEditVol = (CEdit*)GetDlgItem(IDC_EDIT5);
-        CSliderCtrl* pSlider = (CSliderCtrl*)GetDlgItem(IDC_SLIDER1);
-        if (pEditVol) pEditVol->SetWindowText(_T("100"));
-        if (pSlider) pSlider->SetPos(100);
-    }
-}
 
 void CMFCApplication1Dlg::OnBnClickedButton17()
 {

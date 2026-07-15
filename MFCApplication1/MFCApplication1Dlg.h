@@ -116,8 +116,6 @@ public:
 
 	afx_msg LRESULT OnRefreshProcessesDone(WPARAM wParam, LPARAM lParam);
 	afx_msg LRESULT OnRefreshStartupsDone(WPARAM wParam, LPARAM lParam);
-	afx_msg void OnBnClickedButton15();
-	afx_msg void OnBnClickedButton16();
 	afx_msg void OnBnClickedCheck3();
 	afx_msg void OnBnClickedCheck5();
 
