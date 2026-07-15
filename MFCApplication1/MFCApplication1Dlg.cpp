@@ -1236,29 +1236,6 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
     // 文件管理：默认副本名称
     m_strDroppedFilePath.Empty();
     SetDlgItemText(IDC_EDIT4, AfxGetApp()->GetProfileString(_T("Template"), _T("DefaultReportName"), _T("")));
-
-    // Ensure common path/url defaults exist in config (do not overwrite existing)
-    CString tmp = AfxGetApp()->GetProfileString(_T("Paths"), _T("BiliPath"), _T(""));
-    if (tmp.IsEmpty()) AfxGetApp()->WriteProfileString(_T("Paths"), _T("BiliPath"), _T("C:\\Program Files\\bilibili\\哔哩哔哩.exe"));
-    tmp = AfxGetApp()->GetProfileString(_T("Paths"), _T("WeChatPath"), _T(""));
-    if (tmp.IsEmpty()) AfxGetApp()->WriteProfileString(_T("Paths"), _T("WeChatPath"), _T("D:\\微信\\Weixin\\Weixin.exe"));
-    tmp = AfxGetApp()->GetProfileString(_T("Paths"), _T("QQPath"), _T(""));
-    if (tmp.IsEmpty()) AfxGetApp()->WriteProfileString(_T("Paths"), _T("QQPath"), _T("D:\\QQ\\QQ.exe"));
-    tmp = AfxGetApp()->GetProfileString(_T("Paths"), _T("VSPath"), _T(""));
-    if (tmp.IsEmpty()) AfxGetApp()->WriteProfileString(_T("Paths"), _T("VSPath"), _T("C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\Common7\\IDE\\devenv.exe"));
-    tmp = AfxGetApp()->GetProfileString(_T("Paths"), _T("StudyFolder"), _T(""));
-    if (tmp.IsEmpty()) AfxGetApp()->WriteProfileString(_T("Paths"), _T("StudyFolder"), _T("C:\\Users\\guany\\Desktop\\学习"));
-
-    // Ensure Yuanbao default path exists in config
-    tmp = AfxGetApp()->GetProfileString(_T("Paths"), _T("YuanbaoPath"), _T(""));
-    if (tmp.IsEmpty()) AfxGetApp()->WriteProfileString(_T("Paths"), _T("YuanbaoPath"), _T("D:\\Yuanbao\\yuanbao.exe"));
-
-    CString tmpUrl = AfxGetApp()->GetProfileString(_T("Sites"), _T("MoocUrl"), _T(""));
-    if (tmpUrl.IsEmpty()) AfxGetApp()->WriteProfileString(_T("Sites"), _T("MoocUrl"), _T("https://www.icourse163.org/home.htm?userId=1595641987#/home/course"));
-    tmpUrl = AfxGetApp()->GetProfileString(_T("Sites"), _T("LocalServer"), _T(""));
-    if (tmpUrl.IsEmpty()) AfxGetApp()->WriteProfileString(_T("Sites"), _T("LocalServer"), _T("http://10.102.33.39/"));
-
-	// 1. 初始化 Tab 控件
 	CTabCtrl* pTab = (CTabCtrl*)GetDlgItem(IDC_TAB1);
 	if (pTab)
 	{
@@ -1391,7 +1368,7 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
         pList4->InsertColumn(0, _T("说明"), LVCFMT_LEFT, 190);
         pList4->InsertColumn(1, _T("命令"), LVCFMT_LEFT, 400);
 
-        // Load commands from config.ini in application directory. If missing, create defaults.
+        // If config.ini does not exist, create it with only GitCommands
         const TCHAR* section = _T("GitCommands");
         TCHAR exePath[MAX_PATH] = {0};
         GetModuleFileName(NULL, exePath, MAX_PATH);
@@ -1401,15 +1378,7 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
         if (p != -1) configPath.Format(_T("%s\\config.ini"), exeDir.Left(p));
         else configPath = _T("config.ini");
 
-        const int BUF = 1024;
-        CString firstVal;
-        {
-            TCHAR buf[BUF] = {0};
-            GetPrivateProfileString(section, _T("Cmd1"), _T(""), buf, BUF, configPath);
-            firstVal = buf;
-        }
-
-        if (firstVal.IsEmpty())
+        if (GetFileAttributes(configPath) == INVALID_FILE_ATTRIBUTES)
         {
             // write defaults to INI
             WritePrivateProfileString(section, _T("Cmd1"), _T("初始化本地仓库|git init"), configPath);
@@ -1439,8 +1408,8 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
         for (int i = 1; i <= 99; ++i)
         {
             CString key; key.Format(_T("Cmd%d"), i);
-            TCHAR buf[BUF] = {0};
-            GetPrivateProfileString(section, key, _T(""), buf, BUF, configPath);
+            TCHAR buf[1024] = {0};
+            GetPrivateProfileString(section, key, _T(""), buf, 1024, configPath);
             CString val = buf;
             if (val.IsEmpty()) break;
             int sep = val.Find(_T('|'));
@@ -3923,3 +3892,5 @@ void CMFCApplication1Dlg::OnNMDblclkList5(NMHDR* pNMHDR, LRESULT* pResult)
     }
     *pResult = 0;
 }
+
+
