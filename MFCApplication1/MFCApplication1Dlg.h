@@ -192,6 +192,9 @@ public:
 	afx_msg void OnWindowLocate();
 	afx_msg void OnWindowUntopmost();
 	afx_msg void OnWindowClose();
+	afx_msg void OnUntopmostWindow();   // LIST6 右键取消置顶
+	afx_msg void OnCopyStartupPath();     // LIST2 右键复制路径
+	afx_msg void OnNMDblclkList2(NMHDR* pNMHDR, LRESULT* pResult);  // LIST2 双击复制
 	afx_msg void OnHelpShortcuts();
 	afx_msg void OnHelpGithub();
 

@@ -374,21 +374,6 @@ CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
 
 void CMFCApplication1Dlg::OnBnClickedButton19()
 {
-    // If there are topmost windows, cancel all of them first
-    if (!m_topmostWnds.empty())
-    {
-        for (HWND hWnd : m_topmostWnds)
-        {
-            if (::IsWindow(hWnd))
-                ::SetWindowPos(hWnd, HWND_NOTOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
-        }
-        m_topmostWnds.clear();
-        // 刷新显示
-        CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
-        if (pTab) UpdateTabVisibility(pTab->GetCurSel());
-        return;
-    }
-
     // If overlay exists, cancel it
     if (m_hCaptureWnd && ::IsWindow(m_hCaptureWnd))
     {
@@ -467,6 +452,14 @@ void CMFCApplication1Dlg::OnTargetSelected(HWND hTarget, POINT pt)
             auto it = std::find(m_topmostWnds.begin(), m_topmostWnds.end(), hTarget);
             if (it == m_topmostWnds.end())
                 m_topmostWnds.push_back(hTarget);
+
+            // 如果置顶的是工具箱自身，同步选中复选框
+            if (hTarget == m_hWnd)
+            {
+                CButton* pCheck = static_cast<CButton*>(GetDlgItem(IDC_CHECK3));
+                if (pCheck) pCheck->SetCheck(BST_CHECKED);
+            }
+
             // 刷新置顶列表显示
             CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
             if (pTab) UpdateTabVisibility(pTab->GetCurSel());
@@ -709,6 +702,8 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_COMMAND(32772, &CMFCApplication1Dlg::OnAddStartup)
     ON_COMMAND(32773, &CMFCApplication1Dlg::OnRemoveStartup)
     ON_COMMAND(32774, &CMFCApplication1Dlg::OnLocateProcess)
+    ON_COMMAND(32775, &CMFCApplication1Dlg::OnUntopmostWindow)
+    ON_COMMAND(32776, &CMFCApplication1Dlg::OnCopyStartupPath)
     ON_BN_CLICKED(IDC_BUTTON1, &CMFCApplication1Dlg::OnBnClickedButton1)
     ON_BN_CLICKED(IDC_BUTTON2, &CMFCApplication1Dlg::OnBnClickedButton2)
     ON_CBN_SELCHANGE(IDC_COMBO1, &CMFCApplication1Dlg::OnCbnSelchangeCombo1)
@@ -748,6 +743,7 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_MESSAGE(WM_CLIPBOARDUPDATE, &CMFCApplication1Dlg::OnClipboardUpdate)
     ON_MESSAGE(CMFCApplication1Dlg::WM_AUTOCLICK_STOPPED, &CMFCApplication1Dlg::OnAutoClickStopped)
     ON_NOTIFY(NM_DBLCLK, IDC_LIST3, &CMFCApplication1Dlg::OnNMDblclkList3)
+    ON_NOTIFY(NM_DBLCLK, IDC_LIST2, &CMFCApplication1Dlg::OnNMDblclkList2)
     ON_BN_CLICKED(IDC_BUTTON19, &CMFCApplication1Dlg::OnBnClickedButton19)
     // 窗口处理控件
     ON_BN_CLICKED(IDC_BUTTON15, &CMFCApplication1Dlg::OnForceKillProcess)
@@ -1050,6 +1046,16 @@ void CMFCApplication1Dlg::InitWindowTab()
 		pSlider2->SetTicFreq(25);
 	}
 	SetDlgItemText(IDC_STATIC18, _T("透明度: 100%"));
+
+	// 初始化置顶窗口列表
+	CListCtrl* pList6 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST6));
+	if (pList6)
+	{
+		pList6->ModifyStyle(0, LVS_REPORT);
+		pList6->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+		pList6->InsertColumn(0, _T("序号"), LVCFMT_LEFT, 80);
+		pList6->InsertColumn(1, _T("窗口标题"), LVCFMT_LEFT, 300);
+	}
 }
 
 void CMFCApplication1Dlg::InitFileTab()
@@ -1213,26 +1219,7 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
 	{
 		pList5->DeleteAllItems();
 
-		// 先显示置顶窗口列表
-		if (!m_topmostWnds.empty())
-		{
-			int row = 0;
-			for (size_t i = 0; i < m_topmostWnds.size(); ++i)
-			{
-				HWND h = m_topmostWnds[i];
-				if (!::IsWindow(h)) continue;
-
-				TCHAR title[256] = {0};
-				::GetWindowText(h, title, _countof(title));
-
-				CString label;
-				label.Format(_T("置顶[%zu]"), i + 1);
-				pList5->InsertItem(row, label);
-				pList5->SetItemText(row++, 1, CString(title));
-			}
-		}
-
-		// 再显示当前选中窗口的详细信息
+		// 显示当前选中窗口的详细信息
 		if (m_hSelectedWnd && ::IsWindow(m_hSelectedWnd))
 		{
 			HWND h = m_hSelectedWnd;
@@ -1278,6 +1265,41 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
 	if (pStatic18) pStatic18->ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
 	if (pBtn15) pBtn15->ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
 	if (pBtn16) pBtn16->ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
+
+	// 切换到窗口管理tab时，同步工具箱自身置顶复选框状态
+	if (showWindowTab)
+	{
+		CButton* pCheck3 = static_cast<CButton*>(GetDlgItem(IDC_CHECK3));
+		if (pCheck3)
+		{
+			auto it = std::find(m_topmostWnds.begin(), m_topmostWnds.end(), m_hWnd);
+			pCheck3->SetCheck(it != m_topmostWnds.end() ? BST_CHECKED : BST_UNCHECKED);
+		}
+	}
+
+	// 置顶窗口列表 (LIST6)
+	CListCtrl* pList6 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST6));
+	if (pList6)
+	{
+		pList6->ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
+		if (showWindowTab)
+		{
+			pList6->DeleteAllItems();
+			for (size_t i = 0; i < m_topmostWnds.size(); ++i)
+			{
+				HWND h = m_topmostWnds[i];
+				if (!::IsWindow(h)) continue;
+
+				TCHAR title[256] = {0};
+				::GetWindowText(h, title, _countof(title));
+
+				CString label;
+				label.Format(_T("置顶[%zu]"), i + 1);
+				int idx = pList6->InsertItem(static_cast<int>(i), label);
+				pList6->SetItemText(idx, 1, CString(title));
+			}
+		}
+	}
 }
 
 // ========== 窗口处理新功能 ==========
@@ -1438,6 +1460,11 @@ void CMFCApplication1Dlg::OnWindowUntopmost()
 			::SetWindowPos(hWnd, HWND_NOTOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
 	}
 	m_topmostWnds.clear();
+
+	// 同步取消工具箱自身置顶复选框
+	CButton* pCheck3 = static_cast<CButton*>(GetDlgItem(IDC_CHECK3));
+	if (pCheck3) pCheck3->SetCheck(BST_UNCHECKED);
+
 	// 刷新显示
 	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
 	if (pTab) UpdateTabVisibility(pTab->GetCurSel());
@@ -1470,6 +1497,52 @@ void CMFCApplication1Dlg::OnWindowClose()
 	{
 		MessageBox(_T("请先定位一个窗口。"), _T("提示"), MB_OK | MB_ICONWARNING);
 	}
+}
+
+void CMFCApplication1Dlg::OnUntopmostWindow()
+{
+	CListCtrl* pList6 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST6));
+	if (!pList6) return;
+
+	int nSel = pList6->GetNextItem(-1, LVNI_SELECTED);
+	if (nSel < 0 || static_cast<size_t>(nSel) >= m_topmostWnds.size()) return;
+
+	HWND hWnd = m_topmostWnds[nSel];
+	if (::IsWindow(hWnd))
+		::SetWindowPos(hWnd, HWND_NOTOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
+
+	m_topmostWnds.erase(m_topmostWnds.begin() + nSel);
+
+	// 如果是工具箱自身，同步取消复选框
+	if (hWnd == m_hWnd)
+	{
+		CButton* pCheck = static_cast<CButton*>(GetDlgItem(IDC_CHECK3));
+		if (pCheck) pCheck->SetCheck(BST_UNCHECKED);
+	}
+
+	// 刷新列表显示
+	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+	if (pTab) UpdateTabVisibility(pTab->GetCurSel());
+}
+
+void CMFCApplication1Dlg::OnCopyStartupPath()
+{
+	CListCtrl* pList2 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST2));
+	if (!pList2) return;
+
+	int nSel = pList2->GetNextItem(-1, LVNI_SELECTED);
+	if (nSel < 0) return;
+
+	CString cmd = pList2->GetItemText(nSel, 1);
+	if (!cmd.IsEmpty())
+		CopyToClipboard(m_hWnd, cmd);
+}
+
+void CMFCApplication1Dlg::OnNMDblclkList2(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	// 双击启动项列表直接复制路径
+	OnCopyStartupPath();
+	*pResult = 0;
 }
 
 void CMFCApplication1Dlg::OnHelpShortcuts()
@@ -2181,7 +2254,10 @@ void CMFCApplication1Dlg::OnContextMenu(CWnd* pWnd, CPoint point)
         // 添加和删除命令
         menu.AppendMenu(MF_STRING, 32772, _T("添加启动项"));
         if (nSel != -1)
+        {
             menu.AppendMenu(MF_STRING, 32773, _T("删除启动项"));
+            menu.AppendMenu(MF_STRING, 32776, _T("复制路径"));
+        }
 
         menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
         return;
@@ -2204,6 +2280,20 @@ void CMFCApplication1Dlg::OnContextMenu(CWnd* pWnd, CPoint point)
                 CString val = pList5->GetItemText(nSel, 1);
                 if (!val.IsEmpty()) CopyToClipboard(m_hWnd, val);
             }
+        }
+        return;
+    }
+    // 右键在置顶窗口列表上 (取消置顶)
+    CListCtrl* pList6 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST6));
+    if (pList6 && hClicked == pList6->GetSafeHwnd())
+    {
+        int nSel = pList6->GetNextItem(-1, LVNI_SELECTED);
+        if (nSel != -1)
+        {
+            CMenu menu;
+            menu.CreatePopupMenu();
+            menu.AppendMenu(MF_STRING, 32775, _T("取消置顶"));
+            menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
         }
         return;
     }
@@ -3207,12 +3297,24 @@ void CMFCApplication1Dlg::OnBnClickedCheck3()
     {
         // 置顶
         SetWindowPos(&wndTopMost, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+        // 避免重复添加
+        auto it = std::find(m_topmostWnds.begin(), m_topmostWnds.end(), m_hWnd);
+        if (it == m_topmostWnds.end())
+            m_topmostWnds.push_back(m_hWnd);
     }
     else
     {
         // 取消置顶
         SetWindowPos(&wndNoTopMost, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+        m_topmostWnds.erase(
+            std::remove(m_topmostWnds.begin(), m_topmostWnds.end(), m_hWnd),
+            m_topmostWnds.end());
     }
+
+    // 刷新置顶窗口列表
+    CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+    if (pTab && pTab->GetCurSel() == 3)
+        UpdateTabVisibility(3);
 }
 
 void CMFCApplication1Dlg::OnBnClickedButton18()
