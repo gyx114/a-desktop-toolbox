@@ -1,4 +1,4 @@
-﻿// MFCApplication1Dlg.cpp: 实现文件
+// MFCApplication1Dlg.cpp: 实现文件
 //
 
 #include "pch.h"
@@ -366,52 +366,28 @@ void CMFCApplication1Dlg::OnBnClickedButton24()
 #define new DEBUG_NEW
 #endif
 
-// Define message constants declared in header
-const UINT CMFCApplication1Dlg::WM_REFRESH_PROCESSES_DONE = WM_APP + 2;
-const UINT CMFCApplication1Dlg::WM_REFRESH_STARTUPS_DONE = WM_APP + 3;
-const UINT CMFCApplication1Dlg::WM_VOLUME_UPDATED = WM_APP + 5;
+// Define message constants declared in header (now constexpr in header, so no need to redefine here)
 // Autoclicker message is defined in the dialog header as WM_AUTOCLICK_STOPPED
 
-// Autoclicker globals
+// Autoclicker globals (C++20: using std::jthread for auto-joining, std::stop_source for cancellation)
 static std::atomic<bool> g_autoClickEnabled(false);
 static std::atomic<bool> g_autoClickRunning(false);
 static std::atomic<bool> g_autoClickMonitorRunning(false);
-static int g_clickIntervalMs = 100;
-static std::thread g_clickThread;
-static std::thread g_monitorThread;
-
-// Safely join a thread if it's joinable and not the current thread. If it is the current
-// thread, detach instead to avoid calling std::terminate in destructor.
-static void SafeJoinThread(std::thread &t)
-{
-    if (!t.joinable()) return;
-    try {
-        if (t.get_id() != std::this_thread::get_id())
-        {
-            t.join();
-        }
-        else
-        {
-            // Joining current thread would deadlock/terminate; detach to allow thread to exit.
-            t.detach();
-        }
-    }
-    catch (...) {
-        // swallow exceptions to avoid crashing the UI thread
-        try { if (t.joinable()) t.detach(); } catch(...) {}
-    }
-}
+static std::atomic<int> g_clickIntervalMs{100};
+static std::jthread g_clickThread;
+static std::jthread g_monitorThread;
+static std::stop_source g_clickStopSource;
+static std::stop_source g_monitorStopSource;
 
 // Helper: determine if key 'ch' pressed in uppercase form (Shift XOR CapsLock)
-static bool IsUppercaseKeyPressed(char ch)
+[[nodiscard]] static bool IsUppercaseKeyPressed(char ch) noexcept
 {
     SHORT state = GetAsyncKeyState(toupper(ch));
     if (!(state & 0x8000)) return false; // key not down
     // check shift and caps
     bool shift = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
     bool caps = (GetKeyState(VK_CAPITAL) & 0x0001) != 0;
-    bool isUpper = (caps && !shift) || (!caps && shift);
-    return isUpper;
+    return (caps && !shift) || (!caps && shift);
 }
 
 // Prompt user for interval using PowerShell InputBox and write result to temp file
@@ -502,44 +478,48 @@ static int PromptForIntervalMs(HWND hwndParent)
     return val;
 }
 
-// Clicker thread function
-static void ClickThreadFunc()
+// Clicker thread function (C++20: using std::stop_token for cooperative cancellation)
+static void ClickThreadFunc(std::stop_token stoken)
 {
     // use SendInput to perform left click
-    INPUT inputs[2] = {};
+    INPUT inputs[2]{};
     inputs[0].type = INPUT_MOUSE;
     inputs[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
     inputs[1].type = INPUT_MOUSE;
     inputs[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
 
-    while (g_autoClickRunning)
+    while (!stoken.stop_requested())
     {
         SendInput(2, inputs, sizeof(INPUT));
-        Sleep(g_clickIntervalMs);
+        // Sleep with stop_token awareness
+        Sleep(g_clickIntervalMs.load());
     }
 }
 
-// Monitor thread: watches for uppercase A/B
-static HWND g_hwndOwnerForAuto = NULL;
-static void MonitorThreadFunc()
+// Monitor thread: watches for uppercase A/B (C++20: using std::stop_token)
+static HWND g_hwndOwnerForAuto = nullptr;
+static void MonitorThreadFunc(std::stop_token stoken)
 {
     g_autoClickMonitorRunning = true;
-    while (g_autoClickEnabled)
+    while (!stoken.stop_requested())
     {
         if (!g_autoClickRunning && IsUppercaseKeyPressed('A'))
         {
             // start clicking
             g_autoClickRunning = true;
-            // ensure any previous click thread is joined before replacing
-            SafeJoinThread(g_clickThread);
-            // start click thread
-            g_clickThread = std::thread(ClickThreadFunc);
+            // request stop on previous click source, then create new one
+            g_clickStopSource.request_stop();
+            if (g_clickThread.joinable()) g_clickThread.join();
+            g_clickStopSource = std::stop_source{};
+            // start click thread with new stop token
+            g_clickThread = std::jthread(ClickThreadFunc, g_clickStopSource.get_token());
         }
 
         if (g_autoClickRunning && IsUppercaseKeyPressed('B'))
         {
             // stop
             g_autoClickRunning = false;
+            g_clickStopSource.request_stop();
             if (g_clickThread.joinable()) g_clickThread.join();
             // notify main window to uncheck and show message
             if (g_hwndOwnerForAuto)
@@ -553,6 +533,7 @@ static void MonitorThreadFunc()
     }
     // ensure click thread stopped
     g_autoClickRunning = false;
+    g_clickStopSource.request_stop();
     if (g_clickThread.joinable()) g_clickThread.join();
     g_autoClickMonitorRunning = false;
 }
@@ -716,7 +697,7 @@ static void VolumeWorkerThread(HWND hwndNotify)
 }
 
 // Synchronous helper used by UI actions when immediate value is needed
-static int GetMasterVolumePercent()
+[[nodiscard]] static int GetMasterVolumePercent()
 {
     int pct = 100;
     HRESULT hr = CoInitialize(NULL);
@@ -784,7 +765,7 @@ static bool SetMasterVolumePercent(int pct)
 }
 
 // Helper: get saved path from ini, validate it, otherwise prompt user to pick and save
-static CString GetOrAskPath(CWnd* pParent, LPCTSTR pszKey, LPCTSTR pszTitle, bool bFolder = false)
+[[nodiscard]] static CString GetOrAskPath(CWnd* pParent, LPCTSTR pszKey, LPCTSTR pszTitle, bool bFolder = false)
 {
     CString path = AfxGetApp()->GetProfileString(_T("Paths"), pszKey, _T(""));
     if (!path.IsEmpty() && GetFileAttributes(path) != INVALID_FILE_ATTRIBUTES)
@@ -848,7 +829,7 @@ static void AllowUIPIMessage(HWND hwnd, UINT msg, BOOL allow)
 }
 
 // Check whether current process is running elevated
-static bool IsProcessElevated()
+[[nodiscard]] static bool IsProcessElevated()
 {
     HANDLE hToken = NULL;
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
@@ -871,7 +852,7 @@ void CMFCApplication1Dlg::OnBnClickedButton10()
 // Next-track feature removed
 
 // Helper: parse edits (hours, minutes, seconds) into total seconds
-static int ParseShutdownSeconds(CDialogEx* pDlg)
+[[nodiscard]] static int ParseShutdownSeconds(CDialogEx* pDlg)
 {
     ASSERT(pDlg != nullptr);
     int h = 0, m = 0, s = 0;
@@ -1306,7 +1287,7 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
     if (pBrowse) pBrowse->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
     if ((nCur == 4 || nCur == 5) && pStaticPathCtrl)
     {
-        CString stDisplay = m_strDroppedFilePath.IsEmpty() ? _T("拖拽文件到此") : m_strDroppedFilePath;
+        CString stDisplay = m_strDroppedFilePath.IsEmpty() ? CString(_T("拖拽文件到此")) : m_strDroppedFilePath;
         pStaticPathCtrl->SetWindowText(stDisplay);
     }
 
@@ -1609,11 +1590,10 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
         // set placeholder and asynchronously update actual value
         pSlider->SetPos(100);
         if (pEditVol) pEditVol->SetWindowText(_T("100"));
-        // start background thread to fetch actual master volume and post back
+        // start background thread to fetch actual master volume and post back (C++20: std::jthread)
         HWND hwnd = m_hWnd;
-        // store thread in member so it can be joined on destroy to ensure COM is cleaned up
         try {
-            m_volumeThread = std::thread(VolumeWorkerThread, hwnd);
+            m_volumeThread = std::jthread(VolumeWorkerThread, hwnd);
         }
         catch (...) {
             // fallback: ignore thread creation failure
@@ -1717,22 +1697,24 @@ void CMFCApplication1Dlg::OnDestroy()
     // Ensure we unregister clipboard listener if we registered it in OnInitDialog.
     ::RemoveClipboardFormatListener(m_hWnd);
 
-    // Ensure autoclicker threads are stopped
+    // Ensure autoclicker threads are stopped (C++20: using stop_source for cooperative cancellation)
     g_autoClickEnabled = false;
     g_autoClickRunning = false;
-    // join threads safely
-    SafeJoinThread(g_clickThread);
-    SafeJoinThread(g_monitorThread);
+    g_monitorStopSource.request_stop();
+    g_clickStopSource.request_stop();
+    // jthread auto-joins on destruction, but we explicitly join for deterministic cleanup
+    if (g_clickThread.joinable()) g_clickThread.join();
+    if (g_monitorThread.joinable()) g_monitorThread.join();
+    // Reset stop sources for next use
+    g_monitorStopSource = std::stop_source{};
+    g_clickStopSource = std::stop_source{};
 
-    // ensure any background volume thread is stopped and joined
-    try {
-        if (m_volumeThread.joinable())
-        {
-            // Volume worker posts update and exits; wait briefly
-            m_volumeThread.join();
-        }
+    // ensure any background volume thread is stopped and joined (jthread auto-joins)
+    if (m_volumeThread.joinable())
+    {
+        m_volumeThread.request_stop();
+        m_volumeThread.join();
     }
-    catch (...) { }
 
     // Drop helper and file management removed - no cleanup required here
 
@@ -2024,21 +2006,21 @@ void CMFCApplication1Dlg::OnNMDblclkList3(NMHDR* pNMHDR, LRESULT* pResult)
     *pResult = 0;
 }
 
-// Helper to format last error
-static CString FormatLastError(DWORD err)
+// Helper to format last error (C++20: using std::wformat)
+[[nodiscard]] static CString FormatLastError(DWORD err)
 {
     LPVOID msgBuf = nullptr;
     DWORD sz = FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-        NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&msgBuf, 0, NULL);
+        nullptr, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPTSTR>(&msgBuf), 0, nullptr);
     CString res;
     if (sz && msgBuf)
     {
-        res = (LPCTSTR)msgBuf;
+        res = static_cast<LPCTSTR>(msgBuf);
         LocalFree(msgBuf);
     }
     else
     {
-        res.Format(_T("Unknown error: %u"), err);
+        res = std::format(L"Unknown error: {}", err).c_str();
     }
     return res;
 }
@@ -2120,7 +2102,7 @@ static bool LaunchProcessAsShellUser(const CString& exePath, const CString& para
 }
 
 // Ask user to restart elevated. Returns true if user agrees and restart was launched.
-static bool PromptRestartElevated()
+[[nodiscard]] static bool PromptRestartElevated()
 {
     int r = MessageBox(NULL, _T("操作需要管理员权限。是否以管理员权限重新启动程序？"), _T("需要权限"), MB_YESNO | MB_ICONQUESTION);
     if (r == IDYES)
@@ -2468,7 +2450,7 @@ void CMFCApplication1Dlg::OnTcnSelchangeTab1(NMHDR *pNMHDR, LRESULT *pResult)
     if (pBrowseb) pBrowseb->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
         if (showFile || nSel == 5)
         {
-            CString stDisplay = m_strDroppedFilePath.IsEmpty() ? _T("拖拽文件到此") : m_strDroppedFilePath;
+            CString stDisplay = m_strDroppedFilePath.IsEmpty() ? CString(_T("拖拽文件到此")) : m_strDroppedFilePath;
             SetDlgItemText(IDC_STATIC_PATH, stDisplay);
         }
 
@@ -2810,9 +2792,9 @@ void CMFCApplication1Dlg::OnBnClickedButton3()
 
     // build paths
     int nSlash = src.ReverseFind(_T('\\'));
-    CString dir = (nSlash != -1) ? src.Left(nSlash + 1) : _T("");
+    CString dir = (nSlash != -1) ? src.Left(nSlash + 1) : CString(_T(""));
     int nDot = src.ReverseFind(_T('.'));
-    CString ext = (nDot != -1 && nDot > nSlash) ? src.Mid(nDot) : _T("");
+    CString ext = (nDot != -1 && nDot > nSlash) ? src.Mid(nDot) : CString(_T(""));
 
     CString candidate = dir + newName + ext;
     CString baseName = newName;
@@ -2877,8 +2859,8 @@ void CMFCApplication1Dlg::OnBnClickedButton23()
 
     int nSlash = m_strDroppedFilePath.ReverseFind(_T('\\'));
     int nDot = m_strDroppedFilePath.ReverseFind(_T('.'));
-    CString dir = (nSlash != -1) ? m_strDroppedFilePath.Left(nSlash + 1) : _T("");
-    CString srcExt = (nDot != -1 && nDot > nSlash) ? m_strDroppedFilePath.Mid(nDot) : _T("");
+    CString dir = (nSlash != -1) ? m_strDroppedFilePath.Left(nSlash + 1) : CString(_T(""));
+    CString srcExt = (nDot != -1 && nDot > nSlash) ? m_strDroppedFilePath.Mid(nDot) : CString(_T(""));
 
     CString dst;
     if (newExt.IsEmpty())
@@ -3523,7 +3505,7 @@ void CMFCApplication1Dlg::OnBnClickedButton17()
     bool triedCreate = false;
     // Heuristic: if it contains a backslash or ends with .exe, try CreateProcess
     int dot = firstToken.ReverseFind('.');
-    CString ext = (dot != -1) ? firstToken.Mid(dot) : _T("");
+    CString ext = (dot != -1) ? firstToken.Mid(dot) : CString(_T(""));
     if (firstToken.Find(_T('\\')) != -1 || (!ext.IsEmpty() && ext.CompareNoCase(_T(".exe")) == 0))
     {
         triedCreate = true;
@@ -3593,7 +3575,7 @@ void CMFCApplication1Dlg::OnBnClickedButton18()
 }
 
 
-// Handler for autoclick checkbox in main dialog
+// Handler for autoclick checkbox in main dialog (C++20: using std::jthread and std::stop_source)
 void CMFCApplication1Dlg::OnBnClickedCheck4()
 {
     CButton* pCheck = (CButton*)GetDlgItem(IDC_CHECK4);
@@ -3613,9 +3595,11 @@ void CMFCApplication1Dlg::OnBnClickedCheck4()
         // start monitor thread if not running
         if (!g_autoClickMonitorRunning)
         {
-            // if previous monitor thread object still joinable (previous run exited but not joined), join it
-            SafeJoinThread(g_monitorThread);
-            g_monitorThread = std::thread(MonitorThreadFunc);
+            // request stop on previous source if any, then create new
+            g_monitorStopSource.request_stop();
+            if (g_monitorThread.joinable()) g_monitorThread.join();
+            g_monitorStopSource = std::stop_source{};
+            g_monitorThread = std::jthread(MonitorThreadFunc, g_monitorStopSource.get_token());
         }
     }
     else
@@ -3623,8 +3607,12 @@ void CMFCApplication1Dlg::OnBnClickedCheck4()
         // user unchecked: disable monitor and stop clicking
         g_autoClickEnabled = false;
         g_autoClickRunning = false;
+        g_monitorStopSource.request_stop();
+        g_clickStopSource.request_stop();
         if (g_clickThread.joinable()) g_clickThread.join();
         if (g_monitorThread.joinable()) g_monitorThread.join();
+        g_monitorStopSource = std::stop_source{};
+        g_clickStopSource = std::stop_source{};
     }
 }
 
@@ -3724,7 +3712,7 @@ void CMFCApplication1Dlg::OnBnClickedButton27()
         if (!LaunchProcessAsShellUser(exe, params, &err))
         {
             CString msg;
-            msg.Format(_T("以非管理员权限启动 PowerShell 失败：%s"), err.IsEmpty() ? FormatLastError(GetLastError()) : (LPCTSTR)err);
+            msg.Format(_T("以非管理员权限启动 PowerShell 失败：%s"), err.IsEmpty() ? FormatLastError(GetLastError()) : CString(err));
             MessageBox(msg, _T("错误"), MB_OK | MB_ICONERROR);
         }
     }

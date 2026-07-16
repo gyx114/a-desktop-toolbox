@@ -5,6 +5,9 @@
 
 #include <vector>
 #include <thread>
+#include <stop_token>
+#include <string>
+#include <memory>
 
 // CMFCApplication1Dlg 对话框
 class CMFCApplication1Dlg : public CDialogEx
@@ -14,7 +17,7 @@ public:
 	CMFCApplication1Dlg(CWnd* pParent = nullptr);	// 标准构造函数
 
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
-	void RefreshProcessList();
+	[[nodiscard]] void RefreshProcessList();
 
 // 对话框数据
 #ifdef AFX_DESIGN_TIME
@@ -68,11 +71,11 @@ protected:
 	afx_msg void OnTrayExit();
 	afx_msg void OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2);
 
-	NOTIFYICONDATA m_nid;
-	bool m_bTrayVisible;
-    bool m_bExiting;
-    bool m_bMinimizeOnClose;
-	static const UINT WM_TRAYICON = WM_APP + 1;
+	NOTIFYICONDATA m_nid{};
+	bool m_bTrayVisible{false};
+    bool m_bExiting{false};
+    bool m_bMinimizeOnClose{true};
+	static constexpr UINT WM_TRAYICON = WM_APP + 1;
 
 	DECLARE_MESSAGE_MAP()
 public:
@@ -103,13 +106,13 @@ public:
 	afx_msg void OnNMDblclkList3(NMHDR* pNMHDR, LRESULT* pResult);
 
 	std::vector<CString> m_clipHistory;
-	static const int CLIP_HISTORY_MAX = 10;
+	static constexpr int CLIP_HISTORY_MAX = 10;
 
     // custom messages for background refresh completion
-	static const UINT WM_REFRESH_PROCESSES_DONE;
-	static const UINT WM_REFRESH_STARTUPS_DONE;
+	static constexpr UINT WM_REFRESH_PROCESSES_DONE = WM_APP + 2;
+	static constexpr UINT WM_REFRESH_STARTUPS_DONE = WM_APP + 3;
 	// custom message for async volume update
-	static const UINT WM_VOLUME_UPDATED;
+	static constexpr UINT WM_VOLUME_UPDATED = WM_APP + 5;
 
     struct ProcInfo { CString name; DWORD pid; CString path; SIZE_T memKB; };
 	struct StartupInfo { CString name; CString cmd; };
@@ -127,23 +130,23 @@ public:
 	// Called by capture overlay when user selects a target window
 	void OnTargetSelected(HWND hTarget, POINT pt);
 
-    HWND m_hCaptureWnd;
-	HWND m_hSelectedWnd;
-	HWND m_hTopmostWnd;
+    HWND m_hCaptureWnd{nullptr};
+	HWND m_hSelectedWnd{nullptr};
+	HWND m_hTopmostWnd{nullptr};
 
 	// UI: track whether file management tab exists (index 4)
 	int m_fileTabIndex = 4;
 
 	// Auto-clicker state
    // Auto-clicker state (legacy globals used in implementation)
-	int m_autoclickIntervalMs;
-	static const UINT WM_AUTOCLICK_STOPPED = WM_APP + 4;
+	int m_autoclickIntervalMs{100};
+	static constexpr UINT WM_AUTOCLICK_STOPPED = WM_APP + 4;
 
 	// Prevent automatic lock/screen-off checkbox state (IDC_CHECK5)
-	bool m_bPreventLockScreen;
+	bool m_bPreventLockScreen{false};
 
 	// background worker thread for volume retrieval; ensure joined on destroy
-	std::thread m_volumeThread;
+	std::jthread m_volumeThread;
 	afx_msg void OnBnClickedButton21();
 	afx_msg void OnBnClickedButton22();
     afx_msg void OnBnClickedButton23();

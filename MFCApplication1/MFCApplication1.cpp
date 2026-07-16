@@ -1,4 +1,3 @@
-﻿
 // MFCApplication1.cpp: 定义应用程序的类行为。
 //
 
@@ -47,11 +46,10 @@ BOOL CMFCApplication1App::InitInstance()
 	// 如果应用程序存在以下情况，Windows XP 上需要 InitCommonControlsEx()
 	// 使用 ComCtl32.dll 版本 6 或更高版本来启用可视化方式，
 	//则需要 InitCommonControlsEx()。  否则，将无法创建窗口。
-	INITCOMMONCONTROLSEX InitCtrls;
-	InitCtrls.dwSize = sizeof(InitCtrls);
-	// 将它设置为包括所有要在应用程序中使用的
-	// 公共控件类。
-	InitCtrls.dwICC = ICC_WIN95_CLASSES;
+	INITCOMMONCONTROLSEX InitCtrls{
+		.dwSize = sizeof(InitCtrls),
+		.dwICC = ICC_WIN95_CLASSES
+	};
 	InitCommonControlsEx(&InitCtrls);
 
 	CWinApp::InitInstance();
@@ -62,13 +60,8 @@ BOOL CMFCApplication1App::InitInstance()
 #ifdef _DEBUG
 	// Enable CRT debug heap leak checking and automatic dump at program exit.
 	int dbgFlag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
-	// Enable allocation tracking but do NOT enable automatic leak dump at CRT exit here.
-	// Some MFC/ATL objects are torn down by AfxOleTerm and other cleanup routines
-	// and enabling automatic leak dump earlier can show false positives. We'll
-	// call _CrtDumpMemoryLeaks() explicitly after doing OLE/MFC cleanup below.
 	dbgFlag |= _CRTDBG_ALLOC_MEM_DF;
 	_CrtSetDbgFlag(dbgFlag);
-	// Optionally: write leak dump to debug output
 	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG);
 	_CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_DEBUG);
 	_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_DEBUG);
@@ -76,18 +69,14 @@ BOOL CMFCApplication1App::InitInstance()
    // Debug: allocation tracking enabled; no automatic breakpoints set here.
 
 	// Optional: allow setting a CRT allocation breakpoint via environment variable
-	// Set CRT_BREAK_ALLOC to an allocation number (e.g. "258") to call
-	// _CrtSetBreakAlloc at startup and break on that allocation.
-	// Example in PowerShell before launching VS debug session:
-	//  $env:CRT_BREAK_ALLOC = "258"
-	TCHAR envBuf[64] = {0};
+	TCHAR envBuf[64]{};
 	DWORD r = GetEnvironmentVariable(_T("CRT_BREAK_ALLOC"), envBuf, _countof(envBuf));
 	if (r > 0 && r < _countof(envBuf))
 	{
 		int alloc = _ttoi(envBuf);
 		if (alloc > 0)
 		{
-			_CrtSetBreakAlloc((size_t)alloc);
+			_CrtSetBreakAlloc(static_cast<size_t>(alloc));
 		}
 	}
 #endif
@@ -101,9 +90,9 @@ BOOL CMFCApplication1App::InitInstance()
 
     // 创建 shell 管理器，以防对话框包含
 	// 任何 shell 树视图控件或 shell 列表视图控件。
-	CShellManager *pShellManager = new CShellManager;
+	auto pShellManager = std::make_unique<CShellManager>();
 
-    // 激活“Windows Native”视觉管理器，以便在 MFC 控件中启用主题
+    // 激活"Windows Native"视觉管理器，以便在 MFC 控件中启用主题
 	CMFCVisualManager::SetDefaultManager(RUNTIME_CLASS(CMFCVisualManagerWindows));
 
 	// 标准初始化
@@ -116,20 +105,17 @@ BOOL CMFCApplication1App::InitInstance()
 	// SetRegistryKey(_T("应用程序向导生成的本地应用程序"));
 
 	// 获取程序当前路径，并设置 ini 文件路径
-	TCHAR szAppPath[MAX_PATH] = { 0 };
-	GetModuleFileName(NULL, szAppPath, MAX_PATH);
-	TCHAR* p = _tcsrchr(szAppPath, _T('\\'));
-	if (p)
-	{
-		*p = _T('\0');
-	}
-	CString strIniPath;
-	strIniPath.Format(_T("%s\\config.ini"), szAppPath);
+	TCHAR szAppPath[MAX_PATH]{};
+	GetModuleFileName(nullptr, szAppPath, MAX_PATH);
+	namespace fs = std::filesystem;
+	fs::path appPath(szAppPath);
+	fs::path iniPath = appPath.parent_path() / L"config.ini";
+	CString strIniPath(iniPath.c_str());
 
 	// 释放默认的 m_pszProfileName 并将其指向新的.ini文件路径
-	if (m_pszProfileName != NULL)
+	if (m_pszProfileName != nullptr)
 	{
-		free((void*)m_pszProfileName);
+		free(const_cast<void*>(static_cast<const void*>(m_pszProfileName)));
 	}
 	m_pszProfileName = _tcsdup(strIniPath);
 
@@ -144,12 +130,12 @@ BOOL CMFCApplication1App::InitInstance()
 		if (nResponse == IDOK)
 		{
 			// TODO: 在此放置处理何时用
-			//  “确定”来关闭对话框的代码
+			//  "确定"来关闭对话框的代码
 		}
 		else if (nResponse == IDCANCEL)
 		{
 			// TODO: 在此放置处理何时用
-			//  “取消”来关闭对话框的代码
+			//  "取消"来关闭对话框的代码
 		}
 		else if (nResponse == -1)
 		{
@@ -158,22 +144,17 @@ BOOL CMFCApplication1App::InitInstance()
 		}
 	}
 
-    // 删除上面创建的 shell 管理器。
-	if (pShellManager != nullptr)
-	{
-		delete pShellManager;
-		pShellManager = nullptr;
-	}
+	// pShellManager will be auto-deleted by unique_ptr when it goes out of scope
 
 #if !defined(_AFXDLL) && !defined(_AFX_NO_MFC_CONTROLS_IN_DIALOGS)
 	ControlBarCleanUp();
 #endif
 
 	// Clean up OLE and any app-allocated profile string to avoid memory leaks reported by CRT.
-	if (m_pszProfileName != NULL)
+	if (m_pszProfileName != nullptr)
 	{
-		free((void*)m_pszProfileName);
-		m_pszProfileName = NULL;
+		free(const_cast<void*>(static_cast<const void*>(m_pszProfileName)));
+		m_pszProfileName = nullptr;
 	}
     // Ensure OLE is properly terminated. Pass TRUE to fully clean up OLE-related
 	// MFC/ATL objects that may have been created by controls (e.g. CMFCEditBrowseCtrl).
@@ -190,4 +171,3 @@ BOOL CMFCApplication1App::InitInstance()
 	//  而不是启动应用程序的消息泵。
 	return FALSE;
 }
-
