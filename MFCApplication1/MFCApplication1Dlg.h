@@ -10,12 +10,6 @@
 #include <memory>
 #include "AutoClicker.h"
 
-// 窗口处理动态控件 ID
-#define IDC_TRANSPARENCY_SLIDER 2001
-#define IDC_TRANSPARENCY_STATIC 2002
-#define IDC_BTN_FORCE_KILL      2003
-#define IDC_BTN_SCREENSHOT      2004
-
 // 按钮语义化别名
 #define IDC_BTN_SHUTDOWN       IDC_BUTTON1   // 关机/重启
 #define IDC_BTN_CANCEL_SHUTDOWN IDC_BUTTON2  // 取消关机
@@ -187,10 +181,6 @@ public:
 	// 窗口处理新功能: 透明度、强制结束、截图
 	afx_msg void OnForceKillProcess();
 	afx_msg void OnWindowScreenshot();
-	CSliderCtrl m_transparencySlider;
-	CStatic m_transparencyLabel;
-	CButton m_btnForceKill;
-	CButton m_btnScreenshot;
 
 	// 菜单命令处理函数
 	afx_msg void OnViewProcess();

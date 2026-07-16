@@ -749,9 +749,9 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_MESSAGE(CMFCApplication1Dlg::WM_AUTOCLICK_STOPPED, &CMFCApplication1Dlg::OnAutoClickStopped)
     ON_NOTIFY(NM_DBLCLK, IDC_LIST3, &CMFCApplication1Dlg::OnNMDblclkList3)
     ON_BN_CLICKED(IDC_BUTTON19, &CMFCApplication1Dlg::OnBnClickedButton19)
-    // 窗口处理动态控件
-    ON_COMMAND(IDC_BTN_FORCE_KILL, &CMFCApplication1Dlg::OnForceKillProcess)
-    ON_COMMAND(IDC_BTN_SCREENSHOT, &CMFCApplication1Dlg::OnWindowScreenshot)
+    // 窗口处理控件
+    ON_BN_CLICKED(IDC_BUTTON15, &CMFCApplication1Dlg::OnForceKillProcess)
+    ON_BN_CLICKED(IDC_BUTTON16, &CMFCApplication1Dlg::OnWindowScreenshot)
     // 菜单栏扩展
     ON_COMMAND(ID_VIEW_PROCESS,     &CMFCApplication1Dlg::OnViewProcess)
     ON_COMMAND(ID_VIEW_STARTUP,     &CMFCApplication1Dlg::OnViewStartup)
@@ -1041,25 +1041,15 @@ void CMFCApplication1Dlg::InitWindowTab()
 		pList5->InsertColumn(1, _T("值"), LVCFMT_LEFT, 980);
 	}
 
-	// 动态创建透明度滑块
-	CRect rc(10, 290, 300, 320);
-	m_transparencyLabel.Create(_T("透明度: 100%"), WS_CHILD | WS_VISIBLE, rc, this);
-	m_transparencyLabel.SetFont(GetFont());
-
-	rc.SetRect(10, 315, 300, 345);
-	m_transparencySlider.Create(WS_CHILD | WS_VISIBLE | TBS_HORZ | TBS_AUTOTICKS, rc, this, IDC_TRANSPARENCY_SLIDER);
-	m_transparencySlider.SetRange(10, 255);
-	m_transparencySlider.SetPos(255);
-	m_transparencySlider.SetTicFreq(25);
-
-	// 动态创建按钮
-	rc.SetRect(10, 355, 140, 385);
-	m_btnForceKill.Create(_T("强制结束进程"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, rc, this, IDC_BTN_FORCE_KILL);
-	m_btnForceKill.SetFont(GetFont());
-
-	rc.SetRect(150, 355, 300, 385);
-	m_btnScreenshot.Create(_T("截图到剪贴板"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, rc, this, IDC_BTN_SCREENSHOT);
-	m_btnScreenshot.SetFont(GetFont());
+	// 初始化透明度滑块（资源控件）
+	CSliderCtrl* pSlider2 = static_cast<CSliderCtrl*>(GetDlgItem(IDC_SLIDER2));
+	if (pSlider2)
+	{
+		pSlider2->SetRange(10, 255);
+		pSlider2->SetPos(255);
+		pSlider2->SetTicFreq(25);
+	}
+	SetDlgItemText(IDC_STATIC18, _T("透明度: 100%"));
 }
 
 void CMFCApplication1Dlg::InitFileTab()
@@ -1280,10 +1270,14 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
 
 	// 窗口处理标签页的新控件可见性
 	BOOL showWindowTab = (nTab == 3);
-	m_transparencyLabel.ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
-	m_transparencySlider.ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
-	m_btnForceKill.ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
-	m_btnScreenshot.ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
+	CWnd* pSlider2 = GetDlgItem(IDC_SLIDER2);
+	CWnd* pStatic18 = GetDlgItem(IDC_STATIC18);
+	CWnd* pBtn15 = GetDlgItem(IDC_BUTTON15);
+	CWnd* pBtn16 = GetDlgItem(IDC_BUTTON16);
+	if (pSlider2) pSlider2->ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
+	if (pStatic18) pStatic18->ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
+	if (pBtn15) pBtn15->ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
+	if (pBtn16) pBtn16->ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
 }
 
 // ========== 窗口处理新功能 ==========
@@ -3019,20 +3013,24 @@ void CMFCApplication1Dlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScroll
             CVolumeManager::SetMasterVolumePercent(pos);
         }
     }
-    else if (pScrollBar && pScrollBar->GetSafeHwnd() == m_transparencySlider.GetSafeHwnd())
+    else if (pScrollBar && pScrollBar->GetSafeHwnd() == GetDlgItem(IDC_SLIDER2)->GetSafeHwnd())
     {
-        int pos = m_transparencySlider.GetPos();
-        int percent = (pos * 100) / 255;
-        CString label;
-        label.Format(_T("透明度: %d%%"), percent);
-        m_transparencyLabel.SetWindowText(label);
-
-        if (m_hSelectedWnd && ::IsWindow(m_hSelectedWnd))
+        CSliderCtrl* pSlider2 = static_cast<CSliderCtrl*>(GetDlgItem(IDC_SLIDER2));
+        if (pSlider2)
         {
-            // 设置分层窗口透明度
-            LONG style = ::GetWindowLong(m_hSelectedWnd, GWL_EXSTYLE);
-            ::SetWindowLong(m_hSelectedWnd, GWL_EXSTYLE, style | WS_EX_LAYERED);
-            ::SetLayeredWindowAttributes(m_hSelectedWnd, 0, static_cast<BYTE>(pos), LWA_ALPHA);
+            int pos = pSlider2->GetPos();
+            int percent = (pos * 100) / 255;
+            CString label;
+            label.Format(_T("透明度: %d%%"), percent);
+            SetDlgItemText(IDC_STATIC18, label);
+
+            if (m_hSelectedWnd && ::IsWindow(m_hSelectedWnd))
+            {
+                // 设置分层窗口透明度
+                LONG style = ::GetWindowLong(m_hSelectedWnd, GWL_EXSTYLE);
+                ::SetWindowLong(m_hSelectedWnd, GWL_EXSTYLE, style | WS_EX_LAYERED);
+                ::SetLayeredWindowAttributes(m_hSelectedWnd, 0, static_cast<BYTE>(pos), LWA_ALPHA);
+            }
         }
     }
 

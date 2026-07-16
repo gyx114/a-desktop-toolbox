@@ -54,10 +54,10 @@ BEGIN
     "\r\n"
     "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)\r\n"
     "LANGUAGE 4, 2\r\n"
-    "#include ""res\\MFCApplication1.rc2""  // 非 Microsoft Visual C++ 编辑的资源\r\n"
-    "#include ""l.CHS\\afxres.rc""      // 标准组件\r\n"
+    "#include ""res\\MFCApplication1.rc2""  // 闈?Microsoft Visual C++ 缂栬緫鐨勮祫婧?\n"
+    "#include ""l.CHS\\afxres.rc""      // 鏍囧噯缁勪欢\r\n"
     "#if !defined(_AFXDLL)\r\n"
-    "#include ""l.CHS\\afxribbon.rc""   // MFC 功能区和控制条资源\r\n"
+    "#include ""l.CHS\\afxribbon.rc""   // MFC 鍔熻兘鍖哄拰鎺у埗鏉¤祫婧?\n"
     "#endif\r\n"
     "#endif\r\n"
     "\0"
@@ -91,39 +91,39 @@ BEGIN
     END
     POPUP "视图(&V)"
     BEGIN
-        MENUITEM "进程管理(&P)",                  ID_VIEW_PROCESS
-        MENUITEM "启动项管理(&S)",                ID_VIEW_STARTUP
-        MENUITEM "剪贴板(&C)",                    ID_VIEW_CLIPBOARD
-        MENUITEM "窗口处理(&W)",                  ID_VIEW_WINDOW
-        MENUITEM "文件管理(&F)",                  ID_VIEW_FILE
-        MENUITEM "git工具箱(&G)",                 ID_VIEW_GIT
+        MENUITEM "进程管理(&P)",                    ID_VIEW_PROCESS
+        MENUITEM "启动项管理(&S)",                   ID_VIEW_STARTUP
+        MENUITEM "剪贴板(&C)",                     ID_VIEW_CLIPBOARD
+        MENUITEM "窗口处理(&W)",                    ID_VIEW_WINDOW
+        MENUITEM "文件管理(&F)",                    ID_VIEW_FILE
+        MENUITEM "git工具箱(&G)",                  ID_VIEW_GIT
     END
     POPUP "工具(&T)"
     BEGIN
         MENUITEM "微信(&W)",                      ID_TOOLS_WECHAT
-        MENUITEM "QQ(&Q)",                        ID_TOOLS_QQ
-        MENUITEM "VS Code(&C)",                   ID_TOOLS_VSCODE
-        MENUITEM "Visual Studio(&V)",             ID_TOOLS_VS
+        MENUITEM "QQ(&Q)",                      ID_TOOLS_QQ
+        MENUITEM "VS Code(&C)",                 ID_TOOLS_VSCODE
+        MENUITEM "Visual Studio(&V)",           ID_TOOLS_VS
         MENUITEM SEPARATOR
-        MENUITEM "哔哩哔哩(&B)",                  ID_TOOLS_BILIBILI
-        MENUITEM "学习文件夹(&L)",                ID_TOOLS_STUDY
-        MENUITEM "下载文件夹(&D)",                ID_TOOLS_DOWNLOAD
+        MENUITEM "哔哩哔哩(&B)",                    ID_TOOLS_BILIBILI
+        MENUITEM "学习文件夹(&L)",                   ID_TOOLS_STUDY
+        MENUITEM "下载文件夹(&D)",                   ID_TOOLS_DOWNLOAD
         MENUITEM SEPARATOR
-        MENUITEM "PowerShell(&P)",                ID_TOOLS_POWERSHELL
-        MENUITEM "WSL(&W)",                       ID_TOOLS_WSL
-        MENUITEM "Git Bash(&G)",                  ID_TOOLS_GITBASH
+        MENUITEM "PowerShell(&P)",              ID_TOOLS_POWERSHELL
+        MENUITEM "WSL(&S)",                     ID_TOOLS_WSL
+        MENUITEM "Git Bash(&G)",                ID_TOOLS_GITBASH
     END
     POPUP "窗口(&W)"
     BEGIN
-        MENUITEM "窗口定位(&L)",                  ID_WINDOW_LOCATE
-        MENUITEM "取消全部置顶(&T)",              ID_WINDOW_UNTOPMOST
-        MENUITEM "关闭选中窗口(&C)",              ID_WINDOW_CLOSE
+        MENUITEM "窗口定位(&L)",                    ID_WINDOW_LOCATE
+        MENUITEM "取消全部置顶(&T)",                  ID_WINDOW_UNTOPMOST
+        MENUITEM "关闭选中窗口(&C)",                  ID_WINDOW_CLOSE
     END
     POPUP "帮助(&H)"
     BEGIN
         MENUITEM "关于...(&A)",                   ID_HELP_ABOUT
-        MENUITEM "快捷键列表(&K)",                ID_HELP_SHORTCUTS
-        MENUITEM "GitHub(&G)",                    ID_HELP_GITHUB
+        MENUITEM "快捷键列表(&K)",                   ID_HELP_SHORTCUTS
+        MENUITEM "GitHub(&G)",                  ID_HELP_GITHUB
     END
 END
 
@@ -159,7 +159,7 @@ BEGIN
     COMBOBOX        IDC_COMBO1,248,32,66,19,CBS_DROPDOWN | CBS_SORT | WS_VSCROLL | WS_TABSTOP
     EDITTEXT        IDC_EDIT1,240,49,18,12,ES_AUTOHSCROLL
     CTEXT           "点击定位窗口按钮后点击目标窗口",IDC_BUTTON20,28,31,108,18,SS_CENTERIMAGE,WS_EX_TRANSPARENT
-    GROUPBOX        "生成文件副本",IDC_STATIC7,17,145,189,45
+    GROUPBOX        "生成文件副本",IDC_STATIC7,19,145,189,45
     EDITTEXT        IDC_EDIT4,40,157,145,13,ES_AUTOHSCROLL,WS_EX_ACCEPTFILES
     PUSHBUTTON      "生成",IDC_BUTTON3,92,173,30,13
     PUSHBUTTON      "定位窗口",IDC_BUTTON19,149,32,47,16
@@ -197,7 +197,7 @@ BEGIN
     PUSHBUTTON      "任务管理器",IDC_BUTTON20,373,90,44,14
     PUSHBUTTON      "下载",IDC_BUTTON21,304,149,25,14
     PUSHBUTTON      "元宝",IDC_BUTTON22,323,121,28,13
-    GROUPBOX        "修改文件名",IDC_STATIC13,19,94,187,48
+    GROUPBOX        "修改文件名",IDC_STATIC13,21,94,187,48
     EDITTEXT        IDC_EDIT7,42,106,59,14,ES_AUTOHSCROLL
     PUSHBUTTON      "修改",IDC_BUTTON23,92,124,29,13
     EDITTEXT        IDC_EDIT8,111,106,54,14,ES_AUTOHSCROLL
@@ -205,7 +205,7 @@ BEGIN
     PUSHBUTTON      "复制到",IDC_BUTTON25,101,79,29,12
     PUSHBUTTON      "移动到",IDC_BUTTON26,144,79,29,12
     CONTROL         "",IDC_MFCEDITBROWSE2,"MfcEditBrowse",WS_BORDER | WS_TABSTOP | 0x80,79,65,121,12
-    GROUPBOX        "复制/移动",IDC_STATIC14,71,55,135,39
+    GROUPBOX        "复制/移动",IDC_STATIC14,73,55,135,39
     CONTROL         "禁止自动锁屏",IDC_CHECK5,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,86,229,63,14
     PUSHBUTTON      "powershell",IDC_BUTTON27,297,90,38,14
     CONTROL         "非管理员打开",IDC_CHECK6,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,241,90,54,14
@@ -219,8 +219,12 @@ BEGIN
     GROUPBOX        "常用软件",IDC_STATIC,236,110,186,28
     GROUPBOX        "学习",IDC_STATIC,235,139,187,32
     CONTROL         "",IDC_LIST5,"SysListView32",LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP,20,57,183,71
-    PUSHBUTTON      "下一首",IDC_BUTTON33,161,223,45,14
+    PUSHBUTTON      "下一首",IDC_BUTTON33,163,223,45,14
     GROUPBOX        "",IDC_STATIC,4,0,210,248
+    LTEXT           "Static",IDC_STATIC18,16,138,73,14
+    CONTROL         "",IDC_SLIDER2,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | WS_TABSTOP,13,155,77,8
+    PUSHBUTTON      "强制结束进程",IDC_BUTTON15,15,171,74,15
+    PUSHBUTTON      "截图到剪贴板",IDC_BUTTON16,15,190,74,15
 END
 
 IDD_SETTINGS_DIALOG DIALOGEX 0, 0, 410, 332
@@ -327,7 +331,10 @@ BEGIN
     IDD_MFCAPPLICATION1_DIALOG, DIALOG
     BEGIN
         LEFTMARGIN, 4
+        VERTGUIDE, 208
         BOTTOMMARGIN, 254
+        HORZGUIDE, 138
+        HORZGUIDE, 222
     END
 
     IDD_SETTINGS_DIALOG, DIALOG
@@ -396,10 +403,10 @@ END
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
 LANGUAGE 4, 2
-#include "res\MFCApplication1.rc2"  // 非 Microsoft Visual C++ 编辑的资源
-#include "l.CHS\afxres.rc"      // 标准组件
+#include "res\MFCApplication1.rc2"  // 闈?Microsoft Visual C++ 缂栬緫鐨勮祫婧?
+#include "l.CHS\afxres.rc"      // 鏍囧噯缁勪欢
 #if !defined(_AFXDLL)
-#include "l.CHS\afxribbon.rc"   // MFC 功能区和控制条资源
+#include "l.CHS\afxribbon.rc"   // MFC 鍔熻兘鍖哄拰鎺у埗鏉¤祫婧?
 #endif
 #endif
 

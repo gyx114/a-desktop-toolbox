@@ -1,12 +1,14 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Visual C++ ÁîüÊàêÁöÑÂåÖÂê´Êñá‰ª∂„ÄÇ
-// ‰æõ MFCApplication1.rc ‰ΩøÁî®
+// Microsoft Visual C++ …˙≥…µƒ∞¸∫¨Œƒº˛°£
+// π© MFCApplication1.rc  π”√
 //
 #define IDM_ABOUTBOX                    0x0010
 #define IDD_ABOUTBOX                    100
 #define IDS_ABOUTBOX                    101
 #define IDD_MFCAPPLICATION1_DIALOG      102
 #define IDR_MAINFRAME                   128
+#define IDR_MAIN_MENU                   132
+#define IDD_SETTINGS_DIALOG             133
 #define IDC_TAB1                        1000
 #define IDC_LIST1                       1001
 #define IDC_LIST2                       1002
@@ -67,11 +69,34 @@
 #define IDC_BUTTON32                    1075
 #define IDC_LIST5                       1076
 #define IDC_BUTTON33                    1077
+#define IDC_EDIT_DEFAULT_NAME           1078
+#define IDC_EDIT_BILI_PATH              1079
+#define IDC_BROWSE_BILI                 1080
+#define IDC_EDIT_WECHAT_PATH            1081
+#define IDC_BROWSE_WECHAT               1082
+#define IDC_EDIT_QQ_PATH                1083
+#define IDC_BROWSE_QQ                   1084
+#define IDC_EDIT_VSCODE_PATH            1085
+#define IDC_BROWSE_VSCODE               1086
+#define IDC_EDIT_VS_PATH                1087
+#define IDC_BROWSE_VS                   1088
+#define IDC_EDIT_GITBASH_PATH           1089
+#define IDC_BROWSE_GITBASH              1090
+#define IDC_EDIT_YUANBAO_PATH           1091
+#define IDC_BROWSE_YUANBAO              1092
+#define IDC_EDIT_STUDY_PATH             1093
+#define IDC_BROWSE_STUDY                1094
+#define IDC_EDIT_DOWNLOAD_PATH          1095
+#define IDC_BROWSE_DOWNLOAD             1096
+#define IDC_EDIT_MOOC_URL               1097
+#define IDC_EDIT_SDUCS_URL              1098
+#define IDC_SLIDER2                     1099
+#define IDC_STATIC18                    1100
+#define IDC_BUTTON15                    1101
+#define IDC_BUTTON16                    1102
 #define ID_FILE_SETTINGS                32775
-#define ID_FILE_EXIT                   32776
+#define ID_FILE_EXIT                    32776
 #define ID_HELP_ABOUT                   32777
-
-// ËèúÂçïÊ†èÊâ©Â±ïÂëΩ‰ª§ ID
 #define ID_VIEW_PROCESS                 32778
 #define ID_VIEW_STARTUP                 32779
 #define ID_VIEW_CLIPBOARD               32780
@@ -94,38 +119,13 @@
 #define ID_HELP_SHORTCUTS               32797
 #define ID_HELP_GITHUB                  32798
 
-#define IDD_SETTINGS_DIALOG             133
-#define IDR_MAIN_MENU                   132
-
-#define IDC_EDIT_DEFAULT_NAME           1078
-#define IDC_EDIT_BILI_PATH              1079
-#define IDC_BROWSE_BILI                 1080
-#define IDC_EDIT_WECHAT_PATH            1081
-#define IDC_BROWSE_WECHAT               1082
-#define IDC_EDIT_QQ_PATH                1083
-#define IDC_BROWSE_QQ                   1084
-#define IDC_EDIT_VSCODE_PATH            1085
-#define IDC_BROWSE_VSCODE               1086
-#define IDC_EDIT_VS_PATH                1087
-#define IDC_BROWSE_VS                   1088
-#define IDC_EDIT_GITBASH_PATH           1089
-#define IDC_BROWSE_GITBASH              1090
-#define IDC_EDIT_YUANBAO_PATH           1091
-#define IDC_BROWSE_YUANBAO              1092
-#define IDC_EDIT_STUDY_PATH             1093
-#define IDC_BROWSE_STUDY                1094
-#define IDC_EDIT_DOWNLOAD_PATH          1095
-#define IDC_BROWSE_DOWNLOAD             1096
-#define IDC_EDIT_MOOC_URL               1097
-#define IDC_EDIT_SDUCS_URL              1098
-
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        133
 #define _APS_NEXT_COMMAND_VALUE         32799
-#define _APS_NEXT_CONTROL_VALUE         1099
+#define _APS_NEXT_CONTROL_VALUE         1102
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
