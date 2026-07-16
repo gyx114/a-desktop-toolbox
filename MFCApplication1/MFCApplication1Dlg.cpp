@@ -6,10 +6,11 @@
 #include "MFCApplication1.h"
 #include "MFCApplication1Dlg.h"
 #include "afxdialogex.h"
-#include <TlHelp32.h> // 在文件顶端包含进程快照所需的头文件
-#include <vector>
-#include <thread>
-#include <functional>
+#include "Utils.h"
+#include "AutoClicker.h"
+#include "VolumeManager.h"
+#include "ProcessManager.h"
+#include <TlHelp32.h>
 #include <Shellapi.h>
 #include <Psapi.h>
 #include <afxdlgs.h>
@@ -764,44 +765,7 @@ static bool SetMasterVolumePercent(int pct)
     return bSuccess;
 }
 
-// Helper: get saved path from ini, validate it, otherwise prompt user to pick and save
-[[nodiscard]] static CString GetOrAskPath(CWnd* pParent, LPCTSTR pszKey, LPCTSTR pszTitle, bool bFolder = false)
-{
-    CString path = AfxGetApp()->GetProfileString(_T("Paths"), pszKey, _T(""));
-    if (!path.IsEmpty() && GetFileAttributes(path) != INVALID_FILE_ATTRIBUTES)
-        return path;
-
-    // Ask user to pick
-    if (bFolder)
-    {
-        CFolderPickerDialog dlg;
-        if (dlg.DoModal() == IDOK)
-        {
-            path = dlg.GetPathName();
-            AfxGetApp()->WriteProfileString(_T("Paths"), pszKey, path);
-            return path;
-        }
-    }
-    else
-    {
-        CFileDialog dlg(TRUE, _T("exe"), NULL, OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST, _T("Executable Files (*.exe)|*.exe||"), pParent);
-        dlg.m_ofn.lpstrTitle = pszTitle;
-        if (dlg.DoModal() == IDOK)
-        {
-            path = dlg.GetPathName();
-            AfxGetApp()->WriteProfileString(_T("Paths"), pszKey, path);
-            return path;
-        }
-    }
-
-    return _T("");
-}
-
-// Forward declaration: prompt user to restart elevated (defined later)
-static bool PromptRestartElevated();
-// Forward-declare helper used by button handlers defined later in this file
-static CString FormatLastError(DWORD err);
-static bool LaunchProcessAsShellUser(const CString& exePath, const CString& params, CString* outError = nullptr);
+// (已移至 Utils.h/cpp 和 AutoClicker.h/cpp)
 
 // Allow specific window messages through UIPI using ChangeWindowMessageFilterEx when available.
 static void AllowUIPIMessage(HWND hwnd, UINT msg, BOOL allow)
@@ -1590,14 +1554,8 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
         // set placeholder and asynchronously update actual value
         pSlider->SetPos(100);
         if (pEditVol) pEditVol->SetWindowText(_T("100"));
-        // start background thread to fetch actual master volume and post back (C++20: std::jthread)
-        HWND hwnd = m_hWnd;
-        try {
-            m_volumeThread = std::jthread(VolumeWorkerThread, hwnd);
-        }
-        catch (...) {
-            // fallback: ignore thread creation failure
-        }
+        // start async volume fetch (C++20: using CVolumeManager)
+        CVolumeManager::FetchVolumeAsync(m_hWnd);
     }
 
     return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
@@ -1697,25 +1655,10 @@ void CMFCApplication1Dlg::OnDestroy()
     // Ensure we unregister clipboard listener if we registered it in OnInitDialog.
     ::RemoveClipboardFormatListener(m_hWnd);
 
-    // Ensure autoclicker threads are stopped (C++20: using stop_source for cooperative cancellation)
-    g_autoClickEnabled = false;
-    g_autoClickRunning = false;
-    g_monitorStopSource.request_stop();
-    g_clickStopSource.request_stop();
-    // jthread auto-joins on destruction, but we explicitly join for deterministic cleanup
-    if (g_clickThread.joinable()) g_clickThread.join();
-    if (g_monitorThread.joinable()) g_monitorThread.join();
-    // Reset stop sources for next use
-    g_monitorStopSource = std::stop_source{};
-    g_clickStopSource = std::stop_source{};
+    // Ensure autoclicker threads are stopped (C++20: using CAutoClicker class)
+    m_autoClicker.Stop();
 
-    // ensure any background volume thread is stopped and joined (jthread auto-joins)
-    if (m_volumeThread.joinable())
-    {
-        m_volumeThread.request_stop();
-        m_volumeThread.join();
-    }
-
+    // ensure any background volume thread is stopped (CVolumeManager handles this automatically)
     // Drop helper and file management removed - no cleanup required here
 
     // Unregister drag-and-drop acceptance to be tidy
@@ -3575,44 +3518,19 @@ void CMFCApplication1Dlg::OnBnClickedButton18()
 }
 
 
-// Handler for autoclick checkbox in main dialog (C++20: using std::jthread and std::stop_source)
+// Handler for autoclick checkbox in main dialog (C++20: using CAutoClicker class)
 void CMFCApplication1Dlg::OnBnClickedCheck4()
 {
-    CButton* pCheck = (CButton*)GetDlgItem(IDC_CHECK4);
+    CButton* pCheck = static_cast<CButton*>(GetDlgItem(IDC_CHECK4));
     if (!pCheck) return;
 
     if (pCheck->GetCheck() == BST_CHECKED)
     {
-        // ask for interval
-        int val = PromptForIntervalMs(this->m_hWnd);
-        if (val <= 0 || val > 10000) val = 100;
-        m_autoclickIntervalMs = val;
-        g_clickIntervalMs = val;
-
-        // enable global monitor
-        g_hwndOwnerForAuto = this->m_hWnd;
-        g_autoClickEnabled = true;
-        // start monitor thread if not running
-        if (!g_autoClickMonitorRunning)
-        {
-            // request stop on previous source if any, then create new
-            g_monitorStopSource.request_stop();
-            if (g_monitorThread.joinable()) g_monitorThread.join();
-            g_monitorStopSource = std::stop_source{};
-            g_monitorThread = std::jthread(MonitorThreadFunc, g_monitorStopSource.get_token());
-        }
+        m_autoClicker.Start(100, m_hWnd);
     }
     else
     {
-        // user unchecked: disable monitor and stop clicking
-        g_autoClickEnabled = false;
-        g_autoClickRunning = false;
-        g_monitorStopSource.request_stop();
-        g_clickStopSource.request_stop();
-        if (g_clickThread.joinable()) g_clickThread.join();
-        if (g_monitorThread.joinable()) g_monitorThread.join();
-        g_monitorStopSource = std::stop_source{};
-        g_clickStopSource = std::stop_source{};
+        m_autoClicker.Stop();
     }
 }
 

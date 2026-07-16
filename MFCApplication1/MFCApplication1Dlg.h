@@ -8,6 +8,7 @@
 #include <stop_token>
 #include <string>
 #include <memory>
+#include "AutoClicker.h"
 
 // CMFCApplication1Dlg 对话框
 class CMFCApplication1Dlg : public CDialogEx
@@ -137,16 +138,14 @@ public:
 	// UI: track whether file management tab exists (index 4)
 	int m_fileTabIndex = 4;
 
-	// Auto-clicker state
-   // Auto-clicker state (legacy globals used in implementation)
-	int m_autoclickIntervalMs{100};
-	static constexpr UINT WM_AUTOCLICK_STOPPED = WM_APP + 4;
+	// Auto-clicker state (C++20: encapsulated in CAutoClicker class)
+	CAutoClicker m_autoClicker;
+	static constexpr UINT WM_AUTOCLICK_STOPPED = CAutoClicker::WM_STOPPED;
 
 	// Prevent automatic lock/screen-off checkbox state (IDC_CHECK5)
 	bool m_bPreventLockScreen{false};
 
 	// background worker thread for volume retrieval; ensure joined on destroy
-	std::jthread m_volumeThread;
 	afx_msg void OnBnClickedButton21();
 	afx_msg void OnBnClickedButton22();
     afx_msg void OnBnClickedButton23();
