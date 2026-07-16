@@ -70,6 +70,7 @@
 #define IDC_LIST5                       1076
 #define IDC_BUTTON33                    1077
 #define IDC_EDIT_DEFAULT_NAME           1078
+#define IDC_LIST6                       1078
 #define IDC_EDIT_BILI_PATH              1079
 #define IDC_BROWSE_BILI                 1080
 #define IDC_EDIT_WECHAT_PATH            1081
