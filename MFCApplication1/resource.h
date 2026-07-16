@@ -1,4 +1,4 @@
-﻿//{{NO_DEPENDENCIES}}
+//{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ 生成的包含文件。
 // 供 MFCApplication1.rc 使用
 //
@@ -71,6 +71,29 @@
 #define ID_FILE_EXIT                   32776
 #define ID_HELP_ABOUT                   32777
 
+// 菜单栏扩展命令 ID
+#define ID_VIEW_PROCESS                 32778
+#define ID_VIEW_STARTUP                 32779
+#define ID_VIEW_CLIPBOARD               32780
+#define ID_VIEW_WINDOW                  32781
+#define ID_VIEW_FILE                    32782
+#define ID_VIEW_GIT                     32783
+#define ID_TOOLS_WECHAT                 32784
+#define ID_TOOLS_QQ                     32785
+#define ID_TOOLS_VSCODE                 32786
+#define ID_TOOLS_VS                     32787
+#define ID_TOOLS_BILIBILI               32788
+#define ID_TOOLS_STUDY                  32789
+#define ID_TOOLS_DOWNLOAD               32790
+#define ID_TOOLS_POWERSHELL             32791
+#define ID_TOOLS_WSL                    32792
+#define ID_TOOLS_GITBASH                32793
+#define ID_WINDOW_LOCATE                32794
+#define ID_WINDOW_UNTOPMOST             32795
+#define ID_WINDOW_CLOSE                 32796
+#define ID_HELP_SHORTCUTS               32797
+#define ID_HELP_GITHUB                  32798
+
 #define IDD_SETTINGS_DIALOG             133
 #define IDR_MAIN_MENU                   132
 
@@ -101,7 +124,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        133
-#define _APS_NEXT_COMMAND_VALUE         32778
+#define _APS_NEXT_COMMAND_VALUE         32799
 #define _APS_NEXT_CONTROL_VALUE         1099
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

@@ -89,9 +89,41 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "退出(&X)",                      ID_FILE_EXIT
     END
+    POPUP "视图(&V)"
+    BEGIN
+        MENUITEM "进程管理(&P)",                  ID_VIEW_PROCESS
+        MENUITEM "启动项管理(&S)",                ID_VIEW_STARTUP
+        MENUITEM "剪贴板(&C)",                    ID_VIEW_CLIPBOARD
+        MENUITEM "窗口处理(&W)",                  ID_VIEW_WINDOW
+        MENUITEM "文件管理(&F)",                  ID_VIEW_FILE
+        MENUITEM "git工具箱(&G)",                 ID_VIEW_GIT
+    END
+    POPUP "工具(&T)"
+    BEGIN
+        MENUITEM "微信(&W)",                      ID_TOOLS_WECHAT
+        MENUITEM "QQ(&Q)",                        ID_TOOLS_QQ
+        MENUITEM "VS Code(&C)",                   ID_TOOLS_VSCODE
+        MENUITEM "Visual Studio(&V)",             ID_TOOLS_VS
+        MENUITEM SEPARATOR
+        MENUITEM "哔哩哔哩(&B)",                  ID_TOOLS_BILIBILI
+        MENUITEM "学习文件夹(&L)",                ID_TOOLS_STUDY
+        MENUITEM "下载文件夹(&D)",                ID_TOOLS_DOWNLOAD
+        MENUITEM SEPARATOR
+        MENUITEM "PowerShell(&P)",                ID_TOOLS_POWERSHELL
+        MENUITEM "WSL(&W)",                       ID_TOOLS_WSL
+        MENUITEM "Git Bash(&G)",                  ID_TOOLS_GITBASH
+    END
+    POPUP "窗口(&W)"
+    BEGIN
+        MENUITEM "窗口定位(&L)",                  ID_WINDOW_LOCATE
+        MENUITEM "取消全部置顶(&T)",              ID_WINDOW_UNTOPMOST
+        MENUITEM "关闭选中窗口(&C)",              ID_WINDOW_CLOSE
+    END
     POPUP "帮助(&H)"
     BEGIN
         MENUITEM "关于...(&A)",                   ID_HELP_ABOUT
+        MENUITEM "快捷键列表(&K)",                ID_HELP_SHORTCUTS
+        MENUITEM "GitHub(&G)",                    ID_HELP_GITHUB
     END
 END
 

@@ -17,6 +17,7 @@
 #include <Mmdeviceapi.h>
 #include <Endpointvolume.h>
 #include <atomic>
+#include <algorithm>
 #include <stdio.h>
 #include <string>
 #include <afxole.h>
@@ -373,13 +374,19 @@ CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
 
 void CMFCApplication1Dlg::OnBnClickedButton19()
 {
-    // If there is already a window we previously set as topmost, cancel that first
-    if (m_hTopmostWnd && ::IsWindow(m_hTopmostWnd))
+    // If there are topmost windows, cancel all of them first
+    if (!m_topmostWnds.empty())
     {
-        if (!::SetWindowPos(m_hTopmostWnd, HWND_NOTOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE))
-            MessageBox(_T("取消置顶失败，可能权限不足或窗口不允许。"), _T("提示"), MB_OK | MB_ICONERROR);
-        m_hTopmostWnd = nullptr;
-        // do not return: proceed to start locating overlay
+        for (HWND hWnd : m_topmostWnds)
+        {
+            if (::IsWindow(hWnd))
+                ::SetWindowPos(hWnd, HWND_NOTOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
+        }
+        m_topmostWnds.clear();
+        // 刷新显示
+        CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+        if (pTab) UpdateTabVisibility(pTab->GetCurSel());
+        return;
     }
 
     // If overlay exists, cancel it
@@ -455,7 +462,15 @@ void CMFCApplication1Dlg::OnTargetSelected(HWND hTarget, POINT pt)
         if (!::SetWindowPos(hTarget, HWND_TOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE))
             MessageBox(_T("置顶失败，可能权限不足或窗口不允许。"), _T("提示"), MB_OK | MB_ICONERROR);
         else
-            m_hTopmostWnd = hTarget;
+        {
+            // 避免重复添加
+            auto it = std::find(m_topmostWnds.begin(), m_topmostWnds.end(), hTarget);
+            if (it == m_topmostWnds.end())
+                m_topmostWnds.push_back(hTarget);
+            // 刷新置顶列表显示
+            CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+            if (pTab) UpdateTabVisibility(pTab->GetCurSel());
+        }
     }
     else if (cmd == 3)
     {
@@ -675,7 +690,6 @@ CMFCApplication1Dlg::CMFCApplication1Dlg(CWnd* pParent /*=nullptr*/)
 
     m_hCaptureWnd = NULL;
     m_hSelectedWnd = nullptr;
-    m_hTopmostWnd = nullptr;
     m_fileTabIndex = 4;
     m_bPreventLockScreen = false;
 }
@@ -735,6 +749,31 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_MESSAGE(CMFCApplication1Dlg::WM_AUTOCLICK_STOPPED, &CMFCApplication1Dlg::OnAutoClickStopped)
     ON_NOTIFY(NM_DBLCLK, IDC_LIST3, &CMFCApplication1Dlg::OnNMDblclkList3)
     ON_BN_CLICKED(IDC_BUTTON19, &CMFCApplication1Dlg::OnBnClickedButton19)
+    // 窗口处理动态控件
+    ON_COMMAND(IDC_BTN_FORCE_KILL, &CMFCApplication1Dlg::OnForceKillProcess)
+    ON_COMMAND(IDC_BTN_SCREENSHOT, &CMFCApplication1Dlg::OnWindowScreenshot)
+    // 菜单栏扩展
+    ON_COMMAND(ID_VIEW_PROCESS,     &CMFCApplication1Dlg::OnViewProcess)
+    ON_COMMAND(ID_VIEW_STARTUP,     &CMFCApplication1Dlg::OnViewStartup)
+    ON_COMMAND(ID_VIEW_CLIPBOARD,   &CMFCApplication1Dlg::OnViewClipboard)
+    ON_COMMAND(ID_VIEW_WINDOW,      &CMFCApplication1Dlg::OnViewWindow)
+    ON_COMMAND(ID_VIEW_FILE,        &CMFCApplication1Dlg::OnViewFile)
+    ON_COMMAND(ID_VIEW_GIT,         &CMFCApplication1Dlg::OnViewGit)
+    ON_COMMAND(ID_TOOLS_WECHAT,     &CMFCApplication1Dlg::OnBnClickedButton4)
+    ON_COMMAND(ID_TOOLS_QQ,         &CMFCApplication1Dlg::OnBnClickedButton5)
+    ON_COMMAND(ID_TOOLS_VSCODE,     &CMFCApplication1Dlg::OnBnClickedButton6)
+    ON_COMMAND(ID_TOOLS_VS,         &CMFCApplication1Dlg::OnBnClickedButton7)
+    ON_COMMAND(ID_TOOLS_BILIBILI,   &CMFCApplication1Dlg::OnBnClickedButton8)
+    ON_COMMAND(ID_TOOLS_STUDY,      &CMFCApplication1Dlg::OnBnClickedButton9)
+    ON_COMMAND(ID_TOOLS_DOWNLOAD,   &CMFCApplication1Dlg::OnBnClickedButton21)
+    ON_COMMAND(ID_TOOLS_POWERSHELL, &CMFCApplication1Dlg::OnBnClickedButton27)
+    ON_COMMAND(ID_TOOLS_WSL,        &CMFCApplication1Dlg::OnBnClickedButton28)
+    ON_COMMAND(ID_TOOLS_GITBASH,    &CMFCApplication1Dlg::OnBnClickedButton31)
+    ON_COMMAND(ID_WINDOW_LOCATE,    &CMFCApplication1Dlg::OnWindowLocate)
+    ON_COMMAND(ID_WINDOW_UNTOPMOST, &CMFCApplication1Dlg::OnWindowUntopmost)
+    ON_COMMAND(ID_WINDOW_CLOSE,     &CMFCApplication1Dlg::OnWindowClose)
+    ON_COMMAND(ID_HELP_SHORTCUTS,   &CMFCApplication1Dlg::OnHelpShortcuts)
+    ON_COMMAND(ID_HELP_GITHUB,      &CMFCApplication1Dlg::OnHelpGithub)
     ON_BN_CLICKED(IDC_BUTTON21, &CMFCApplication1Dlg::OnBnClickedButton21)
     ON_BN_CLICKED(IDC_BUTTON22, &CMFCApplication1Dlg::OnBnClickedButton22)
     ON_BN_CLICKED(IDC_BUTTON23, &CMFCApplication1Dlg::OnBnClickedButton23)
@@ -994,12 +1033,33 @@ void CMFCApplication1Dlg::InitClipboardTab()
 void CMFCApplication1Dlg::InitWindowTab()
 {
 	CListCtrl* pList5 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST5));
-	if (!pList5) return;
+	if (pList5)
+	{
+		pList5->ModifyStyle(0, LVS_REPORT);
+		pList5->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
+		pList5->InsertColumn(0, _T("字段"), LVCFMT_LEFT, 140);
+		pList5->InsertColumn(1, _T("值"), LVCFMT_LEFT, 980);
+	}
 
-	pList5->ModifyStyle(0, LVS_REPORT);
-	pList5->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
-	pList5->InsertColumn(0, _T("字段"), LVCFMT_LEFT, 140);
-	pList5->InsertColumn(1, _T("值"), LVCFMT_LEFT, 980);
+	// 动态创建透明度滑块
+	CRect rc(10, 290, 300, 320);
+	m_transparencyLabel.Create(_T("透明度: 100%"), WS_CHILD | WS_VISIBLE, rc, this);
+	m_transparencyLabel.SetFont(GetFont());
+
+	rc.SetRect(10, 315, 300, 345);
+	m_transparencySlider.Create(WS_CHILD | WS_VISIBLE | TBS_HORZ | TBS_AUTOTICKS, rc, this, IDC_TRANSPARENCY_SLIDER);
+	m_transparencySlider.SetRange(10, 255);
+	m_transparencySlider.SetPos(255);
+	m_transparencySlider.SetTicFreq(25);
+
+	// 动态创建按钮
+	rc.SetRect(10, 355, 140, 385);
+	m_btnForceKill.Create(_T("强制结束进程"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, rc, this, IDC_BTN_FORCE_KILL);
+	m_btnForceKill.SetFont(GetFont());
+
+	rc.SetRect(150, 355, 300, 385);
+	m_btnScreenshot.Create(_T("截图到剪贴板"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, rc, this, IDC_BTN_SCREENSHOT);
+	m_btnScreenshot.SetFont(GetFont());
 }
 
 void CMFCApplication1Dlg::InitFileTab()
@@ -1162,6 +1222,27 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
 	if (nTab == 3 && pList5)
 	{
 		pList5->DeleteAllItems();
+
+		// 先显示置顶窗口列表
+		if (!m_topmostWnds.empty())
+		{
+			int row = 0;
+			for (size_t i = 0; i < m_topmostWnds.size(); ++i)
+			{
+				HWND h = m_topmostWnds[i];
+				if (!::IsWindow(h)) continue;
+
+				TCHAR title[256] = {0};
+				::GetWindowText(h, title, _countof(title));
+
+				CString label;
+				label.Format(_T("置顶[%zu]"), i + 1);
+				pList5->InsertItem(row, label);
+				pList5->SetItemText(row++, 1, CString(title));
+			}
+		}
+
+		// 再显示当前选中窗口的详细信息
 		if (m_hSelectedWnd && ::IsWindow(m_hSelectedWnd))
 		{
 			HWND h = m_hSelectedWnd;
@@ -1196,6 +1277,222 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
 			pList5->InsertItem(row, _T("窗口标题")); pList5->SetItemText(row++, 1, title);
 		}
 	}
+
+	// 窗口处理标签页的新控件可见性
+	BOOL showWindowTab = (nTab == 3);
+	m_transparencyLabel.ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
+	m_transparencySlider.ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
+	m_btnForceKill.ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
+	m_btnScreenshot.ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
+}
+
+// ========== 窗口处理新功能 ==========
+
+void CMFCApplication1Dlg::OnForceKillProcess()
+{
+	if (!m_hSelectedWnd || !::IsWindow(m_hSelectedWnd))
+	{
+		MessageBox(_T("请先定位一个窗口。"), _T("提示"), MB_OK | MB_ICONWARNING);
+		return;
+	}
+
+	DWORD pid = 0;
+	GetWindowThreadProcessId(m_hSelectedWnd, &pid);
+	if (pid == 0)
+	{
+		MessageBox(_T("无法获取进程ID。"), _T("错误"), MB_OK | MB_ICONERROR);
+		return;
+	}
+
+	CString msg;
+	msg.Format(_T("确定要强制结束进程 PID=%u 吗？\n未保存的数据可能会丢失。"), pid);
+	if (MessageBox(msg, _T("确认强制结束"), MB_YESNO | MB_ICONWARNING) != IDYES)
+		return;
+
+	HANDLE hProc = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
+	if (!hProc)
+	{
+		DWORD err = GetLastError();
+		msg.Format(_T("无法打开进程 (错误: %u)，可能需要管理员权限。"), err);
+		MessageBox(msg, _T("错误"), MB_OK | MB_ICONERROR);
+		return;
+	}
+
+	if (TerminateProcess(hProc, 1))
+	{
+		MessageBox(_T("进程已强制结束。"), _T("完成"), MB_OK | MB_ICONINFORMATION);
+		// 从置顶列表中移除已结束的窗口
+		m_topmostWnds.erase(
+			std::remove_if(m_topmostWnds.begin(), m_topmostWnds.end(),
+				[](HWND h) { return !::IsWindow(h); }),
+			m_topmostWnds.end());
+		// 刷新显示
+		CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+		if (pTab) UpdateTabVisibility(pTab->GetCurSel());
+	}
+	else
+	{
+		MessageBox(_T("强制结束进程失败。"), _T("错误"), MB_OK | MB_ICONERROR);
+	}
+	CloseHandle(hProc);
+}
+
+void CMFCApplication1Dlg::OnWindowScreenshot()
+{
+	if (!m_hSelectedWnd || !::IsWindow(m_hSelectedWnd))
+	{
+		MessageBox(_T("请先定位一个窗口。"), _T("提示"), MB_OK | MB_ICONWARNING);
+		return;
+	}
+
+	// 获取窗口尺寸
+	RECT rc;
+	::GetWindowRect(m_hSelectedWnd, &rc);
+	int width = rc.right - rc.left;
+	int height = rc.bottom - rc.top;
+	if (width <= 0 || height <= 0)
+	{
+		MessageBox(_T("窗口尺寸无效。"), _T("错误"), MB_OK | MB_ICONERROR);
+		return;
+	}
+
+	// 创建设备上下文
+	HDC hdcScreen = ::GetDC(NULL);
+	HDC hdcMem = ::CreateCompatibleDC(hdcScreen);
+	HBITMAP hBitmap = ::CreateCompatibleBitmap(hdcScreen, width, height);
+	HBITMAP hOldBmp = static_cast<HBITMAP>(::SelectObject(hdcMem, hBitmap));
+
+	// 使用 PrintWindow 截取窗口
+	if (!::PrintWindow(m_hSelectedWnd, hdcMem, PW_CLIENTONLY))
+	{
+		// PrintWindow 失败时尝试 BitBlt
+		::SetForegroundWindow(m_hSelectedWnd);
+		::Sleep(100);
+		::BitBlt(hdcMem, 0, 0, width, height, hdcScreen, rc.left, rc.top, SRCCOPY);
+	}
+
+	// 复制到剪贴板
+	if (::OpenClipboard(m_hWnd))
+	{
+		::EmptyClipboard();
+		::SetClipboardData(CF_BITMAP, hBitmap);
+		::CloseClipboard();
+		MessageBox(_T("窗口截图已复制到剪贴板。"), _T("完成"), MB_OK | MB_ICONINFORMATION);
+	}
+	else
+	{
+		MessageBox(_T("无法打开剪贴板。"), _T("错误"), MB_OK | MB_ICONERROR);
+		::DeleteObject(hBitmap);
+	}
+
+	::SelectObject(hdcMem, hOldBmp);
+	::DeleteDC(hdcMem);
+	::ReleaseDC(NULL, hdcScreen);
+}
+
+// ========== 菜单命令处理函数 ==========
+
+void CMFCApplication1Dlg::OnViewProcess()
+{
+	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+	if (pTab) { pTab->SetCurSel(0); UpdateTabVisibility(0); }
+}
+
+void CMFCApplication1Dlg::OnViewStartup()
+{
+	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+	if (pTab) { pTab->SetCurSel(1); UpdateTabVisibility(1); RefreshStartupList(); }
+}
+
+void CMFCApplication1Dlg::OnViewClipboard()
+{
+	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+	if (pTab) { pTab->SetCurSel(2); UpdateTabVisibility(2); }
+}
+
+void CMFCApplication1Dlg::OnViewWindow()
+{
+	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+	if (pTab) { pTab->SetCurSel(3); UpdateTabVisibility(3); }
+}
+
+void CMFCApplication1Dlg::OnViewFile()
+{
+	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+	if (pTab) { pTab->SetCurSel(4); UpdateTabVisibility(4); }
+}
+
+void CMFCApplication1Dlg::OnViewGit()
+{
+	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+	if (pTab) { pTab->SetCurSel(5); UpdateTabVisibility(5); }
+}
+
+void CMFCApplication1Dlg::OnWindowLocate()
+{
+	// 切换到窗口处理标签页并触发定位
+	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+	if (pTab) { pTab->SetCurSel(3); UpdateTabVisibility(3); }
+	OnBnClickedButton19();
+}
+
+void CMFCApplication1Dlg::OnWindowUntopmost()
+{
+	for (HWND hWnd : m_topmostWnds)
+	{
+		if (::IsWindow(hWnd))
+			::SetWindowPos(hWnd, HWND_NOTOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
+	}
+	m_topmostWnds.clear();
+	// 刷新显示
+	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+	if (pTab) UpdateTabVisibility(pTab->GetCurSel());
+}
+
+void CMFCApplication1Dlg::OnWindowClose()
+{
+	if (m_hSelectedWnd && ::IsWindow(m_hSelectedWnd))
+	{
+		CString title;
+		::GetWindowText(m_hSelectedWnd, title.GetBuffer(256), 256);
+		title.ReleaseBuffer();
+
+		CString msg;
+		msg.Format(_T("确定要关闭窗口 \"%s\" 吗？"), title);
+		if (MessageBox(msg, _T("确认关闭"), MB_YESNO | MB_ICONQUESTION) == IDYES)
+		{
+			::SendMessage(m_hSelectedWnd, WM_CLOSE, 0, 0);
+			// 从置顶列表中移除
+			m_topmostWnds.erase(
+				std::remove_if(m_topmostWnds.begin(), m_topmostWnds.end(),
+					[](HWND h) { return !::IsWindow(h); }),
+				m_topmostWnds.end());
+			m_hSelectedWnd = nullptr;
+			CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+			if (pTab) UpdateTabVisibility(pTab->GetCurSel());
+		}
+	}
+	else
+	{
+		MessageBox(_T("请先定位一个窗口。"), _T("提示"), MB_OK | MB_ICONWARNING);
+	}
+}
+
+void CMFCApplication1Dlg::OnHelpShortcuts()
+{
+	MessageBox(
+		_T("快捷键列表:\n\n")
+		_T("Ctrl+Alt+Space   - 显示/隐藏工具箱\n")
+		_T("Alt+1~6          - 切换标签页\n")
+		_T("Ctrl+Alt+T       - 定位窗口\n")
+		_T("F3               - 连点器开关\n\n")
+		_T("更多功能请查看视图/工具/窗口菜单。"),
+		_T("快捷键列表"), MB_OK | MB_ICONINFORMATION);
+}
+
+void CMFCApplication1Dlg::OnHelpGithub()
+{
+	ShellExecute(m_hWnd, _T("open"), _T("https://github.com"), NULL, NULL, SW_SHOWNORMAL);
 }
 
 void CMFCApplication1Dlg::OnSize(UINT nType, int cx, int cy)
@@ -1297,6 +1594,14 @@ void CMFCApplication1Dlg::OnDestroy()
 
     // ensure any background volume thread is stopped (CVolumeManager handles this automatically)
     // Drop helper and file management removed - no cleanup required here
+
+    // Remove topmost status from all managed windows
+    for (HWND hWnd : m_topmostWnds)
+    {
+        if (::IsWindow(hWnd))
+            ::SetWindowPos(hWnd, HWND_NOTOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
+    }
+    m_topmostWnds.clear();
 
     // Unregister drag-and-drop acceptance to be tidy
     ::DragAcceptFiles(m_hWnd, FALSE);
@@ -2712,6 +3017,22 @@ void CMFCApplication1Dlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScroll
             CString s; s.Format(_T("%d"), pos);
             pEditVol->SetWindowText(s);
             CVolumeManager::SetMasterVolumePercent(pos);
+        }
+    }
+    else if (pScrollBar && pScrollBar->GetSafeHwnd() == m_transparencySlider.GetSafeHwnd())
+    {
+        int pos = m_transparencySlider.GetPos();
+        int percent = (pos * 100) / 255;
+        CString label;
+        label.Format(_T("透明度: %d%%"), percent);
+        m_transparencyLabel.SetWindowText(label);
+
+        if (m_hSelectedWnd && ::IsWindow(m_hSelectedWnd))
+        {
+            // 设置分层窗口透明度
+            LONG style = ::GetWindowLong(m_hSelectedWnd, GWL_EXSTYLE);
+            ::SetWindowLong(m_hSelectedWnd, GWL_EXSTYLE, style | WS_EX_LAYERED);
+            ::SetLayeredWindowAttributes(m_hSelectedWnd, 0, static_cast<BYTE>(pos), LWA_ALPHA);
         }
     }
 
