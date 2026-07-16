@@ -415,6 +415,9 @@ void CMFCApplication1Dlg::OnBnClickedButton19()
 
 void CMFCApplication1Dlg::OnTargetSelected(HWND hTarget, POINT pt)
 {
+    // 将子控件提升为其顶层父窗口，避免记录按钮/编辑框等组件
+    hTarget = ::GetAncestor(hTarget, GA_ROOT);
+
     m_hSelectedWnd = hTarget;
     if (!IsWindow(hTarget))
     {
@@ -423,6 +426,13 @@ void CMFCApplication1Dlg::OnTargetSelected(HWND hTarget, POINT pt)
     }
 
     // When a target window is selected via the overlay, treat it as "located":
+    // add to history immediately so LIST7 gets populated on tab switch
+    {
+        auto it = std::find(m_historyWnds.begin(), m_historyWnds.end(), hTarget);
+        if (it == m_historyWnds.end())
+            m_historyWnds.push_back(hTarget);
+    }
+
     // switch to the "窗口处理" tab and refresh the list to show this window's info.
     CTabCtrl* pTab = (CTabCtrl*)GetDlgItem(IDC_TAB1);
     if (pTab)
@@ -704,6 +714,8 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_COMMAND(32774, &CMFCApplication1Dlg::OnLocateProcess)
     ON_COMMAND(32775, &CMFCApplication1Dlg::OnUntopmostWindow)
     ON_COMMAND(32776, &CMFCApplication1Dlg::OnCopyStartupPath)
+    ON_COMMAND(32777, &CMFCApplication1Dlg::OnDeleteList6Record)
+    ON_COMMAND(32778, &CMFCApplication1Dlg::OnDeleteList7Record)
     ON_BN_CLICKED(IDC_BUTTON1, &CMFCApplication1Dlg::OnBnClickedButton1)
     ON_BN_CLICKED(IDC_BUTTON2, &CMFCApplication1Dlg::OnBnClickedButton2)
     ON_CBN_SELCHANGE(IDC_COMBO1, &CMFCApplication1Dlg::OnCbnSelchangeCombo1)
@@ -744,6 +756,8 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_MESSAGE(CMFCApplication1Dlg::WM_AUTOCLICK_STOPPED, &CMFCApplication1Dlg::OnAutoClickStopped)
     ON_NOTIFY(NM_DBLCLK, IDC_LIST3, &CMFCApplication1Dlg::OnNMDblclkList3)
     ON_NOTIFY(NM_DBLCLK, IDC_LIST2, &CMFCApplication1Dlg::OnNMDblclkList2)
+    ON_NOTIFY(NM_CLICK,  IDC_LIST6, &CMFCApplication1Dlg::OnClickList6)
+    ON_NOTIFY(NM_CLICK,  IDC_LIST7, &CMFCApplication1Dlg::OnClickList7)
     ON_BN_CLICKED(IDC_BUTTON19, &CMFCApplication1Dlg::OnBnClickedButton19)
     // 窗口处理控件
     ON_BN_CLICKED(IDC_BUTTON15, &CMFCApplication1Dlg::OnForceKillProcess)
@@ -1033,7 +1047,7 @@ void CMFCApplication1Dlg::InitWindowTab()
 	{
 		pList5->ModifyStyle(0, LVS_REPORT);
 		pList5->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
-		pList5->InsertColumn(0, _T("字段"), LVCFMT_LEFT, 140);
+		pList5->InsertColumn(0, _T("字段"), LVCFMT_LEFT, 84);
 		pList5->InsertColumn(1, _T("值"), LVCFMT_LEFT, 980);
 	}
 
@@ -1053,8 +1067,18 @@ void CMFCApplication1Dlg::InitWindowTab()
 	{
 		pList6->ModifyStyle(0, LVS_REPORT);
 		pList6->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
-		pList6->InsertColumn(0, _T("序号"), LVCFMT_LEFT, 80);
-		pList6->InsertColumn(1, _T("窗口标题"), LVCFMT_LEFT, 300);
+		pList6->InsertColumn(0, _T("类型"), LVCFMT_LEFT, 80);
+		pList6->InsertColumn(1, _T("窗口标题"), LVCFMT_LEFT, 280);
+	}
+
+	// 初始化历史定位窗口列表
+	CListCtrl* pList7 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST7));
+	if (pList7)
+	{
+		pList7->ModifyStyle(0, LVS_REPORT);
+		pList7->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+		pList7->InsertColumn(0, _T("序号"), LVCFMT_LEFT, 60);
+		pList7->InsertColumn(1, _T("窗口标题"), LVCFMT_LEFT, 280);
 	}
 }
 
@@ -1217,42 +1241,7 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
 	// 窗口处理标签页：填充窗口信息
 	if (nTab == 3 && pList5)
 	{
-		pList5->DeleteAllItems();
-
-		// 显示当前选中窗口的详细信息
-		if (m_hSelectedWnd && ::IsWindow(m_hSelectedWnd))
-		{
-			HWND h = m_hSelectedWnd;
-			DWORD pid = 0; GetWindowThreadProcessId(h, &pid);
-
-			CString procName = _T("");
-			CString procPath = _T("");
-			HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-			if (hProc)
-			{
-				TCHAR buf[MAX_PATH] = {0};
-				DWORD size = _countof(buf);
-				if (QueryFullProcessImageName(hProc, 0, buf, &size)) procPath = buf;
-				int psep = procPath.ReverseFind(_T('\\'));
-				if (psep != -1) procName = procPath.Mid(psep + 1);
-				CloseHandle(hProc);
-			}
-
-			CString title;
-			::GetWindowText(h, title.GetBuffer(512), 512);
-			title.ReleaseBuffer();
-
-			int row = 0;
-			CString val;
-
-			val.Format(_T("0x%08X"), reinterpret_cast<UINT_PTR>(h));
-			pList5->InsertItem(row, _T("句柄")); pList5->SetItemText(row++, 1, val);
-			pList5->InsertItem(row, _T("进程名")); pList5->SetItemText(row++, 1, procName);
-			val.Format(_T("%u"), pid);
-			pList5->InsertItem(row, _T("PID")); pList5->SetItemText(row++, 1, val);
-			pList5->InsertItem(row, _T("路径")); pList5->SetItemText(row++, 1, procPath);
-			pList5->InsertItem(row, _T("窗口标题")); pList5->SetItemText(row++, 1, title);
-		}
+		LoadWindowDetailToList5(m_hSelectedWnd);
 	}
 
 	// 窗口处理标签页的新控件可见性
@@ -1297,6 +1286,32 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
 				label.Format(_T("置顶[%zu]"), i + 1);
 				int idx = pList6->InsertItem(static_cast<int>(i), label);
 				pList6->SetItemText(idx, 1, CString(title));
+			}
+		}
+	}
+
+	// 历史定位窗口列表 (LIST7)
+	CListCtrl* pList7 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST7));
+	if (pList7)
+	{
+		pList7->ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
+		if (showWindowTab)
+		{
+			pList7->DeleteAllItems();
+			int row = 0;
+			for (size_t i = 0; i < m_historyWnds.size(); ++i)
+			{
+				HWND h = m_historyWnds[i];
+				if (!::IsWindow(h)) continue;
+
+				TCHAR title[256] = {0};
+				::GetWindowText(h, title, _countof(title));
+
+				CString label;
+				label.Format(_T("%zu"), row + 1);
+				int idx = pList7->InsertItem(row, label);
+				pList7->SetItemText(idx, 1, CString(title));
+				++row;
 			}
 		}
 	}
@@ -1560,6 +1575,121 @@ void CMFCApplication1Dlg::OnHelpShortcuts()
 void CMFCApplication1Dlg::OnHelpGithub()
 {
 	ShellExecute(m_hWnd, _T("open"), _T("https://github.com"), NULL, NULL, SW_SHOWNORMAL);
+}
+
+// ========== LIST6 辅助函数 ==========
+
+void CMFCApplication1Dlg::LoadWindowDetailToList5(HWND hWnd)
+{
+	CListCtrl* pList5 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST5));
+	if (!pList5) return;
+
+	pList5->DeleteAllItems();
+
+	if (!hWnd || !::IsWindow(hWnd)) return;
+
+	DWORD pid = 0; GetWindowThreadProcessId(hWnd, &pid);
+
+	CString procName = _T("");
+	CString procPath = _T("");
+	HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+	if (hProc)
+	{
+		TCHAR buf[MAX_PATH] = {0};
+		DWORD size = _countof(buf);
+		if (QueryFullProcessImageName(hProc, 0, buf, &size)) procPath = buf;
+		int psep = procPath.ReverseFind(_T('\\'));
+		if (psep != -1) procName = procPath.Mid(psep + 1);
+		CloseHandle(hProc);
+	}
+
+	CString title;
+	::GetWindowText(hWnd, title.GetBuffer(512), 512);
+	title.ReleaseBuffer();
+
+	int row = 0;
+	CString val;
+
+	val.Format(_T("0x%08X"), reinterpret_cast<UINT_PTR>(hWnd));
+	pList5->InsertItem(row, _T("句柄")); pList5->SetItemText(row++, 1, val);
+	pList5->InsertItem(row, _T("进程名")); pList5->SetItemText(row++, 1, procName);
+	val.Format(_T("%u"), pid);
+	pList5->InsertItem(row, _T("PID")); pList5->SetItemText(row++, 1, val);
+	pList5->InsertItem(row, _T("路径")); pList5->SetItemText(row++, 1, procPath);
+	pList5->InsertItem(row, _T("窗口标题")); pList5->SetItemText(row++, 1, title);
+}
+
+void CMFCApplication1Dlg::OnClickList6(NMHDR* /*pNMHDR*/, LRESULT* pResult)
+{
+	CListCtrl* pList6 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST6));
+	if (!pList6) { *pResult = 0; return; }
+
+	int nSel = pList6->GetNextItem(-1, LVNI_SELECTED);
+	if (nSel < 0 || static_cast<size_t>(nSel) >= m_topmostWnds.size()) { *pResult = 0; return; }
+
+	HWND hWnd = m_topmostWnds[nSel];
+	if (hWnd && ::IsWindow(hWnd))
+	{
+		m_hSelectedWnd = hWnd;
+		LoadWindowDetailToList5(hWnd);
+	}
+
+	*pResult = 0;
+}
+
+void CMFCApplication1Dlg::OnClickList7(NMHDR* /*pNMHDR*/, LRESULT* pResult)
+{
+	CListCtrl* pList7 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST7));
+	if (!pList7) { *pResult = 0; return; }
+
+	int nSel = pList7->GetNextItem(-1, LVNI_SELECTED);
+	if (nSel < 0 || static_cast<size_t>(nSel) >= m_historyWnds.size()) { *pResult = 0; return; }
+
+	HWND hWnd = m_historyWnds[nSel];
+	if (hWnd && ::IsWindow(hWnd))
+	{
+		m_hSelectedWnd = hWnd;
+		LoadWindowDetailToList5(hWnd);
+	}
+
+	*pResult = 0;
+}
+
+void CMFCApplication1Dlg::OnDeleteList6Record()
+{
+	CListCtrl* pList6 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST6));
+	if (!pList6) return;
+
+	int nSel = pList6->GetNextItem(-1, LVNI_SELECTED);
+	if (nSel < 0 || static_cast<size_t>(nSel) >= m_topmostWnds.size()) return;
+
+	HWND hWnd = m_topmostWnds[nSel];
+	if (::IsWindow(hWnd))
+		::SetWindowPos(hWnd, HWND_NOTOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
+
+	if (hWnd == m_hWnd)
+	{
+		CButton* pCheck = static_cast<CButton*>(GetDlgItem(IDC_CHECK3));
+		if (pCheck) pCheck->SetCheck(BST_UNCHECKED);
+	}
+	m_topmostWnds.erase(m_topmostWnds.begin() + nSel);
+
+	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+	if (pTab) UpdateTabVisibility(pTab->GetCurSel());
+}
+
+void CMFCApplication1Dlg::OnDeleteList7Record()
+{
+	CListCtrl* pList7 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST7));
+	if (!pList7) return;
+
+	int nSel = pList7->GetNextItem(-1, LVNI_SELECTED);
+	if (nSel < 0 || static_cast<size_t>(nSel) >= m_historyWnds.size()) return;
+
+	m_historyWnds.erase(m_historyWnds.begin() + nSel);
+
+	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+	if (pTab) UpdateTabVisibility(pTab->GetCurSel());
 }
 
 void CMFCApplication1Dlg::OnSize(UINT nType, int cx, int cy)
@@ -2283,7 +2413,7 @@ void CMFCApplication1Dlg::OnContextMenu(CWnd* pWnd, CPoint point)
         }
         return;
     }
-    // 右键在置顶窗口列表上 (取消置顶)
+    // 右键在置顶窗口列表上 (取消置顶 / 删除)
     CListCtrl* pList6 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST6));
     if (pList6 && hClicked == pList6->GetSafeHwnd())
     {
@@ -2293,6 +2423,22 @@ void CMFCApplication1Dlg::OnContextMenu(CWnd* pWnd, CPoint point)
             CMenu menu;
             menu.CreatePopupMenu();
             menu.AppendMenu(MF_STRING, 32775, _T("取消置顶"));
+            menu.AppendMenu(MF_STRING, 32777, _T("删除"));
+            menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
+        }
+        return;
+    }
+
+    // 右键在历史窗口列表上 (删除)
+    CListCtrl* pList7 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST7));
+    if (pList7 && hClicked == pList7->GetSafeHwnd())
+    {
+        int nSel = pList7->GetNextItem(-1, LVNI_SELECTED);
+        if (nSel != -1)
+        {
+            CMenu menu;
+            menu.CreatePopupMenu();
+            menu.AppendMenu(MF_STRING, 32778, _T("删除"));
             menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
         }
         return;
