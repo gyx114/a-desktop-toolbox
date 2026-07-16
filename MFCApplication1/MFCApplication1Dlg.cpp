@@ -1,4 +1,4 @@
-// MFCApplication1Dlg.cpp: 实现文件
+﻿// MFCApplication1Dlg.cpp: 实现文件
 //
 
 #include "pch.h"
@@ -179,31 +179,6 @@ void CMFCApplication1Dlg::OnBiliNext()
     SendInput(2, inputs, sizeof(INPUT));
 }
 
-// Helper: copy Unicode text to clipboard
-static void CopyToClipboard(HWND hwnd, const CString& text)
-{
-    if (text.IsEmpty()) return;
-    if (!OpenClipboard(hwnd)) return;
-    ::EmptyClipboard();
-    int len = (text.GetLength() + 1);
-    HGLOBAL hMem = ::GlobalAlloc(GMEM_MOVEABLE, len * sizeof(WCHAR));
-    if (hMem)
-    {
-        LPWSTR p = (LPWSTR)::GlobalLock(hMem);
-        if (p)
-        {
-            wcscpy_s(p, len, text);
-            ::GlobalUnlock(hMem);
-            ::SetClipboardData(CF_UNICODETEXT, hMem);
-        }
-        else
-        {
-            ::GlobalFree(hMem);
-        }
-    }
-    CloseClipboard();
-}
-
 // Command handler for context menu "复制命令"
 void CMFCApplication1Dlg::OnCopyGitCommand()
 {
@@ -370,175 +345,7 @@ void CMFCApplication1Dlg::OnBnClickedButton24()
 // Define message constants declared in header (now constexpr in header, so no need to redefine here)
 // Autoclicker message is defined in the dialog header as WM_AUTOCLICK_STOPPED
 
-// Autoclicker globals (C++20: using std::jthread for auto-joining, std::stop_source for cancellation)
-static std::atomic<bool> g_autoClickEnabled(false);
-static std::atomic<bool> g_autoClickRunning(false);
-static std::atomic<bool> g_autoClickMonitorRunning(false);
-static std::atomic<int> g_clickIntervalMs{100};
-static std::jthread g_clickThread;
-static std::jthread g_monitorThread;
-static std::stop_source g_clickStopSource;
-static std::stop_source g_monitorStopSource;
-
-// Helper: determine if key 'ch' pressed in uppercase form (Shift XOR CapsLock)
-[[nodiscard]] static bool IsUppercaseKeyPressed(char ch) noexcept
-{
-    SHORT state = GetAsyncKeyState(toupper(ch));
-    if (!(state & 0x8000)) return false; // key not down
-    // check shift and caps
-    bool shift = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
-    bool caps = (GetKeyState(VK_CAPITAL) & 0x0001) != 0;
-    return (caps && !shift) || (!caps && shift);
-}
-
-// Prompt user for interval using PowerShell InputBox and write result to temp file
-static int PromptForIntervalMs(HWND hwndParent)
-{
-    TCHAR tmpPath[MAX_PATH];
-    if (!GetTempPath(MAX_PATH, tmpPath)) wcscpy_s(tmpPath, MAX_PATH, L"C:\\Windows\\Temp\\");
-    CString tmpFile;
-    tmpFile.Format(_T("%sautoclick_interval_%u.txt"), tmpPath, GetTickCount());
-
-    CString tmpVbs;
-    tmpVbs.Format(_T("%sautoclick_input_%u.vbs"), tmpPath, GetTickCount());
-
-    // VBScript content: show InputBox and write result to temp file
-    CString vbs;
-    vbs += _T("On Error Resume Next\r\n");
-    vbs += _T("s = InputBox(\"点击频率：(ms/次)\", \"连点器\", \"100\")\r\n");
-    vbs += _T("If Not IsNull(s) And s <> \"\" Then\r\n");
-    // Because CString::Format with embedded quotes is messy, build using separate parts
-    {
-        CString part;
-        part.Format(_T("  Set f = CreateObject(\"Scripting.FileSystemObject\").OpenTextFile(\"%s\", 2, True)\r\n"), tmpFile);
-        vbs += part;
-    }
-    vbs += _T("  f.WriteLine s\r\n");
-    vbs += _T("  f.Close\r\n");
-    vbs += _T("End If\r\n");
-
-    // write vbs to temporary file using UTF-8 (write BOM + utf8 bytes)
-    {
-        // write as UTF-16 LE with BOM so wscript correctly reads the script
-        std::wstring wv = vbs.GetString();
-        HANDLE h = CreateFileW(tmpVbs, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-        if (h != INVALID_HANDLE_VALUE)
-        {
-            DWORD written = 0;
-            BYTE bom[2] = { 0xFF, 0xFE };
-            WriteFile(h, bom, 2, &written, NULL);
-            // write wide characters (exclude terminating null)
-            WriteFile(h, wv.c_str(), (DWORD)(wv.size() * sizeof(wchar_t)), &written, NULL);
-            CloseHandle(h);
-        }
-    }
-
-    // execute via wscript (shows only the InputBox)
-    SHELLEXECUTEINFO sei = {0};
-    sei.cbSize = sizeof(sei);
-    sei.fMask = SEE_MASK_NOCLOSEPROCESS;
-    sei.hwnd = hwndParent;
-    sei.lpFile = _T("wscript.exe");
-    // quote the script path in case it contains spaces
-    CString paramQuoted;
-    paramQuoted.Format(_T("\"%s\""), tmpVbs);
-    sei.lpParameters = paramQuoted;
-    sei.nShow = SW_HIDE;
-    if (!ShellExecuteEx(&sei) || !sei.hProcess)
-    {
-        // cleanup
-        DeleteFile(tmpVbs);
-        return 100;
-    }
-
-    // wait for script to finish
-    WaitForSingleObject(sei.hProcess, INFINITE);
-    CloseHandle(sei.hProcess);
-
-    int val = 100;
-    CStdioFile f;
-    if (f.Open(tmpFile, CFile::modeRead | CFile::typeText))
-    {
-        CString line;
-        if (f.ReadString(line))
-        {
-            line.Trim();
-            if (!line.IsEmpty())
-            {
-                int v = _ttoi(line);
-                if (v > 0 && v < 10000) val = v;
-            }
-        }
-        f.Close();
-        DeleteFile(tmpFile);
-    }
-
-    // remove vbs
-    DeleteFile(tmpVbs);
-
-    return val;
-}
-
-// Clicker thread function (C++20: using std::stop_token for cooperative cancellation)
-static void ClickThreadFunc(std::stop_token stoken)
-{
-    // use SendInput to perform left click
-    INPUT inputs[2]{};
-    inputs[0].type = INPUT_MOUSE;
-    inputs[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-    inputs[1].type = INPUT_MOUSE;
-    inputs[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
-
-    while (!stoken.stop_requested())
-    {
-        SendInput(2, inputs, sizeof(INPUT));
-        // Sleep with stop_token awareness
-        Sleep(g_clickIntervalMs.load());
-    }
-}
-
-// Monitor thread: watches for uppercase A/B (C++20: using std::stop_token)
-static HWND g_hwndOwnerForAuto = nullptr;
-static void MonitorThreadFunc(std::stop_token stoken)
-{
-    g_autoClickMonitorRunning = true;
-    while (!stoken.stop_requested())
-    {
-        if (!g_autoClickRunning && IsUppercaseKeyPressed('A'))
-        {
-            // start clicking
-            g_autoClickRunning = true;
-            // request stop on previous click source, then create new one
-            g_clickStopSource.request_stop();
-            if (g_clickThread.joinable()) g_clickThread.join();
-            g_clickStopSource = std::stop_source{};
-            // start click thread with new stop token
-            g_clickThread = std::jthread(ClickThreadFunc, g_clickStopSource.get_token());
-        }
-
-        if (g_autoClickRunning && IsUppercaseKeyPressed('B'))
-        {
-            // stop
-            g_autoClickRunning = false;
-            g_clickStopSource.request_stop();
-            if (g_clickThread.joinable()) g_clickThread.join();
-            // notify main window to uncheck and show message
-            if (g_hwndOwnerForAuto)
-                ::PostMessage(g_hwndOwnerForAuto, CMFCApplication1Dlg::WM_AUTOCLICK_STOPPED, 0, 0);
-            // also disable overall
-            g_autoClickEnabled = false;
-            break;
-        }
-
-        Sleep(60);
-    }
-    // ensure click thread stopped
-    g_autoClickRunning = false;
-    g_clickStopSource.request_stop();
-    if (g_clickThread.joinable()) g_clickThread.join();
-    g_autoClickMonitorRunning = false;
-}
-
+// Autoclicker functionality moved to CAutoClicker class (AutoClicker.h/cpp)
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 
@@ -663,150 +470,6 @@ void CMFCApplication1Dlg::OnTargetSelected(HWND hTarget, POINT pt)
 
 // Master volume helpers using Core Audio EndpointVolume (0-100)
 // Async volume retrieval: run in background and post WM_VOLUME_UPDATED with percent in WPARAM
-static void VolumeWorkerThread(HWND hwndNotify)
-{
-    int pct = 100;
-    HRESULT hr = CoInitialize(NULL);
-    bool bCoInit = SUCCEEDED(hr);
-
-    IMMDeviceEnumerator* pEnum = NULL;
-    hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&pEnum);
-    if (SUCCEEDED(hr) && pEnum)
-    {
-        IMMDevice* pDevice = NULL;
-        if (SUCCEEDED(pEnum->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice)) && pDevice)
-        {
-            IAudioEndpointVolume* pVolume = NULL;
-            if (SUCCEEDED(pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, NULL, (void**)&pVolume)) && pVolume)
-            {
-                float fVol = 0.0f;
-                if (SUCCEEDED(pVolume->GetMasterVolumeLevelScalar(&fVol)))
-                {
-                    pct = (int)(fVol * 100.0f + 0.5f);
-                }
-                pVolume->Release();
-            }
-            pDevice->Release();
-        }
-        pEnum->Release();
-    }
-
-    if (bCoInit) CoUninitialize();
-
-    // post to UI thread
-    ::PostMessage(hwndNotify, CMFCApplication1Dlg::WM_VOLUME_UPDATED, (WPARAM)pct, 0);
-}
-
-// Synchronous helper used by UI actions when immediate value is needed
-[[nodiscard]] static int GetMasterVolumePercent()
-{
-    int pct = 100;
-    HRESULT hr = CoInitialize(NULL);
-    bool bCoInit = SUCCEEDED(hr);
-
-    IMMDeviceEnumerator* pEnum = NULL;
-    hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&pEnum);
-    if (SUCCEEDED(hr) && pEnum)
-    {
-        IMMDevice* pDevice = NULL;
-        if (SUCCEEDED(pEnum->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice)) && pDevice)
-        {
-            IAudioEndpointVolume* pVolume = NULL;
-            if (SUCCEEDED(pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, NULL, (void**)&pVolume)) && pVolume)
-            {
-                float fVol = 0.0f;
-                if (SUCCEEDED(pVolume->GetMasterVolumeLevelScalar(&fVol)))
-                {
-                    pct = (int)(fVol * 100.0f + 0.5f);
-                }
-                pVolume->Release();
-            }
-            pDevice->Release();
-        }
-        pEnum->Release();
-    }
-
-    if (bCoInit) CoUninitialize();
-    return pct;
-}
-
-static bool SetMasterVolumePercent(int pct)
-{
-    if (pct < 0) pct = 0;
-    if (pct > 100) pct = 100;
-
-    bool bSuccess = false;
-    HRESULT hr = CoInitialize(NULL);
-    bool bCoInit = SUCCEEDED(hr);
-
-    IMMDeviceEnumerator* pEnum = NULL;
-    hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&pEnum);
-    if (SUCCEEDED(hr) && pEnum)
-    {
-        IMMDevice* pDevice = NULL;
-        if (SUCCEEDED(pEnum->GetDefaultAudioEndpoint(eRender, eConsole, &pDevice)) && pDevice)
-        {
-            IAudioEndpointVolume* pVolume = NULL;
-            if (SUCCEEDED(pDevice->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, NULL, (void**)&pVolume)) && pVolume)
-            {
-                float fVol = (float)pct / 100.0f;
-                if (SUCCEEDED(pVolume->SetMasterVolumeLevelScalar(fVol, NULL)))
-                {
-                    bSuccess = true;
-                }
-                pVolume->Release();
-            }
-            pDevice->Release();
-        }
-        pEnum->Release();
-    }
-
-    if (bCoInit) CoUninitialize();
-    return bSuccess;
-}
-
-// (已移至 Utils.h/cpp 和 AutoClicker.h/cpp)
-
-// Allow specific window messages through UIPI using ChangeWindowMessageFilterEx when available.
-static void AllowUIPIMessage(HWND hwnd, UINT msg, BOOL allow)
-{
-    HMODULE hUser = GetModuleHandleW(L"user32.dll");
-    if (!hUser) return;
-    // Try ChangeWindowMessageFilterEx (Vista+ with KB installed). If not available,
-    // fall back to ChangeWindowMessageFilter (older semantics).
-    typedef BOOL (WINAPI *PFNChangeWindowMessageFilterEx)(HWND, UINT, DWORD, PCHANGEFILTERSTRUCT);
-    PFNChangeWindowMessageFilterEx pfnEx = (PFNChangeWindowMessageFilterEx)GetProcAddress(hUser, "ChangeWindowMessageFilterEx");
-    if (pfnEx)
-    {
-        DWORD action = allow ? MSGFLT_ALLOW : MSGFLT_DISALLOW;
-        // ignore result
-        pfnEx(hwnd, msg, action, NULL);
-        return;
-    }
-
-    // Fallback to ChangeWindowMessageFilter
-    typedef BOOL (WINAPI *PFNChangeWindowMessageFilter)(UINT, DWORD);
-    PFNChangeWindowMessageFilter pfn = (PFNChangeWindowMessageFilter)GetProcAddress(hUser, "ChangeWindowMessageFilter");
-    if (!pfn) return;
-    DWORD action = allow ? MSGFLT_ADD : MSGFLT_REMOVE;
-    pfn(msg, action);
-}
-
-// Check whether current process is running elevated
-[[nodiscard]] static bool IsProcessElevated()
-{
-    HANDLE hToken = NULL;
-    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
-        return false;
-
-    TOKEN_ELEVATION elev = {0};
-    DWORD dwSize = 0;
-    BOOL ok = GetTokenInformation(hToken, TokenElevation, &elev, sizeof(elev), &dwSize);
-    CloseHandle(hToken);
-    if (!ok) return false;
-    return elev.TokenIsElevated != 0;
-}
-
 void CMFCApplication1Dlg::OnBnClickedButton10()
 {
     CString url = AfxGetApp()->GetProfileString(_T("Sites"), _T("LocalServer"), _T("http://10.102.33.39/"));
@@ -814,41 +477,6 @@ void CMFCApplication1Dlg::OnBnClickedButton10()
 }
 
 // Next-track feature removed
-
-// Helper: parse edits (hours, minutes, seconds) into total seconds
-[[nodiscard]] static int ParseShutdownSeconds(CDialogEx* pDlg)
-{
-    ASSERT(pDlg != nullptr);
-    int h = 0, m = 0, s = 0;
-    CString sh, sm, ss;
-    CEdit* pEdit1 = (CEdit*)pDlg->GetDlgItem(IDC_EDIT1);
-    CEdit* pEdit2 = (CEdit*)pDlg->GetDlgItem(IDC_EDIT2);
-    CEdit* pEdit3 = (CEdit*)pDlg->GetDlgItem(IDC_EDIT3);
-
-    if (pEdit1) pEdit1->GetWindowText(sh);
-    if (pEdit2) pEdit2->GetWindowText(sm);
-    if (pEdit3) pEdit3->GetWindowText(ss);
-
-    // Empty fields treated as 0
-    if (sh.IsEmpty()) sh = _T("0");
-    if (sm.IsEmpty()) sm = _T("0");
-    if (ss.IsEmpty()) ss = _T("0");
-
-    // Validate numeric
-    h = _ttoi(sh);
-    m = _ttoi(sm);
-    s = _ttoi(ss);
-
-    if (h < 0 || m < 0 || s < 0) return 180; // invalid -> default 3 minutes
-    if (m >= 60 || s >= 60) return 180; // invalid -> default
-
-    // guard against too large values
-    long total = (long)h * 3600 + m * 60 + s;
-    if (total <= 0) return 180;
-    if (total > 7 * 24 * 3600) return 180; // >7 days treat as invalid
-
-    return (int)total;
-}
 
 void CMFCApplication1Dlg::OnBnClickedButton1()
 {
@@ -1681,7 +1309,7 @@ void CMFCApplication1Dlg::OnDestroy()
     }
 
     // Clear global autoclick owner handle to avoid referencing freed window
-    g_hwndOwnerForAuto = NULL;
+    // Autoclicker cleanup now handled by m_autoClicker.Stop() above
 
     // Revoke UIPI allowances
     AllowUIPIMessage(m_hWnd, WM_DROPFILES, FALSE);
@@ -1947,123 +1575,6 @@ void CMFCApplication1Dlg::OnNMDblclkList3(NMHDR* pNMHDR, LRESULT* pResult)
         }
     }
     *pResult = 0;
-}
-
-// Helper to format last error (C++20: using std::wformat)
-[[nodiscard]] static CString FormatLastError(DWORD err)
-{
-    LPVOID msgBuf = nullptr;
-    DWORD sz = FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-        nullptr, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPTSTR>(&msgBuf), 0, nullptr);
-    CString res;
-    if (sz && msgBuf)
-    {
-        res = static_cast<LPCTSTR>(msgBuf);
-        LocalFree(msgBuf);
-    }
-    else
-    {
-        res = std::format(L"Unknown error: {}", err).c_str();
-    }
-    return res;
-}
-
-// Launch a process as the shell/interactive user (typically non-elevated)
-// by duplicating the shell (explorer) process token and calling
-// CreateProcessWithTokenW. Returns true on success. If outError is
-// provided, it will receive a human-readable error string on failure.
-static bool LaunchProcessAsShellUser(const CString& exePath, const CString& params, CString* outError /*=nullptr*/)
-{
-    if (outError) *outError = _T("");
-
-    HWND hShell = GetShellWindow();
-    if (!hShell)
-    {
-        if (outError) *outError = _T("无法获取 Shell 窗口。");
-        return false;
-    }
-
-    DWORD dwPid = 0;
-    GetWindowThreadProcessId(hShell, &dwPid);
-    if (dwPid == 0)
-    {
-        if (outError) *outError = _T("无法获取 Shell 进程 ID。");
-        return false;
-    }
-
-    HANDLE hProc = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, dwPid);
-    if (!hProc)
-    {
-        if (outError) *outError = FormatLastError(GetLastError());
-        return false;
-    }
-
-    HANDLE hToken = NULL;
-    if (!OpenProcessToken(hProc, TOKEN_DUPLICATE | TOKEN_QUERY, &hToken))
-    {
-        if (outError) *outError = FormatLastError(GetLastError());
-        CloseHandle(hProc);
-        return false;
-    }
-
-    HANDLE hUserToken = NULL;
-    if (!DuplicateTokenEx(hToken, MAXIMUM_ALLOWED, NULL, SecurityIdentification, TokenPrimary, &hUserToken))
-    {
-        if (outError) *outError = FormatLastError(GetLastError());
-        CloseHandle(hToken);
-        CloseHandle(hProc);
-        return false;
-    }
-
-    // build command line
-    CString cmdLine;
-    if (params.IsEmpty())
-        cmdLine.Format(_T("\"%s\""), (LPCTSTR)exePath);
-    else
-        cmdLine.Format(_T("\"%s\" %s"), (LPCTSTR)exePath, (LPCTSTR)params);
-
-    STARTUPINFO si = {0}; si.cb = sizeof(si);
-    PROCESS_INFORMATION pi = {0};
-
-    BOOL ok = CreateProcessWithTokenW(hUserToken, LOGON_WITH_PROFILE, NULL, (LPWSTR)(LPCTSTR)cmdLine,
-        CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi);
-
-    if (ok)
-    {
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-    }
-    else
-    {
-        if (outError) *outError = FormatLastError(GetLastError());
-    }
-
-    CloseHandle(hUserToken);
-    CloseHandle(hToken);
-    CloseHandle(hProc);
-    return ok != FALSE;
-}
-
-// Ask user to restart elevated. Returns true if user agrees and restart was launched.
-[[nodiscard]] static bool PromptRestartElevated()
-{
-    int r = MessageBox(NULL, _T("操作需要管理员权限。是否以管理员权限重新启动程序？"), _T("需要权限"), MB_YESNO | MB_ICONQUESTION);
-    if (r == IDYES)
-    {
-        TCHAR exePath[MAX_PATH];
-        if (GetModuleFileName(NULL, exePath, MAX_PATH) > 0)
-        {
-            SHELLEXECUTEINFO sei = { 0 };
-            sei.cbSize = sizeof(sei);
-            sei.fMask = SEE_MASK_FLAG_NO_UI;
-            sei.lpVerb = _T("runas");
-            sei.lpFile = exePath;
-            sei.nShow = SW_SHOWNORMAL;
-            if (ShellExecuteEx(&sei))
-                return true;
-        }
-    }
-    return false;
 }
 
 // Background enumeration worker for processes
@@ -3327,7 +2838,7 @@ void CMFCApplication1Dlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScroll
             int pos = pSlider->GetPos();
             CString s; s.Format(_T("%d"), pos);
             pEditVol->SetWindowText(s);
-            SetMasterVolumePercent(pos);
+            CVolumeManager::SetMasterVolumePercent(pos);
         }
     }
 
@@ -3345,7 +2856,7 @@ void CMFCApplication1Dlg::OnBnClickedButton12()
     if (s.IsEmpty() || v < 0 || v > 100)
     {
         // invalid -> restore display to current volume
-        int cur = GetMasterVolumePercent();
+        int cur = CVolumeManager::GetMasterVolumePercent();
         CString cs; cs.Format(_T("%d"), cur);
         pEditVol->SetWindowText(cs);
         if (pSlider) pSlider->SetPos(cur);
@@ -3353,14 +2864,14 @@ void CMFCApplication1Dlg::OnBnClickedButton12()
     }
 
     // set volume
-    if (SetMasterVolumePercent(v))
+    if (CVolumeManager::SetMasterVolumePercent(v))
     {
         if (pSlider) pSlider->SetPos(v);
     }
     else
     {
         // on failure, restore displayed
-        int cur = GetMasterVolumePercent();
+        int cur = CVolumeManager::GetMasterVolumePercent();
         CString cs; cs.Format(_T("%d"), cur);
         pEditVol->SetWindowText(cs);
         if (pSlider) pSlider->SetPos(cur);
@@ -3370,7 +2881,7 @@ void CMFCApplication1Dlg::OnBnClickedButton12()
 void CMFCApplication1Dlg::OnBnClickedButton13()
 {
     // set to 0
-    if (SetMasterVolumePercent(0))
+    if (CVolumeManager::SetMasterVolumePercent(0))
     {
         CEdit* pEditVol = (CEdit*)GetDlgItem(IDC_EDIT5);
         CSliderCtrl* pSlider = (CSliderCtrl*)GetDlgItem(IDC_SLIDER1);
@@ -3382,7 +2893,7 @@ void CMFCApplication1Dlg::OnBnClickedButton13()
 void CMFCApplication1Dlg::OnBnClickedButton14()
 {
     // set to 10
-    if (SetMasterVolumePercent(10))
+    if (CVolumeManager::SetMasterVolumePercent(10))
     {
         CEdit* pEditVol = (CEdit*)GetDlgItem(IDC_EDIT5);
         CSliderCtrl* pSlider = (CSliderCtrl*)GetDlgItem(IDC_SLIDER1);
