@@ -607,6 +607,7 @@ public:
     void OnBrowseYuanbao() { BrowseFile(IDC_EDIT_YUANBAO_PATH, _T("选择元宝可执行文件")); }
     void OnBrowseStudy() { BrowseFolder(IDC_EDIT_STUDY_PATH, _T("选择学习文件夹")); }
     void OnBrowseDownload() { BrowseFolder(IDC_EDIT_DOWNLOAD_PATH, _T("选择下载文件夹")); }
+    void OnBrowseScreenshot() { BrowseFolder(IDC_EDIT_SCREENSHOT_DIR, _T("选择截图保存目录")); }
 private:
     void BrowseFile(UINT id, LPCTSTR title);
     void BrowseFolder(UINT id, LPCTSTR title);
@@ -623,6 +624,7 @@ BEGIN_MESSAGE_MAP(CSettingsDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BROWSE_YUANBAO, &CSettingsDlg::OnBrowseYuanbao)
     ON_BN_CLICKED(IDC_BROWSE_STUDY, &CSettingsDlg::OnBrowseStudy)
     ON_BN_CLICKED(IDC_BROWSE_DOWNLOAD, &CSettingsDlg::OnBrowseDownload)
+    ON_BN_CLICKED(IDC_BROWSE_SCREENSHOT, &CSettingsDlg::OnBrowseScreenshot)
 END_MESSAGE_MAP()
 
 BOOL CSettingsDlg::OnInitDialog()
@@ -640,6 +642,14 @@ BOOL CSettingsDlg::OnInitDialog()
     SetDlgItemText(IDC_EDIT_DOWNLOAD_PATH, AfxGetApp()->GetProfileString(_T("Paths"), _T("DownloadFolder"), _T("")));
     SetDlgItemText(IDC_EDIT_MOOC_URL, AfxGetApp()->GetProfileString(_T("Sites"), _T("MoocUrl"), _T("")));
     SetDlgItemText(IDC_EDIT_SDUCS_URL, AfxGetApp()->GetProfileString(_T("Sites"), _T("Sducs"), _T("")));
+
+    // 截图保存目录，默认桌面
+    CString strDefaultScreenshot;
+    TCHAR szDesktop[MAX_PATH];
+    if (SUCCEEDED(SHGetFolderPath(NULL, CSIDL_DESKTOP, NULL, 0, szDesktop)))
+        strDefaultScreenshot = szDesktop;
+    SetDlgItemText(IDC_EDIT_SCREENSHOT_DIR,
+        AfxGetApp()->GetProfileString(_T("Paths"), _T("ScreenshotDir"), strDefaultScreenshot));
     return TRUE;
 }
 
@@ -656,6 +666,7 @@ void CSettingsDlg::OnOK()
     GetDlgItemText(IDC_EDIT_YUANBAO_PATH, v); AfxGetApp()->WriteProfileString(_T("Paths"), _T("YuanbaoPath"), v);
     GetDlgItemText(IDC_EDIT_STUDY_PATH, v); AfxGetApp()->WriteProfileString(_T("Paths"), _T("StudyFolder"), v);
     GetDlgItemText(IDC_EDIT_DOWNLOAD_PATH, v); AfxGetApp()->WriteProfileString(_T("Paths"), _T("DownloadFolder"), v);
+    GetDlgItemText(IDC_EDIT_SCREENSHOT_DIR, v); AfxGetApp()->WriteProfileString(_T("Paths"), _T("ScreenshotDir"), v);
     GetDlgItemText(IDC_EDIT_MOOC_URL, v); AfxGetApp()->WriteProfileString(_T("Sites"), _T("MoocUrl"), v);
     GetDlgItemText(IDC_EDIT_SDUCS_URL, v); AfxGetApp()->WriteProfileString(_T("Sites"), _T("Sducs"), v);
     CDialogEx::OnOK();
@@ -716,6 +727,8 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_COMMAND(32776, &CMFCApplication1Dlg::OnCopyStartupPath)
     ON_COMMAND(32777, &CMFCApplication1Dlg::OnDeleteList6Record)
     ON_COMMAND(32778, &CMFCApplication1Dlg::OnDeleteList7Record)
+    ON_COMMAND(32779, &CMFCApplication1Dlg::OnTopmostFromHistory)
+    ON_COMMAND(32780, &CMFCApplication1Dlg::OnUntopmostFromHistory)
     ON_BN_CLICKED(IDC_BUTTON1, &CMFCApplication1Dlg::OnBnClickedButton1)
     ON_BN_CLICKED(IDC_BUTTON2, &CMFCApplication1Dlg::OnBnClickedButton2)
     ON_CBN_SELCHANGE(IDC_COMBO1, &CMFCApplication1Dlg::OnCbnSelchangeCombo1)
@@ -1408,12 +1421,41 @@ void CMFCApplication1Dlg::OnWindowScreenshot()
 		::EmptyClipboard();
 		::SetClipboardData(CF_BITMAP, hBitmap);
 		::CloseClipboard();
-		MessageBox(_T("窗口截图已复制到剪贴板。"), _T("完成"), MB_OK | MB_ICONINFORMATION);
 	}
 	else
 	{
 		MessageBox(_T("无法打开剪贴板。"), _T("错误"), MB_OK | MB_ICONERROR);
 		::DeleteObject(hBitmap);
+	}
+
+	// 保存到文件
+	{
+		CString sDir = AfxGetApp()->GetProfileString(_T("Paths"), _T("ScreenshotDir"), _T(""));
+		if (sDir.IsEmpty())
+		{
+			TCHAR szDesktop[MAX_PATH];
+			if (SUCCEEDED(SHGetFolderPath(NULL, CSIDL_DESKTOP, NULL, 0, szDesktop)))
+				sDir = szDesktop;
+		}
+
+		// 生成带时间戳的文件名
+		SYSTEMTIME st;
+		GetLocalTime(&st);
+		CString sFilename;
+		sFilename.Format(_T("\\screenshot_%04d%02d%02d_%02d%02d%02d.png"),
+			st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+
+		CString sFullPath = sDir + sFilename;
+
+		// 保存为 PNG（使用 ATL CImage）
+		CImage img;
+		img.Attach(hBitmap);
+		img.Save(sFullPath);
+		img.Detach();  // 避免 hBitmap 被 CImage 析构时释放
+
+		CString sMsg;
+		sMsg.Format(_T("截图已保存到:\n%s"), sFullPath);
+		MessageBox(sMsg, _T("完成"), MB_OK | MB_ICONINFORMATION);
 	}
 
 	::SelectObject(hdcMem, hOldBmp);
@@ -1687,6 +1729,63 @@ void CMFCApplication1Dlg::OnDeleteList7Record()
 	if (nSel < 0 || static_cast<size_t>(nSel) >= m_historyWnds.size()) return;
 
 	m_historyWnds.erase(m_historyWnds.begin() + nSel);
+
+	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+	if (pTab) UpdateTabVisibility(pTab->GetCurSel());
+}
+
+void CMFCApplication1Dlg::OnTopmostFromHistory()
+{
+	CListCtrl* pList7 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST7));
+	if (!pList7) return;
+
+	int nSel = pList7->GetNextItem(-1, LVNI_SELECTED);
+	if (nSel < 0 || static_cast<size_t>(nSel) >= m_historyWnds.size()) return;
+
+	HWND hWnd = m_historyWnds[nSel];
+	if (!::IsWindow(hWnd)) return;
+
+	if (!::SetWindowPos(hWnd, HWND_TOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE))
+	{
+		MessageBox(_T("置顶失败，可能权限不足或窗口不允许。"), _T("提示"), MB_OK | MB_ICONERROR);
+		return;
+	}
+
+	auto it = std::find(m_topmostWnds.begin(), m_topmostWnds.end(), hWnd);
+	if (it == m_topmostWnds.end())
+		m_topmostWnds.push_back(hWnd);
+
+	if (hWnd == m_hWnd)
+	{
+		CButton* pCheck = static_cast<CButton*>(GetDlgItem(IDC_CHECK3));
+		if (pCheck) pCheck->SetCheck(BST_CHECKED);
+	}
+
+	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+	if (pTab) UpdateTabVisibility(pTab->GetCurSel());
+}
+
+void CMFCApplication1Dlg::OnUntopmostFromHistory()
+{
+	CListCtrl* pList7 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST7));
+	if (!pList7) return;
+
+	int nSel = pList7->GetNextItem(-1, LVNI_SELECTED);
+	if (nSel < 0 || static_cast<size_t>(nSel) >= m_historyWnds.size()) return;
+
+	HWND hWnd = m_historyWnds[nSel];
+	if (::IsWindow(hWnd))
+		::SetWindowPos(hWnd, HWND_NOTOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
+
+	m_topmostWnds.erase(
+		std::remove(m_topmostWnds.begin(), m_topmostWnds.end(), hWnd),
+		m_topmostWnds.end());
+
+	if (hWnd == m_hWnd)
+	{
+		CButton* pCheck = static_cast<CButton*>(GetDlgItem(IDC_CHECK3));
+		if (pCheck) pCheck->SetCheck(BST_UNCHECKED);
+	}
 
 	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
 	if (pTab) UpdateTabVisibility(pTab->GetCurSel());
@@ -2429,15 +2528,23 @@ void CMFCApplication1Dlg::OnContextMenu(CWnd* pWnd, CPoint point)
         return;
     }
 
-    // 右键在历史窗口列表上 (删除)
+    // 右键在历史窗口列表上 (置顶 / 删除)
     CListCtrl* pList7 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST7));
     if (pList7 && hClicked == pList7->GetSafeHwnd())
     {
         int nSel = pList7->GetNextItem(-1, LVNI_SELECTED);
-        if (nSel != -1)
+        if (nSel != -1 && static_cast<size_t>(nSel) < m_historyWnds.size())
         {
+            HWND hWnd = m_historyWnds[nSel];
+            bool bAlreadyTopmost = ::IsWindow(hWnd) &&
+                std::find(m_topmostWnds.begin(), m_topmostWnds.end(), hWnd) != m_topmostWnds.end();
+
             CMenu menu;
             menu.CreatePopupMenu();
+            if (bAlreadyTopmost)
+                menu.AppendMenu(MF_STRING, 32780, _T("取消置顶"));
+            else
+                menu.AppendMenu(MF_STRING, 32779, _T("置顶"));
             menu.AppendMenu(MF_STRING, 32778, _T("删除"));
             menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
         }

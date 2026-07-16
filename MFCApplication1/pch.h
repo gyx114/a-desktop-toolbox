@@ -24,5 +24,6 @@
 #include <string>
 #include <algorithm>
 #include <ranges>
+#include <atlimage.h>
 
 #endif //PCH_H

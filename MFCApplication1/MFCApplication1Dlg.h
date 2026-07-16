@@ -200,6 +200,8 @@ public:
 	afx_msg void OnClickList7(NMHDR* pNMHDR, LRESULT* pResult);       // LIST7 单击加载详情
 	afx_msg void OnDeleteList6Record();                                // LIST6 右键删除
 	afx_msg void OnDeleteList7Record();                                // LIST7 右键删除
+	afx_msg void OnTopmostFromHistory();                               // LIST7 右键置顶
+	afx_msg void OnUntopmostFromHistory();                             // LIST7 右键取消置顶
 	afx_msg void OnHelpShortcuts();
 	afx_msg void OnHelpGithub();
 
