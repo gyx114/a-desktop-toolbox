@@ -1,4 +1,4 @@
-﻿// MFCApplication1Dlg.cpp: 实现文件
+// MFCApplication1Dlg.cpp: 实现文件
 //
 
 #include "pch.h"
@@ -767,13 +767,12 @@ END_MESSAGE_MAP()
 
 // CMFCApplication1Dlg 消息处理程序
 
+
 BOOL CMFCApplication1Dlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
 
-	// 将“关于...”菜单项添加到系统菜单中。
-
-	// IDM_ABOUTBOX 必须在系统命令范围内。
+	// 将"关于..."菜单项添加到系统菜单中。
 	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
 	ASSERT(IDM_ABOUTBOX < 0xF000);
 
@@ -789,404 +788,414 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
 			pSysMenu->AppendMenu(MF_SEPARATOR);
 			pSysMenu->AppendMenu(MF_STRING, IDM_ABOUTBOX, strAboutMenu);
 		}
-
 	}
 
-	// 设置此对话框的图标。  当应用程序主窗口不是对话框时，框架将自动
-	//  执行此操作
-	SetIcon(m_hIcon, TRUE);			// 设置大图标
-	SetIcon(m_hIcon, FALSE);		// 设置小图标
+	SetIcon(m_hIcon, TRUE);
+	SetIcon(m_hIcon, FALSE);
 
-	// TODO: 在此添加额外的初始化代码
-    // Load menu bar
-    CMenu menu;
-    menu.LoadMenu(IDR_MAIN_MENU);
-    SetMenu(&menu);
-    menu.Detach();
+	// 菜单栏
+	CMenu menu;
+	menu.LoadMenu(IDR_MAIN_MENU);
+	SetMenu(&menu);
+	menu.Detach();
 
-    // 文件管理模块已移除；仍保留最小化到托盘默认设置
-    m_bMinimizeOnClose = true;
-    // 文件管理：默认副本名称
-    m_strDroppedFilePath.Empty();
-    SetDlgItemText(IDC_EDIT4, AfxGetApp()->GetProfileString(_T("Template"), _T("DefaultReportName"), _T("")));
-	CTabCtrl* pTab = (CTabCtrl*)GetDlgItem(IDC_TAB1);
-	if (pTab)
+	m_bMinimizeOnClose = true;
+	m_strDroppedFilePath.Empty();
+	SetDlgItemText(IDC_EDIT4, AfxGetApp()->GetProfileString(_T("Template"), _T("DefaultReportName"), _T("")));
+
+	// 初始化标签页和各标签页控件
+	InitTabControl();
+	InitProcessTab();
+	InitStartupTab();
+	InitClipboardTab();
+	InitWindowTab();
+	InitFileTab();
+	InitGitTab();
+
+	// 根据当前选中标签页统一更新控件可见性
+	int nCur = 0;
+	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+	if (pTab) nCur = pTab->GetCurSel();
+	UpdateTabVisibility(nCur);
+
+	// 首屏加载数据
+	if (nCur == 0)
+		RefreshProcessList();
+	else
+		RefreshStartupList();
+
+	// 关机/重启 combo 初始化
+	CComboBox* pCombo = static_cast<CComboBox*>(GetDlgItem(IDC_COMBO1));
+	if (pCombo)
 	{
-        // NOTE: 刷新列表在列初始化之后执行（避免后台线程太快导致 UI 尚未建立列）
-        pTab->InsertItem(0, _T("进程管理"));
-        // 将第二个选项卡名称修改为“启动项管理”
-        pTab->InsertItem(1, _T("启动项管理"));
-        // 新增第三个选项卡用于剪贴板管理
-        pTab->InsertItem(2, _T("剪贴板"));
-        // 第四个选项卡用于窗口处理
-        pTab->InsertItem(3, _T("窗口处理"));
-        // 第五个选项卡：文件管理
-        pTab->InsertItem(4, _T("文件管理"));
-        // 第六个选项卡：git 工具
-        pTab->InsertItem(5, _T("git工具箱"));
+		pCombo->ResetContent();
+		pCombo->AddString(_T("1分钟后重启"));
+		pCombo->AddString(_T("默认3分钟关机"));
+		pCombo->AddString(_T("设定时间关机"));
+		int idx = pCombo->FindStringExact(-1, _T("默认3分钟关机"));
+		if (idx != CB_ERR) pCombo->SetCurSel(idx);
+		else pCombo->SetCurSel(0);
+		OnCbnSelchangeCombo1();
 	}
 
-    // 控件可见性初始化：根据当前选中页显示对应的 List
-    CListCtrl* pList1 = (CListCtrl*)GetDlgItem(IDC_LIST1);
-    CListCtrl* pList2 = (CListCtrl*)GetDlgItem(IDC_LIST2);
-    // git commands list (tab6)
-    CListCtrl* pList4 = (CListCtrl*)GetDlgItem(IDC_LIST4);
-    CListCtrl* pList3 = (CListCtrl*)GetDlgItem(IDC_LIST3);
-    CListCtrl* pList5 = (CListCtrl*)GetDlgItem(IDC_LIST5);
-    int nCur = 0;
-    if (pTab) nCur = pTab->GetCurSel();
-    if (pList1) pList1->ShowWindow(nCur == 0 ? SW_SHOW : SW_HIDE);
-    if (pList2) pList2->ShowWindow(nCur == 1 ? SW_SHOW : SW_HIDE);
-    if (pList3) pList3->ShowWindow(nCur == 2 ? SW_SHOW : SW_HIDE);
-    if (pList4) pList4->ShowWindow(nCur == 5 ? SW_SHOW : SW_HIDE);
-    if (pList5)
-    {
-        pList5->ShowWindow(nCur == 3 ? SW_SHOW : SW_HIDE);
-        if (nCur == 3)
-        {
-            ::SetWindowPos(pList5->GetSafeHwnd(), HWND_TOP, 0,0,0,0, SWP_NOMOVE | SWP_NOSIZE);
-            pList5->BringWindowToTop();
-        }
-    }
+	// 开机自启动复选按钮
+	CButton* pCheck1 = static_cast<CButton*>(GetDlgItem(IDC_CHECK1));
+	if (pCheck1)
+	{
+		TCHAR exePath[MAX_PATH] = {0};
+		if (GetModuleFileName(NULL, exePath, MAX_PATH) > 0)
+		{
+			CString csExePath = exePath;
+			int pos = csExePath.ReverseFind(_T('\\'));
+			CString keyName = (pos != -1) ? csExePath.Mid(pos + 1) : csExePath;
 
-    // File management controls: only visible when tab index 4 selected
-    CWnd* pStaticPathCtrl = GetDlgItem(IDC_STATIC_PATH);
-    CWnd* pEdit4Ctrl = GetDlgItem(IDC_EDIT4);
-    CWnd* pBtn3Ctrl = GetDlgItem(IDC_BUTTON3);
-    CWnd* pStatic7Ctrl = GetDlgItem(IDC_STATIC7);
-    // New rename controls (hidden except on file management tab)
-    CWnd* pStatic13 = GetDlgItem(IDC_STATIC13);
-    CWnd* pEdit7 = GetDlgItem(IDC_EDIT7);
-    CWnd* pEdit8 = GetDlgItem(IDC_EDIT8);
-    CWnd* pBtn23 = GetDlgItem(IDC_BUTTON23);
-    CWnd* pBtn24 = GetDlgItem(IDC_BUTTON24);
-    if (pStaticPathCtrl) pStaticPathCtrl->ShowWindow((nCur == 4 || nCur == 5) ? SW_SHOW : SW_HIDE);
-    if (pEdit4Ctrl) pEdit4Ctrl->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
-    if (pBtn3Ctrl) pBtn3Ctrl->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
-    if (pStatic7Ctrl) pStatic7Ctrl->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
-    if (pStatic13) pStatic13->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
-    if (pEdit7) pEdit7->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
-    if (pEdit8) pEdit8->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
-    if (pBtn23) pBtn23->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
-    if (pBtn24) pBtn24->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
-    CWnd* pStatic14 = GetDlgItem(IDC_STATIC14);
-    CWnd* pBtn25 = GetDlgItem(IDC_BUTTON25);
-    CWnd* pBtn26 = GetDlgItem(IDC_BUTTON26);
-    CWnd* pBrowse = GetDlgItem(IDC_MFCEDITBROWSE2);
-    if (pStatic14) pStatic14->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
-    if (pBtn25) pBtn25->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
-    if (pBtn26) pBtn26->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
-    if (pBrowse) pBrowse->ShowWindow(nCur == 4 ? SW_SHOW : SW_HIDE);
-    if ((nCur == 4 || nCur == 5) && pStaticPathCtrl)
-    {
-        CString stDisplay = m_strDroppedFilePath.IsEmpty() ? CString(_T("拖拽文件到此")) : m_strDroppedFilePath;
-        pStaticPathCtrl->SetWindowText(stDisplay);
-    }
+			HKEY hKey = NULL;
+			if (RegOpenKeyEx(HKEY_CURRENT_USER, _T("Software\\Microsoft\\Windows\\CurrentVersion\\Run"), 0, KEY_READ, &hKey) == ERROR_SUCCESS)
+			{
+				DWORD type = 0;
+				TCHAR buf[MAX_PATH] = {0};
+				DWORD bufSize = sizeof(buf);
+				LONG ret = RegQueryValueEx(hKey, keyName, NULL, &type, reinterpret_cast<LPBYTE>(buf), &bufSize);
+				if (ret == ERROR_SUCCESS && type == REG_SZ)
+					pCheck1->SetCheck(BST_CHECKED);
+				else
+					pCheck1->SetCheck(BST_UNCHECKED);
+				RegCloseKey(hKey);
+			}
+			else
+			{
+				pCheck1->SetCheck(BST_UNCHECKED);
+			}
+		}
+	}
 
-    // show/hide locate button (placed in tab4 area). We no longer use button20/21.
-    {
-        CWnd* pBtn = GetDlgItem(IDC_BUTTON19);
-        if (pBtn) pBtn->ShowWindow(nCur == 3 ? SW_SHOW : SW_HIDE);
-        CWnd* pStatic = GetDlgItem(IDC_STATIC12);
-        if (pStatic) pStatic->ShowWindow(nCur == 3 ? SW_SHOW : SW_HIDE);
-        // tab6: Git 工具按钮，仅在 tab index 5 (第六个标签) 可见
-        CWnd* pBtn30 = GetDlgItem(IDC_BUTTON30);
-        if (pBtn30) pBtn30->ShowWindow(nCur == 5 ? SW_SHOW : SW_HIDE);
-        CWnd* pBtn31 = GetDlgItem(IDC_BUTTON31);
-        if (pBtn31) pBtn31->ShowWindow(nCur == 5 ? SW_SHOW : SW_HIDE);
-    }
+	// 拖放接收
+	CWnd* pCtrl = nullptr;
+	pCtrl = GetDlgItem(IDC_STATIC_PATH); if (pCtrl) ::DragAcceptFiles(pCtrl->GetSafeHwnd(), TRUE);
+	pCtrl = GetDlgItem(IDC_EDIT4);       if (pCtrl) ::DragAcceptFiles(pCtrl->GetSafeHwnd(), TRUE);
+	pCtrl = GetDlgItem(IDC_BUTTON3);     if (pCtrl) ::DragAcceptFiles(pCtrl->GetSafeHwnd(), TRUE);
+	pCtrl = GetDlgItem(IDC_STATIC7);     if (pCtrl) ::DragAcceptFiles(pCtrl->GetSafeHwnd(), TRUE);
 
-    // Initialize list control columns and styles
-    if (pList1)
-    {
-        pList1->ModifyStyle(0, LVS_REPORT);
-        pList1->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
-        pList1->InsertColumn(0, _T("进程名"), LVCFMT_LEFT, 200);
-        pList1->InsertColumn(1, _T("PID"), LVCFMT_LEFT, 160);
-        pList1->InsertColumn(2, _T("路径"), LVCFMT_LEFT, 600);
-        pList1->InsertColumn(3, _T("内存(KB)"), LVCFMT_RIGHT, 200);
-    }
-    if (pList2)
-    {
-        pList2->ModifyStyle(0, LVS_REPORT);
-        pList2->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
-        pList2->InsertColumn(0, _T("启动项名"), LVCFMT_LEFT, 200);
-        pList2->InsertColumn(1, _T("命令(路径)"), LVCFMT_LEFT, 840);
-    }
+	// 最小化到托盘复选按钮
+	CButton* pCheckMin = static_cast<CButton*>(GetDlgItem(IDC_CHECK2));
+	if (pCheckMin) pCheckMin->SetCheck(m_bMinimizeOnClose ? BST_CHECKED : BST_UNCHECKED);
 
-    // 初始化剪贴板历史列表（List3）
-    if (pList3)
-    {
-        pList3->ModifyStyle(0, LVS_REPORT);
-        pList3->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
-        pList3->InsertColumn(0, _T("文本内容(双击复制)"), LVCFMT_LEFT, 780);
-    }
+	// 非管理员权限 PowerShell 复选按钮默认选中
+	CButton* pCheck6 = static_cast<CButton*>(GetDlgItem(IDC_CHECK6));
+	if (pCheck6) pCheck6->SetCheck(BST_CHECKED);
 
-    // Initialize window info list (List5) used by the "窗口处理" tab (index 3)
-    // Use a compact two-column layout: 列0 = 句柄, 列1 = 详细信息 (进程名 | PID | 路径 | 窗口标题)
-    if (pList5)
-    {
-        pList5->ModifyStyle(0, LVS_REPORT);
-        pList5->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
-        pList5->InsertColumn(0, _T("字段"), LVCFMT_LEFT, 140);
-        pList5->InsertColumn(1, _T("值"), LVCFMT_LEFT, 980);
-    }
+	// 剪贴板监听
+	::AddClipboardFormatListener(m_hWnd);
 
-    // 初始化 git 常用命令列表（List4），属于 tab6 (index 5)
-    if (pList4)
-    {
-        pList4->ModifyStyle(0, LVS_REPORT);
-        pList4->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
-        // Make first column half width of previous (approx 190)
-        pList4->InsertColumn(0, _T("说明"), LVCFMT_LEFT, 190);
-        pList4->InsertColumn(1, _T("命令"), LVCFMT_LEFT, 400);
+	// 文件拖放
+	::DragAcceptFiles(m_hWnd, TRUE);
+	AllowUIPIMessage(m_hWnd, WM_DROPFILES, TRUE);
+	AllowUIPIMessage(m_hWnd, WM_COPYDATA, TRUE);
+	AllowUIPIMessage(m_hWnd, 0x0049, TRUE);
 
-        // If config.ini does not exist, create it with only GitCommands
-        const TCHAR* section = _T("GitCommands");
-        TCHAR exePath[MAX_PATH] = {0};
-        GetModuleFileName(NULL, exePath, MAX_PATH);
-        CString exeDir = exePath;
-        int p = exeDir.ReverseFind(_T('\\'));
-        CString configPath;
-        if (p != -1) configPath.Format(_T("%s\\config.ini"), exeDir.Left(p));
-        else configPath = _T("config.ini");
+	// 管理员权限提升
+	if (!IsProcessElevated())
+	{
+		auto RelaunchElevatedNoPrompt = []() -> bool {
+			TCHAR path[MAX_PATH];
+			if (GetModuleFileName(NULL, path, MAX_PATH) > 0)
+			{
+				SHELLEXECUTEINFO sei = { sizeof(sei) };
+				sei.fMask = SEE_MASK_FLAG_NO_UI;
+				sei.lpVerb = _T("runas");
+				sei.lpFile = path;
+				sei.nShow = SW_SHOWNORMAL;
+				return ShellExecuteEx(&sei) != FALSE;
+			}
+			return false;
+		};
 
-        if (GetFileAttributes(configPath) == INVALID_FILE_ATTRIBUTES)
-        {
-            // write defaults to INI
-            WritePrivateProfileString(section, _T("Cmd1"), _T("初始化本地仓库|git init"), configPath);
-            WritePrivateProfileString(section, _T("Cmd2"), _T("添加所有文件到暂存区|git add ."), configPath);
-            WritePrivateProfileString(section, _T("Cmd3"), _T("提交到本地仓库|git commit -m \"第一次提交\""), configPath);
-            WritePrivateProfileString(section, _T("Cmd4"), _T("添加远程仓库地址|git remote add origin <地址>"), configPath);
-            WritePrivateProfileString(section, _T("Cmd5"), _T("重命名分支为main|git branch -M main"), configPath);
-            WritePrivateProfileString(section, _T("Cmd6"), _T("首次推送并建立关联|git push -u origin main"), configPath);
-            WritePrivateProfileString(section, _T("Cmd7"), _T("拉取远程更新|git pull"), configPath);
-            WritePrivateProfileString(section, _T("Cmd8"), _T("克隆远程仓库到本地|git clone <地址>"), configPath);
-            WritePrivateProfileString(section, _T("Cmd9"), _T("查看当前状态|git status"), configPath);
-            WritePrivateProfileString(section, _T("Cmd10"), _T("添加所有修改到暂存区|git add ."), configPath);
-            WritePrivateProfileString(section, _T("Cmd11"), _T("提交到本地仓库|git commit -m \"说明\""), configPath);
-            WritePrivateProfileString(section, _T("Cmd12"), _T("推送到远程仓库|git push"), configPath);
-            WritePrivateProfileString(section, _T("Cmd13"), _T("查看所有分支含远程|git branch -a"), configPath);
-            WritePrivateProfileString(section, _T("Cmd14"), _T("创建并切换分支|git checkout -b <分支名>"), configPath);
-            WritePrivateProfileString(section, _T("Cmd15"), _T("切换分支|git checkout <分支名>"), configPath);
-            WritePrivateProfileString(section, _T("Cmd16"), _T("合并指定分支到当前分支|git merge <分支名>"), configPath);
-            WritePrivateProfileString(section, _T("Cmd17"), _T("删除已合并的分支|git branch -d <分支名>"), configPath);
-            WritePrivateProfileString(section, _T("Cmd18"), _T("查看简洁版提交历史|git log --oneline"), configPath);
-            WritePrivateProfileString(section, _T("Cmd19"), _T("撤销工作区修改|git restore <文件>"), configPath);
-            WritePrivateProfileString(section, _T("Cmd20"), _T("把暂存区文件撤回来|git restore --staged <文件>"), configPath);
-        }
+		if (RelaunchElevatedNoPrompt())
+		{
+			EndDialog(IDOK);
+			return FALSE;
+		}
+		else
+		{
+			MessageBox(_T("无法以管理员权限重新启动。请手动以管理员身份运行程序。"), _T("提示"), MB_OK | MB_ICONWARNING);
+		}
+	}
 
-        // populate list from INI until an empty key is found
-        pList4->DeleteAllItems();
-        for (int i = 1; i <= 99; ++i)
-        {
-            CString key; key.Format(_T("Cmd%d"), i);
-            TCHAR buf[1024] = {0};
-            GetPrivateProfileString(section, key, _T(""), buf, 1024, configPath);
-            CString val = buf;
-            if (val.IsEmpty()) break;
-            int sep = val.Find(_T('|'));
-            CString desc, cmd;
-            if (sep != -1)
-            {
-                desc = val.Left(sep);
-                cmd = val.Mid(sep + 1);
-            }
-            else
-            {
-                desc = val;
-                cmd = _T("");
-            }
-            int idx = pList4->InsertItem(i - 1, desc);
-            pList4->SetItemText(idx, 1, cmd);
-        }
-        // register for right-click/context menu and double-click notifications
-        // The list control uses NM_RCLICK and NM_DBLCLK notifications handled in message map below
-    }
+	// 全局快捷键
+	CString strTitle;
+	GetWindowText(strTitle);
+	strTitle += _T(" (ctrl+alt+空格唤起此窗口)");
+	SetWindowText(strTitle);
+	RegisterHotKey(m_hWnd, 1001, MOD_CONTROL | MOD_ALT, VK_SPACE);
 
-    // Ensure git tool buttons exist in dialog and are hidden unless tab6 selected
-    {
-        CWnd* pBtn30 = GetDlgItem(IDC_BUTTON30);
-        CWnd* pBtn31 = GetDlgItem(IDC_BUTTON31);
-        CWnd* pBtn32 = GetDlgItem(IDC_BUTTON32);
-        if (pBtn30) pBtn30->ShowWindow(nCur == 5 ? SW_SHOW : SW_HIDE);
-        if (pBtn31) pBtn31->ShowWindow(nCur == 5 ? SW_SHOW : SW_HIDE);
-        if (pBtn32)
-        {
-            if (nCur == 5)
-            {
-                pBtn32->ShowWindow(SW_SHOW);
-                pBtn32->EnableWindow(TRUE);
-                pBtn32->BringWindowToTop();
-                pBtn32->SetWindowPos(&wndTop, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
-            }
-            else
-            {
-                pBtn32->ShowWindow(SW_HIDE);
-            }
-        }
-    }
+	// 音量滑块
+	CSliderCtrl* pSlider = static_cast<CSliderCtrl*>(GetDlgItem(IDC_SLIDER1));
+	CEdit* pEditVol = static_cast<CEdit*>(GetDlgItem(IDC_EDIT5));
+	if (pSlider)
+	{
+		pSlider->SetRange(0, 100);
+		pSlider->SetPos(100);
+		if (pEditVol) pEditVol->SetWindowText(_T("100"));
+		CVolumeManager::FetchVolumeAsync(m_hWnd);
+	}
 
-    // 初始时将置顶/定位按钮隐藏（Tab4 中显示）; 按钮20/21 已弃用
-    {
-        CWnd* pBtn = GetDlgItem(IDC_BUTTON19);
-        if (pBtn) pBtn->ShowWindow(SW_HIDE);
-    }
+	return TRUE;
+}
 
-    // 2. 首次启动加载对应页面的数据
-    if (nCur == 0)
-        RefreshProcessList();
-    else
-        RefreshStartupList();
+// ========== 标签页初始化辅助函数 ==========
 
-    // 初始化关机/重启相关控件：combo 填充选项
-    CComboBox* pCombo = (CComboBox*)GetDlgItem(IDC_COMBO1);
-    if (pCombo)
-    {
-        pCombo->ResetContent();
-        pCombo->AddString(_T("1分钟后重启"));
-        pCombo->AddString(_T("默认3分钟关机"));
-        pCombo->AddString(_T("设定时间关机"));
-        // 如果控件带有排序样式 (CBS_SORT)，索引可能与添加顺序不一致，
-        // 使用 FindStringExact 定位我们希望的默认项并设置选择。
-        int idx = pCombo->FindStringExact(-1, _T("默认3分钟关机"));
-        if (idx != CB_ERR)
-            pCombo->SetCurSel(idx);
-        else
-            pCombo->SetCurSel(0);
-        // 更新编辑框可编辑状态
-        OnCbnSelchangeCombo1();
-    }
+void CMFCApplication1Dlg::InitTabControl()
+{
+	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+	if (!pTab) return;
 
-    // 编辑框的可用/只读状态由 OnCbnSelchangeCombo1() 控制，已在上面调用以初始化状态
+	pTab->InsertItem(0, _T("进程管理"));
+	pTab->InsertItem(1, _T("启动项管理"));
+	pTab->InsertItem(2, _T("剪贴板"));
+	pTab->InsertItem(3, _T("窗口处理"));
+	pTab->InsertItem(4, _T("文件管理"));
+	pTab->InsertItem(5, _T("git工具箱"));
+}
 
-    // 初始化开机自启动复选按钮状态：如果注册表中存在当前可执行文件的启动项则选中
-    CButton* pCheck1 = (CButton*)GetDlgItem(IDC_CHECK1);
-    if (pCheck1)
-    {
-        TCHAR exePath[MAX_PATH] = {0};
-        if (GetModuleFileName(NULL, exePath, MAX_PATH) > 0)
-        {
-            CString csExePath = exePath;
-            int pos = csExePath.ReverseFind(_T('\\'));
-            CString keyName = (pos != -1) ? csExePath.Mid(pos + 1) : csExePath;
+void CMFCApplication1Dlg::InitProcessTab()
+{
+	CListCtrl* pList1 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST1));
+	if (!pList1) return;
 
-            HKEY hKey = NULL;
-            if (RegOpenKeyEx(HKEY_CURRENT_USER, _T("Software\\Microsoft\\Windows\\CurrentVersion\\Run"), 0, KEY_READ, &hKey) == ERROR_SUCCESS)
-            {
-                DWORD type = 0;
-                TCHAR buf[MAX_PATH] = {0};
-                DWORD bufSize = sizeof(buf);
-                LONG ret = RegQueryValueEx(hKey, keyName, NULL, &type, (LPBYTE)buf, &bufSize);
-                if (ret == ERROR_SUCCESS && type == REG_SZ)
-                    pCheck1->SetCheck(BST_CHECKED);
-                else
-                    pCheck1->SetCheck(BST_UNCHECKED);
+	pList1->ModifyStyle(0, LVS_REPORT);
+	pList1->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
+	pList1->InsertColumn(0, _T("进程名"), LVCFMT_LEFT, 200);
+	pList1->InsertColumn(1, _T("PID"), LVCFMT_LEFT, 160);
+	pList1->InsertColumn(2, _T("路径"), LVCFMT_LEFT, 600);
+	pList1->InsertColumn(3, _T("内存(KB)"), LVCFMT_RIGHT, 200);
+}
 
-                RegCloseKey(hKey);
-            }
-            else
-            {
-                pCheck1->SetCheck(BST_UNCHECKED);
-            }
-        }
-    }
+void CMFCApplication1Dlg::InitStartupTab()
+{
+	CListCtrl* pList2 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST2));
+	if (!pList2) return;
 
-    // 文件管理：确保路径静态控件和副本名编辑框初始值
-    CWnd* pStaticPath = GetDlgItem(IDC_STATIC_PATH);
-    if (pStaticPath) pStaticPath->SetWindowText(m_strDroppedFilePath);
+	pList2->ModifyStyle(0, LVS_REPORT);
+	pList2->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
+	pList2->InsertColumn(0, _T("启动项名"), LVCFMT_LEFT, 200);
+	pList2->InsertColumn(1, _T("命令(路径)"), LVCFMT_LEFT, 840);
+}
 
-    // Also register common file-management child controls to accept drops so that
-    // WM_DROPFILES is delivered even when user drops directly onto those controls.
-    CWnd* pCtrl = NULL;
-    pCtrl = GetDlgItem(IDC_STATIC_PATH); if (pCtrl) ::DragAcceptFiles(pCtrl->GetSafeHwnd(), TRUE);
-    pCtrl = GetDlgItem(IDC_EDIT4); if (pCtrl) ::DragAcceptFiles(pCtrl->GetSafeHwnd(), TRUE);
-    pCtrl = GetDlgItem(IDC_BUTTON3); if (pCtrl) ::DragAcceptFiles(pCtrl->GetSafeHwnd(), TRUE);
-    pCtrl = GetDlgItem(IDC_STATIC7); if (pCtrl) ::DragAcceptFiles(pCtrl->GetSafeHwnd(), TRUE);
+void CMFCApplication1Dlg::InitClipboardTab()
+{
+	CListCtrl* pList3 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST3));
+	if (!pList3) return;
 
-    // 初始化控制关闭时最小化到托盘的复选按钮（默认选中）
-    CButton* pCheckMin = (CButton*)GetDlgItem(IDC_CHECK2);
-    if (pCheckMin)
-        pCheckMin->SetCheck(m_bMinimizeOnClose ? BST_CHECKED : BST_UNCHECKED);
+	pList3->ModifyStyle(0, LVS_REPORT);
+	pList3->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
+	pList3->InsertColumn(0, _T("文本内容(双击复制)"), LVCFMT_LEFT, 780);
+}
 
-    // 初始化 IDC_CHECK6 为默认选中（默认为以非管理员权限打开 PowerShell）
-    CButton* pCheck6 = (CButton*)GetDlgItem(IDC_CHECK6);
-    if (pCheck6)
-        pCheck6->SetCheck(BST_CHECKED);
+void CMFCApplication1Dlg::InitWindowTab()
+{
+	CListCtrl* pList5 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST5));
+	if (!pList5) return;
 
-    // 注册剪贴板更新通知
-    ::AddClipboardFormatListener(m_hWnd);
+	pList5->ModifyStyle(0, LVS_REPORT);
+	pList5->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
+	pList5->InsertColumn(0, _T("字段"), LVCFMT_LEFT, 140);
+	pList5->InsertColumn(1, _T("值"), LVCFMT_LEFT, 980);
+}
 
-    // Note: C++/WinRT headers require /std:c++17 and windowsapp.lib. They were
-    // removed from build to keep this project compatible with its current
-    // toolset. If you enable C++/WinRT, call winrt::init_apartment() here.
+void CMFCApplication1Dlg::InitFileTab()
+{
+	// 文件管理标签页的控件在资源编辑器中定义，此处仅做占位
+	// 实际可见性由 UpdateTabVisibility 管理
+}
 
-    // 文件管理及 DropHelper 已移除：不注册 OLE drop target，也不启动管道监听或 helper 进程
-    // Ensure the dialog accepts shell file drops. This allows receiving WM_DROPFILES
-    // even when the drop happens over child controls in most cases.
-    ::DragAcceptFiles(m_hWnd, TRUE);
+void CMFCApplication1Dlg::InitGitTab()
+{
+	CListCtrl* pList4 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST4));
+	if (!pList4) return;
 
-    // Allow WM_DROPFILES and WM_COPYDATA through UIPI for this window if supported.
-    AllowUIPIMessage(m_hWnd, WM_DROPFILES, TRUE);
-    AllowUIPIMessage(m_hWnd, WM_COPYDATA, TRUE);
-    // also allow legacy/global copy message used by some shells (0x0049)
-    AllowUIPIMessage(m_hWnd, 0x0049, TRUE);
+	pList4->ModifyStyle(0, LVS_REPORT);
+	pList4->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
+	pList4->InsertColumn(0, _T("说明"), LVCFMT_LEFT, 190);
+	pList4->InsertColumn(1, _T("命令"), LVCFMT_LEFT, 400);
 
-    // 如果当前未以管理员身份运行，直接强制以管理员身份重启（不再询问）
-    if (!IsProcessElevated())
-    {
-        // 尝试无提示提升并退出当前实例（如果提升请求发出成功）
-        auto RelaunchElevatedNoPrompt = []() -> bool {
-            TCHAR exePath[MAX_PATH];
-            if (GetModuleFileName(NULL, exePath, MAX_PATH) > 0)
-            {
-                SHELLEXECUTEINFO sei = { 0 };
-                sei.cbSize = sizeof(sei);
-                sei.fMask = SEE_MASK_FLAG_NO_UI;
-                sei.lpVerb = _T("runas");
-                sei.lpFile = exePath;
-                sei.nShow = SW_SHOWNORMAL;
-                return ShellExecuteEx(&sei) != FALSE;
-            }
-            return false;
-        };
+	// 如果 config.ini 不存在，创建默认 Git 命令
+	const TCHAR* section = _T("GitCommands");
+	TCHAR exePath[MAX_PATH] = {0};
+	GetModuleFileName(NULL, exePath, MAX_PATH);
+	CString exeDir = exePath;
+	int p = exeDir.ReverseFind(_T('\\'));
+	CString configPath;
+	if (p != -1) configPath.Format(_T("%s\\config.ini"), exeDir.Left(p));
+	else configPath = _T("config.ini");
 
-        if (RelaunchElevatedNoPrompt())
-        {
-            // Relaunch succeeded: end the dialog modal loop so the process
-            // exits cleanly and allows normal MFC/OLE cleanup to run.
-            EndDialog(IDOK);
-            // return FALSE to indicate initialization should not continue
-            return FALSE;
-        }
-        else
-        {
-            // 提升失败，提示一次并继续以非管理员方式运行
-            MessageBox(_T("无法以管理员权限重新启动。请手动以管理员身份运行程序。"), _T("提示"), MB_OK | MB_ICONWARNING);
-        }
-    }
+	if (GetFileAttributes(configPath) == INVALID_FILE_ATTRIBUTES)
+	{
+		WritePrivateProfileString(section, _T("Cmd1"),  _T("初始化本地仓库|git init"), configPath);
+		WritePrivateProfileString(section, _T("Cmd2"),  _T("添加所有文件到暂存区|git add ."), configPath);
+		WritePrivateProfileString(section, _T("Cmd3"),  _T("提交到本地仓库|git commit -m \"第一次提交\""), configPath);
+		WritePrivateProfileString(section, _T("Cmd4"),  _T("添加远程仓库地址|git remote add origin <地址>"), configPath);
+		WritePrivateProfileString(section, _T("Cmd5"),  _T("重命名分支为main|git branch -M main"), configPath);
+		WritePrivateProfileString(section, _T("Cmd6"),  _T("首次推送并建立关联|git push -u origin main"), configPath);
+		WritePrivateProfileString(section, _T("Cmd7"),  _T("拉取远程更新|git pull"), configPath);
+		WritePrivateProfileString(section, _T("Cmd8"),  _T("克隆远程仓库到本地|git clone <地址>"), configPath);
+		WritePrivateProfileString(section, _T("Cmd9"),  _T("查看当前状态|git status"), configPath);
+		WritePrivateProfileString(section, _T("Cmd10"), _T("添加所有修改到暂存区|git add ."), configPath);
+		WritePrivateProfileString(section, _T("Cmd11"), _T("提交到本地仓库|git commit -m \"说明\""), configPath);
+		WritePrivateProfileString(section, _T("Cmd12"), _T("推送到远程仓库|git push"), configPath);
+		WritePrivateProfileString(section, _T("Cmd13"), _T("查看所有分支含远程|git branch -a"), configPath);
+		WritePrivateProfileString(section, _T("Cmd14"), _T("创建并切换分支|git checkout -b <分支名>"), configPath);
+		WritePrivateProfileString(section, _T("Cmd15"), _T("切换分支|git checkout <分支名>"), configPath);
+		WritePrivateProfileString(section, _T("Cmd16"), _T("合并指定分支到当前分支|git merge <分支名>"), configPath);
+		WritePrivateProfileString(section, _T("Cmd17"), _T("删除已合并的分支|git branch -d <分支名>"), configPath);
+		WritePrivateProfileString(section, _T("Cmd18"), _T("查看简洁版提交历史|git log --oneline"), configPath);
+		WritePrivateProfileString(section, _T("Cmd19"), _T("撤销工作区修改|git restore <文件>"), configPath);
+		WritePrivateProfileString(section, _T("Cmd20"), _T("把暂存区文件撤回来|git restore --staged <文件>"), configPath);
+	}
 
-    // 注册全局快捷键 及更新窗口标题
-    CString strTitle;
-    GetWindowText(strTitle);
-    strTitle += _T(" (ctrl+alt+空格唤起此窗口)");
-    SetWindowText(strTitle);
-    RegisterHotKey(m_hWnd, 1001, MOD_CONTROL | MOD_ALT, VK_SPACE);
+	// 从 INI 加载命令列表
+	pList4->DeleteAllItems();
+	for (int i = 1; i <= 99; ++i)
+	{
+		CString key; key.Format(_T("Cmd%d"), i);
+		TCHAR buf[1024] = {0};
+		GetPrivateProfileString(section, key, _T(""), buf, 1024, configPath);
+		CString val = buf;
+		if (val.IsEmpty()) break;
+		int sep = val.Find(_T('|'));
+		CString desc, cmd;
+		if (sep != -1) { desc = val.Left(sep); cmd = val.Mid(sep + 1); }
+		else { desc = val; cmd = _T(""); }
+		int idx = pList4->InsertItem(i - 1, desc);
+		pList4->SetItemText(idx, 1, cmd);
+	}
+}
 
-    // Initialize volume controls: slider range 0-100 and set to current volume
-    CSliderCtrl* pSlider = (CSliderCtrl*)GetDlgItem(IDC_SLIDER1);
-    CEdit* pEditVol = (CEdit*)GetDlgItem(IDC_EDIT5);
-    if (pSlider)
-    {
-        pSlider->SetRange(0, 100);
-        // set placeholder and asynchronously update actual value
-        pSlider->SetPos(100);
-        if (pEditVol) pEditVol->SetWindowText(_T("100"));
-        // start async volume fetch (C++20: using CVolumeManager)
-        CVolumeManager::FetchVolumeAsync(m_hWnd);
-    }
+// ========== 统一标签页可见性管理 ==========
 
-    return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
+void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
+{
+	// 列表控件
+	CListCtrl* pList1 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST1));
+	CListCtrl* pList2 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST2));
+	CListCtrl* pList3 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST3));
+	CListCtrl* pList4 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST4));
+	CListCtrl* pList5 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST5));
+
+	if (pList1) pList1->ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
+	if (pList2) pList2->ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
+	if (pList3) pList3->ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
+	if (pList4) pList4->ShowWindow(nTab == 5 ? SW_SHOW : SW_HIDE);
+	if (pList5)
+	{
+		pList5->ShowWindow(nTab == 3 ? SW_SHOW : SW_HIDE);
+		if (nTab == 3)
+		{
+			::SetWindowPos(pList5->GetSafeHwnd(), HWND_TOP, 0,0,0,0, SWP_NOMOVE | SWP_NOSIZE);
+			pList5->BringWindowToTop();
+		}
+	}
+
+	// 窗口处理标签页按钮
+	CWnd* pBtn19 = GetDlgItem(IDC_BUTTON19);
+	CWnd* pStatic12 = GetDlgItem(IDC_STATIC12);
+	if (pBtn19) pBtn19->ShowWindow(nTab == 3 ? SW_SHOW : SW_HIDE);
+	if (pStatic12) pStatic12->ShowWindow(nTab == 3 ? SW_SHOW : SW_HIDE);
+
+	// Git 工具按钮
+	CWnd* pBtn30 = GetDlgItem(IDC_BUTTON30);
+	CWnd* pBtn31 = GetDlgItem(IDC_BUTTON31);
+	CWnd* pBtn32 = GetDlgItem(IDC_BUTTON32);
+	if (pBtn30) pBtn30->ShowWindow(nTab == 5 ? SW_SHOW : SW_HIDE);
+	if (pBtn31) pBtn31->ShowWindow(nTab == 5 ? SW_SHOW : SW_HIDE);
+	if (pBtn32)
+	{
+		if (nTab == 5)
+		{
+			pBtn32->ShowWindow(SW_SHOW);
+			pBtn32->EnableWindow(TRUE);
+			pBtn32->BringWindowToTop();
+			pBtn32->SetWindowPos(&wndTop, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
+		}
+		else
+		{
+			pBtn32->ShowWindow(SW_HIDE);
+		}
+	}
+
+	// 文件管理控件
+	BOOL showFile = (nTab == 4);
+	CWnd* pStaticPath = GetDlgItem(IDC_STATIC_PATH);
+	CWnd* pEdit4 = GetDlgItem(IDC_EDIT4);
+	CWnd* pBtn3 = GetDlgItem(IDC_BUTTON3);
+	CWnd* pStatic7 = GetDlgItem(IDC_STATIC7);
+	CWnd* pStatic13 = GetDlgItem(IDC_STATIC13);
+	CWnd* pEdit7 = GetDlgItem(IDC_EDIT7);
+	CWnd* pEdit8 = GetDlgItem(IDC_EDIT8);
+	CWnd* pBtn23 = GetDlgItem(IDC_BUTTON23);
+	CWnd* pBtn24 = GetDlgItem(IDC_BUTTON24);
+	CWnd* pStatic14 = GetDlgItem(IDC_STATIC14);
+	CWnd* pBtn25 = GetDlgItem(IDC_BUTTON25);
+	CWnd* pBtn26 = GetDlgItem(IDC_BUTTON26);
+	CWnd* pBrowse = GetDlgItem(IDC_MFCEDITBROWSE2);
+
+	if (pStaticPath) pStaticPath->ShowWindow((nTab == 4 || nTab == 5) ? SW_SHOW : SW_HIDE);
+	if (pEdit4) pEdit4->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+	if (pBtn3) pBtn3->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+	if (pStatic7) pStatic7->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+	if (pStatic13) pStatic13->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+	if (pEdit7) pEdit7->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+	if (pEdit8) pEdit8->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+	if (pBtn23) pBtn23->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+	if (pBtn24) pBtn24->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+	if (pStatic14) pStatic14->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+	if (pBtn25) pBtn25->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+	if (pBtn26) pBtn26->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+	if (pBrowse) pBrowse->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+
+	if (showFile || nTab == 5)
+	{
+		CString stDisplay = m_strDroppedFilePath.IsEmpty() ? CString(_T("拖拽文件到此")) : m_strDroppedFilePath;
+		SetDlgItemText(IDC_STATIC_PATH, stDisplay);
+	}
+
+	// 窗口处理标签页：填充窗口信息
+	if (nTab == 3 && pList5)
+	{
+		pList5->DeleteAllItems();
+		if (m_hSelectedWnd && ::IsWindow(m_hSelectedWnd))
+		{
+			HWND h = m_hSelectedWnd;
+			DWORD pid = 0; GetWindowThreadProcessId(h, &pid);
+
+			CString procName = _T("");
+			CString procPath = _T("");
+			HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+			if (hProc)
+			{
+				TCHAR buf[MAX_PATH] = {0};
+				DWORD size = _countof(buf);
+				if (QueryFullProcessImageName(hProc, 0, buf, &size)) procPath = buf;
+				int psep = procPath.ReverseFind(_T('\\'));
+				if (psep != -1) procName = procPath.Mid(psep + 1);
+				CloseHandle(hProc);
+			}
+
+			CString title;
+			::GetWindowText(h, title.GetBuffer(512), 512);
+			title.ReleaseBuffer();
+
+			int row = 0;
+			CString val;
+
+			val.Format(_T("0x%08X"), reinterpret_cast<UINT_PTR>(h));
+			pList5->InsertItem(row, _T("句柄")); pList5->SetItemText(row++, 1, val);
+			pList5->InsertItem(row, _T("进程名")); pList5->SetItemText(row++, 1, procName);
+			val.Format(_T("%u"), pid);
+			pList5->InsertItem(row, _T("PID")); pList5->SetItemText(row++, 1, val);
+			pList5->InsertItem(row, _T("路径")); pList5->SetItemText(row++, 1, procPath);
+			pList5->InsertItem(row, _T("窗口标题")); pList5->SetItemText(row++, 1, title);
+		}
+	}
 }
 
 void CMFCApplication1Dlg::OnSize(UINT nType, int cx, int cy)
@@ -1831,150 +1840,14 @@ void CMFCApplication1Dlg::RefreshProcessList()
 
 void CMFCApplication1Dlg::OnTcnSelchangeTab1(NMHDR *pNMHDR, LRESULT *pResult)
 {
-    CTabCtrl* pTab = (CTabCtrl*)GetDlgItem(IDC_TAB1);
-    CListCtrl* pList1 = (CListCtrl*)GetDlgItem(IDC_LIST1);
-    CListCtrl* pList2 = (CListCtrl*)GetDlgItem(IDC_LIST2);
-
-    // 如果切换了 Tab 页面，需要隐藏或显示相应的控件，并在切换到启动项页时刷新列表
+    CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
     if (pTab)
     {
         int nSel = pTab->GetCurSel();
-        if (pList1)
-            pList1->ShowWindow(nSel == 0 ? SW_SHOW : SW_HIDE);
-        if (pList2)
-        {
-            pList2->ShowWindow(nSel == 1 ? SW_SHOW : SW_HIDE);
-            if (nSel == 1)
-                RefreshStartupList();
-        }
-        // list3 for clipboard
-        CListCtrl* pList3 = (CListCtrl*)GetDlgItem(IDC_LIST3);
-        CListCtrl* pList4 = (CListCtrl*)GetDlgItem(IDC_LIST4); // git commands
-        CListCtrl* pList5 = (CListCtrl*)GetDlgItem(IDC_LIST5); // window info list (tab4)
-        if (pList3)
-            pList3->ShowWindow(nSel == 2 ? SW_SHOW : SW_HIDE);
-        if (pList4)
-            pList4->ShowWindow(nSel == 5 ? SW_SHOW : SW_HIDE);
-        if (pList5)
-            pList5->ShowWindow(nSel == 3 ? SW_SHOW : SW_HIDE);
-
-        // show only the locate button and helper static for tab4 (button20/21 unused)
-        CWnd* pB19 = GetDlgItem(IDC_BUTTON19);
-        if (pB19) pB19->ShowWindow(nSel == 3 ? SW_SHOW : SW_HIDE);
-        CWnd* pStatic = GetDlgItem(IDC_STATIC12);
-        if (pStatic) pStatic->ShowWindow(nSel == 3 ? SW_SHOW : SW_HIDE);
-
-        // Git tools (tab6) only visible on index 5
-        CWnd* pBtn30 = GetDlgItem(IDC_BUTTON30);
-        CWnd* pBtn31 = GetDlgItem(IDC_BUTTON31);
-        CWnd* pBtn32 = GetDlgItem(IDC_BUTTON32);
-        if (pBtn30) pBtn30->ShowWindow(nSel == 5 ? SW_SHOW : SW_HIDE);
-        if (pBtn31) pBtn31->ShowWindow(nSel == 5 ? SW_SHOW : SW_HIDE);
-        if (pBtn32) pBtn32->ShowWindow(nSel == 5 ? SW_SHOW : SW_HIDE);
-
-        // File management controls: show/hide static path and edit/button if tab 4 unavailable
-        CWnd* pStaticPath = GetDlgItem(IDC_STATIC_PATH);
-        CWnd* pEdit4 = GetDlgItem(IDC_EDIT4);
-        CWnd* pBtn3 = GetDlgItem(IDC_BUTTON3);
-        CWnd* pStatic7 = GetDlgItem(IDC_STATIC7);
-    CWnd* pStatic13b = GetDlgItem(IDC_STATIC13);
-    CWnd* pEdit7b = GetDlgItem(IDC_EDIT7);
-    CWnd* pEdit8b = GetDlgItem(IDC_EDIT8);
-    CWnd* pBtn23b = GetDlgItem(IDC_BUTTON23);
-    CWnd* pBtn24b = GetDlgItem(IDC_BUTTON24);
-        // We treat file management controls as available only on tab index 4.
-        // However the path static (IDC_STATIC_PATH) should also be visible on tab index 5 (git tools).
-        BOOL showFile = (nSel == 4);
-        if (pStaticPath) pStaticPath->ShowWindow((nSel == 4 || nSel == 5) ? SW_SHOW : SW_HIDE);
-        if (pEdit4) pEdit4->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
-        if (pBtn3) pBtn3->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
-        if (pStatic7) pStatic7->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
-    if (pStatic13b) pStatic13b->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
-    if (pEdit7b) pEdit7b->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
-    if (pEdit8b) pEdit8b->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
-    if (pBtn23b) pBtn23b->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
-    if (pBtn24b) pBtn24b->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
-    CWnd* pStatic14b = GetDlgItem(IDC_STATIC14);
-    CWnd* pBtn25b = GetDlgItem(IDC_BUTTON25);
-    CWnd* pBtn26b = GetDlgItem(IDC_BUTTON26);
-    CWnd* pBrowseb = GetDlgItem(IDC_MFCEDITBROWSE2);
-    if (pStatic14b) pStatic14b->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
-    if (pBtn25b) pBtn25b->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
-    if (pBtn26b) pBtn26b->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
-    if (pBrowseb) pBrowseb->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
-        if (showFile || nSel == 5)
-        {
-            CString stDisplay = m_strDroppedFilePath.IsEmpty() ? CString(_T("拖拽文件到此")) : m_strDroppedFilePath;
-            SetDlgItemText(IDC_STATIC_PATH, stDisplay);
-        }
-
-        // If switched to tab index 3 (窗口处理), populate IDC_LIST5 with window info
-        if (nSel == 3)
-        {
-            CListCtrl* pList5 = (CListCtrl*)GetDlgItem(IDC_LIST5);
-            if (pList5)
-            {
-                pList5->DeleteAllItems();
-                int idx = 0;
-                // If the user has located a specific window, show only that window's info.
-                if (m_hSelectedWnd && ::IsWindow(m_hSelectedWnd))
-                {
-                    HWND h = m_hSelectedWnd;
-                    DWORD pid = 0; GetWindowThreadProcessId(h, &pid);
-
-                    CString procName = _T("");
-                    CString procPath = _T("");
-                    HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-                    if (hProc)
-                    {
-                        TCHAR buf[MAX_PATH] = {0};
-                        DWORD size = _countof(buf);
-                        if (QueryFullProcessImageName(hProc, 0, buf, &size)) procPath = buf;
-                        int psep = procPath.ReverseFind(_T('\\'));
-                        if (psep != -1) procName = procPath.Mid(psep + 1);
-                        CloseHandle(hProc);
-                    }
-
-                    CString title;
-                    ::GetWindowText(h, title.GetBuffer(512), 512);
-                    title.ReleaseBuffer();
-
-                // Insert as two-column key/value rows
-                int row = 0;
-                CString key, val;
-
-                key = _T("句柄"); val.Format(_T("0x%08X"), (UINT_PTR)h);
-                pList5->InsertItem(row, key);
-                pList5->SetItemText(row, 1, val);
-                row++;
-
-                key = _T("进程名"); val = procName;
-                pList5->InsertItem(row, key);
-                pList5->SetItemText(row, 1, val);
-                row++;
-
-                key = _T("PID"); val.Format(_T("%u"), pid);
-                pList5->InsertItem(row, key);
-                pList5->SetItemText(row, 1, val);
-                row++;
-
-                key = _T("路径"); val = procPath;
-                pList5->InsertItem(row, key);
-                pList5->SetItemText(row, 1, val);
-                row++;
-
-                key = _T("窗口标题"); val = title;
-                pList5->InsertItem(row, key);
-                pList5->SetItemText(row, 1, val);
-                }
-                else
-                {
-                    // No located window available; clear list (or optionally enumerate top-level windows)
-                }
-            }
-        }
+        UpdateTabVisibility(nSel);
+        if (nSel == 1)
+            RefreshStartupList();
     }
-
     *pResult = 0;
 }
 

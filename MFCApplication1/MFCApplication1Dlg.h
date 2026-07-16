@@ -1,4 +1,4 @@
-﻿// MFCApplication1Dlg.h: 头文件
+// MFCApplication1Dlg.h: 头文件
 //
 
 #pragma once
@@ -9,6 +9,39 @@
 #include <string>
 #include <memory>
 #include "AutoClicker.h"
+
+// 按钮语义化别名
+#define IDC_BTN_SHUTDOWN       IDC_BUTTON1   // 关机/重启
+#define IDC_BTN_CANCEL_SHUTDOWN IDC_BUTTON2  // 取消关机
+#define IDC_BTN_MAKE_COPY      IDC_BUTTON3   // 生成副本
+#define IDC_BTN_WECHAT         IDC_BUTTON4   // 启动微信
+#define IDC_BTN_QQ             IDC_BUTTON5   // 启动QQ
+#define IDC_BTN_VSCODE         IDC_BUTTON6   // 启动VS Code
+#define IDC_BTN_VS             IDC_BUTTON7   // 启动Visual Studio
+#define IDC_BTN_BILIBILI       IDC_BUTTON8   // 启动哔哩哔哩
+#define IDC_BTN_STUDY          IDC_BUTTON9   // 打开学习文件夹
+#define IDC_BTN_LOCAL_SERVER   IDC_BUTTON10  // 打开本地服务器
+#define IDC_BTN_MOOC           IDC_BUTTON11  // 打开中国大学MOOC
+#define IDC_BTN_VOLUME_APPLY   IDC_BUTTON12  // 应用音量
+#define IDC_BTN_VOLUME_0       IDC_BUTTON13  // 音量设为0
+#define IDC_BTN_VOLUME_10      IDC_BUTTON14  // 音量设为10
+#define IDC_BTN_RUN_CMD        IDC_BUTTON17  // 运行命令
+#define IDC_BTN_CLEAR_CMD      IDC_BUTTON18  // 清空命令
+#define IDC_BTN_LOCATE         IDC_BUTTON19  // 窗口定位/置顶
+#define IDC_BTN_TASK_MGR       IDC_BUTTON20  // 打开任务管理器
+#define IDC_BTN_DOWNLOAD       IDC_BUTTON21  // 打开下载文件夹
+#define IDC_BTN_YUANBAO        IDC_BUTTON22  // 启动元宝
+#define IDC_BTN_RENAME_FILE    IDC_BUTTON23  // 重命名文件
+#define IDC_BTN_DELETE_FILE    IDC_BUTTON24  // 删除文件
+#define IDC_BTN_OPEN_FOLDER    IDC_BUTTON25  // 打开文件夹
+#define IDC_BTN_COPY_FILE      IDC_BUTTON26  // 复制文件
+#define IDC_BTN_POWERSHELL     IDC_BUTTON27  // 启动PowerShell
+#define IDC_BTN_WSL            IDC_BUTTON28  // 启动WSL
+#define IDC_BTN_LEETCODE       IDC_BUTTON29  // 打开LeetCode
+#define IDC_BTN_GITHUB         IDC_BUTTON30  // 打开GitHub
+#define IDC_BTN_GIT_BASH       IDC_BUTTON31  // 启动Git Bash
+#define IDC_BTN_CLEAR_PATH     IDC_BUTTON32  // 清除拖入路径
+#define IDC_BTN_BILI_NEXT      IDC_BUTTON33  // 哔哩哔哩下一首
 
 // CMFCApplication1Dlg 对话框
 class CMFCApplication1Dlg : public CDialogEx
@@ -32,6 +65,16 @@ public:
 // 实现
 protected:
 	HICON m_hIcon;
+
+	// 初始化辅助函数
+	void InitTabControl();
+	void InitProcessTab();
+	void InitStartupTab();
+	void InitClipboardTab();
+	void InitWindowTab();
+	void InitFileTab();
+	void InitGitTab();
+	void UpdateTabVisibility(int nTab);
 
 	// 生成的消息映射函数
 	virtual BOOL OnInitDialog();
