@@ -211,9 +211,13 @@ public:
 	// Auto-clicker state (C++20: encapsulated in CAutoClicker class)
 	CAutoClicker m_autoClicker;
 	static constexpr UINT WM_AUTOCLICK_STOPPED = CAutoClicker::WM_STOPPED;
+	static constexpr UINT WM_SPEED_DLG_CLOSED = WM_APP + 6;
 
 	// 连点器速度调节窗口（置顶）
 	CDialogEx* m_pSpeedDlg{nullptr};
+
+	// 速度窗口关闭回调
+	afx_msg LRESULT OnSpeedDlgClosed(WPARAM wParam, LPARAM lParam);
 
 	// Prevent automatic lock/screen-off checkbox state (IDC_CHECK5)
 	bool m_bPreventLockScreen{false};

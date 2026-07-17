@@ -490,7 +490,7 @@ void CMFCApplication1Dlg::OnTargetSelected(HWND hTarget, POINT pt)
 // Async volume retrieval: run in background and post WM_VOLUME_UPDATED with percent in WPARAM
 void CMFCApplication1Dlg::OnBnClickedButton10()
 {
-    CString url = AfxGetApp()->GetProfileString(_T("Sites"), _T("LocalServer"), _T("http://10.102.33.39/"));
+    CString url = AfxGetApp()->GetProfileString(_T("Sites"), _T("Sducs"), _T(""));
     ::ShellExecute(NULL, _T("open"), url, NULL, NULL, SW_SHOWNORMAL);
 }
 
@@ -592,6 +592,9 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CAutoClickerSpeedDlg - 连点器速度调节置顶窗口
 
+// 自定义消息：速度窗口关闭，通知主窗口清空指针
+static constexpr UINT WM_SPEED_DLG_CLOSED = WM_APP + 6;
+
 class CAutoClickerSpeedDlg : public CDialogEx
 {
 public:
@@ -623,10 +626,28 @@ protected:
             pSlider->SetTicFreq(100);
         }
         SetDlgItemInt(IDC_EDIT_CLICK_SPEED, m_interval);
+        UpdateStatus();
+        SetTimer(1, 200, nullptr);  // 每200ms刷新状态
         return TRUE;
     }
 
     virtual void OnOK() { /* 不关闭，仅应用 */ }
+
+    virtual void OnCancel() { OnClose(); }
+
+    afx_msg void OnClose()
+    {
+        // 停止连点器
+        if (m_pClicker)
+            m_pClicker->Stop();
+
+        // 通知主窗口清空指针
+        if (GetParent())
+            ::PostMessage(GetParent()->m_hWnd, WM_SPEED_DLG_CLOSED, 0, 0);
+
+        KillTimer(1);
+        DestroyWindow();
+    }
 
     afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
     {
@@ -651,6 +672,37 @@ protected:
         }
     }
 
+    afx_msg void OnTimer(UINT_PTR nIDEvent)
+    {
+        if (nIDEvent == 1)
+            UpdateStatus();
+    }
+
+    void UpdateStatus()
+    {
+        if (!m_pClicker) return;
+        CWnd* pStatus = GetDlgItem(IDC_STATIC_CLICK_STATUS);
+        if (!pStatus) return;
+
+        if (!m_pClicker->IsRunning())
+        {
+            pStatus->SetWindowText(_T("已停止"));
+            // 自销毁：连点器已停止，关闭窗口
+            KillTimer(1);
+            if (GetParent())
+                ::PostMessage(GetParent()->m_hWnd, WM_SPEED_DLG_CLOSED, 0, 0);
+            DestroyWindow();
+        }
+        else if (m_pClicker->IsClicking())
+        {
+            pStatus->SetWindowText(_T("正在点击"));
+        }
+        else
+        {
+            pStatus->SetWindowText(_T("等待触发 (按 A 开始)"));
+        }
+    }
+
     DECLARE_MESSAGE_MAP()
 private:
     CAutoClicker* m_pClicker;
@@ -659,6 +711,8 @@ private:
 
 BEGIN_MESSAGE_MAP(CAutoClickerSpeedDlg, CDialogEx)
     ON_WM_HSCROLL()
+    ON_WM_CLOSE()
+    ON_WM_TIMER()
     ON_EN_CHANGE(IDC_EDIT_CLICK_SPEED, &CAutoClickerSpeedDlg::OnEnChangeClickSpeed)
 END_MESSAGE_MAP()
 
@@ -845,6 +899,7 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_BN_CLICKED(IDC_BUTTON18, &CMFCApplication1Dlg::OnBnClickedButton18)
     ON_MESSAGE(WM_CLIPBOARDUPDATE, &CMFCApplication1Dlg::OnClipboardUpdate)
     ON_MESSAGE(CMFCApplication1Dlg::WM_AUTOCLICK_STOPPED, &CMFCApplication1Dlg::OnAutoClickStopped)
+    ON_MESSAGE(CMFCApplication1Dlg::WM_SPEED_DLG_CLOSED, &CMFCApplication1Dlg::OnSpeedDlgClosed)
     ON_NOTIFY(NM_DBLCLK, IDC_LIST3, &CMFCApplication1Dlg::OnNMDblclkList3)
     ON_NOTIFY(NM_DBLCLK, IDC_LIST2, &CMFCApplication1Dlg::OnNMDblclkList2)
     ON_NOTIFY(NM_CLICK,  IDC_LIST6, &CMFCApplication1Dlg::OnClickList6)
@@ -1535,6 +1590,9 @@ void CMFCApplication1Dlg::OnWindowScreenshot()
 			st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
 
 		CString sFullPath = sDir + sFilename;
+
+		// 确保目录存在
+		::SHCreateDirectoryEx(NULL, sDir, NULL);
 
 		// 保存为 PNG（使用 ATL CImage）
 		CImage img;
@@ -3809,6 +3867,17 @@ afx_msg LRESULT CMFCApplication1Dlg::OnAutoClickStopped(WPARAM wParam, LPARAM lP
     }
 
     MessageBox(_T("连点停止"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+    return 0;
+}
+
+// 速度调节窗口关闭回调：清空指针
+afx_msg LRESULT CMFCApplication1Dlg::OnSpeedDlgClosed(WPARAM wParam, LPARAM lParam)
+{
+    // 同步 CHECK4 状态
+    CButton* pCheck = static_cast<CButton*>(GetDlgItem(IDC_CHECK4));
+    if (pCheck) pCheck->SetCheck(BST_UNCHECKED);
+
+    m_pSpeedDlg = nullptr;
     return 0;
 }
 

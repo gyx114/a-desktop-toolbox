@@ -103,6 +103,7 @@
 #define IDC_EDIT_CLICK_SPEED            1106
 #define IDC_EDIT_CLICK_INTERVAL         1107
 #define IDC_STATIC_CLICK_SPEED          1108
+#define IDC_STATIC_CLICK_STATUS         1109
 #define ID_FILE_SETTINGS                32775
 #define ID_FILE_EXIT                    32776
 #define ID_HELP_ABOUT                   32777
