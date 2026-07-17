@@ -26,9 +26,10 @@ END_MESSAGE_MAP()
 BOOL CQRCodeGenDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
+
     GetDlgItem(IDC_BTN_QR_COPY)->EnableWindow(FALSE);
     GetDlgItem(IDC_BTN_QR_SAVE)->EnableWindow(FALSE);
-    SetDlgItemText(IDC_EDIT_QR_TEXT, _T("https://"));
+
     return TRUE;
 }
 

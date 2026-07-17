@@ -25,11 +25,14 @@ BEGIN_MESSAGE_MAP(CBatchRenameDlg, CDialogEx)
     ON_EN_CHANGE(IDC_EDIT_RENAME_SUFFIX, &CBatchRenameDlg::OnEnChangeRule)
     ON_EN_CHANGE(IDC_EDIT_RENAME_REPLACE_FROM, &CBatchRenameDlg::OnEnChangeRule)
     ON_EN_CHANGE(IDC_EDIT_RENAME_REPLACE_TO, &CBatchRenameDlg::OnEnChangeRule)
+    ON_WM_DROPFILES()
 END_MESSAGE_MAP()
 
 BOOL CBatchRenameDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
+
+    DragAcceptFiles(TRUE);
 
     CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_RENAME));
     if (pList)
@@ -233,4 +236,32 @@ void CBatchRenameDlg::OnEnChangeRule()
 {
     m_bPreviewDone = false;
     GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(FALSE);
+}
+
+void CBatchRenameDlg::OnDropFiles(HDROP hDrop)
+{
+    // 只接受第一个拖入项
+    UINT nFiles = ::DragQueryFile(hDrop, 0xFFFFFFFF, nullptr, 0);
+    if (nFiles == 0)
+    {
+        ::DragFinish(hDrop);
+        return;
+    }
+
+    TCHAR path[MAX_PATH];
+    ::DragQueryFile(hDrop, 0, path, MAX_PATH);
+    ::DragFinish(hDrop);
+
+    // 检查是否为文件夹
+    DWORD attrs = ::GetFileAttributes(path);
+    if (attrs == INVALID_FILE_ATTRIBUTES || !(attrs & FILE_ATTRIBUTE_DIRECTORY))
+    {
+        MessageBox(_T("仅支持拖入文件夹，请拖入文件夹而不是文件。"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+        return;
+    }
+
+    // 加载文件夹
+    m_folderPath = path;
+    SetDlgItemText(IDC_EDIT_RENAME_FOLDER, m_folderPath);
+    LoadFiles(m_folderPath);
 }

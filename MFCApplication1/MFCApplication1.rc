@@ -54,10 +54,10 @@ BEGIN
     "\r\n"
     "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)\r\n"
     "LANGUAGE 4, 2\r\n"
-    "#include ""res\\MFCApplication1.rc2""  // 闂?Microsoft Visual C++ 缂傚倸鍊搁崐鎼佸磹瑜版帗鍋嬮柣鎰仛椤愯姤銇勯幇鍫曟闁稿骸绉归弻娑㈠即閵娿儲鐏撻梺闈涚墱閸嬪懐鎹?\n"
-    "#include ""l.CHS\\afxres.rc""      // 闂傚倷绀侀幖顐ょ矓閺夋嚚娲Χ婢跺﹪妫峰銈嗙墬缁海澹曟總鍛婄厱闁哄洢鍔嬬花鍏笺亜?\n"
+    "#include ""res\\MFCApplication1.rc2""  // 闂?Microsoft Visual C++ 缂傚倸鍊搁崐鎼佸磹閹间礁纾圭憸鐗堝笚閸嬪鏌ｉ幇顒備粵妞ゆ劘濮ら妵鍕箛閸洘顎嶉梺绋块缁夊綊寮诲☉銏犲嵆闁靛鍎查悘鎾绘⒑闂堟稓澧遍柛瀣噽閹?\n"
+    "#include ""l.CHS\\afxres.rc""      // 闂傚倸鍊风粈渚€骞栭銈囩煋闁哄鍤氬ú顏勎у璺猴躬濡嘲顪冮妶鍡欏缂侇喖娴锋竟鏇熺附閸涘﹦鍘遍梺鍝勬储閸斿鑺遍崗绗轰簻?\n"
     "#if !defined(_AFXDLL)\r\n"
-    "#include ""l.CHS\\afxribbon.rc""   // MFC 闂傚倷绀侀幉鈥愁潖婵犳艾绐楅柡鍥ュ灩缁€鍌涙叏濡炶浜鹃悗瑙勬礈婵炩偓鐎规洦鍋婂畷鐔碱敆閳ь剟顢旈鐐粹拺缁绢厼鎳愰悞浠嬫煕閹扳晛濡块柛姗嗗墴濮婃椽宕崟鍨紖闂侀潧鐗嗗ú銏ゅ磻閹烘垟鏀?\n"
+    "#include ""l.CHS\\afxribbon.rc""   // MFC 闂傚倸鍊风粈渚€骞夐垾鎰佹綎濠电姵鑹剧粣妤呮煛閸ャ儱鐏╃紒鈧崒娑欏弿婵＄偠顕ф禍楣冩倵鐟欏嫭绀堝┑鐐╁亾閻庤娲﹂崑濠傜暦閻旂⒈鏁嗛柍褜鍓熼、鏃堫敍閻愮补鎷虹紒缁㈠幖閹虫劙鎮炴禒瀣厱闁规壋鏅涙俊鍧楁煕濮楀棗澧存慨濠冩そ瀹曨偊宕熼崹顐礀闂備線娼ч悧鍡椕洪姀銈呯；闁圭儤鍨熼弨?\n"
     "#endif\r\n"
     "#endif\r\n"
     "\0"
@@ -302,32 +302,32 @@ BEGIN
     CTEXT           "已停止",IDC_STATIC_CLICK_STATUS,7,45,196,18
 END
 
-IDD_QRCODE_DLG DIALOGEX 0, 0, 320, 300
+IDD_QRCODE_DLG DIALOGEX 0, 0, 320, 320
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "二维码生成"
 FONT 9, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     LTEXT           "输入文本(URL/文字):",IDC_STATIC,10,10,120,10
-    EDITTEXT        IDC_EDIT_QR_TEXT,10,24,300,14,ES_AUTOHSCROLL
-    PUSHBUTTON      "生成二维码",IDC_BTN_QR_GENERATE,10,44,60,20
-    PUSHBUTTON      "复制到剪贴板",IDC_BTN_QR_COPY,80,44,60,20
-    PUSHBUTTON      "保存为PNG",IDC_BTN_QR_SAVE,150,44,60,20
-    CONTROL         "",IDC_STATIC_QR_IMAGE,"Static",SS_BITMAP | SS_CENTERIMAGE,35,72,250,200
+    EDITTEXT        IDC_EDIT_QR_TEXT,10,24,300,40,ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL
+    PUSHBUTTON      "生成二维码",IDC_BTN_QR_GENERATE,10,70,60,20
+    PUSHBUTTON      "复制到剪贴板",IDC_BTN_QR_COPY,80,70,60,20
+    PUSHBUTTON      "保存为PNG",IDC_BTN_QR_SAVE,150,70,60,20
+    CONTROL         "",IDC_STATIC_QR_IMAGE,"Static",SS_BITMAP | SS_CENTERIMAGE,35,98,250,200
 END
 
-IDD_SCREENSHOT_OCR_DLG DIALOGEX 0, 0, 400, 380
+IDD_SCREENSHOT_OCR_DLG DIALOGEX 0, 0, 360, 266
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "截图OCR"
 FONT 9, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    PUSHBUTTON      "开始截图",IDC_BTN_OCR_CAPTURE,10,10,80,25
-    CTEXT           "点击按钮后拖拽选择屏幕区域,按ESC取消",IDC_STATIC_OCR_STATUS,100,14,290,14
+    PUSHBUTTON      "开始截图",IDC_BTN_OCR_CAPTURE,34,12,80,25
+    CTEXT           "点击按钮后拖拽选择屏幕区域,按ESC取消",IDC_STATIC_OCR_STATUS,134,17,154,14
     LTEXT           "识别结果:",IDC_STATIC,10,46,60,10
-    EDITTEXT        IDC_EDIT_OCR_RESULT,10,60,380,280,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
-    PUSHBUTTON      "复制结果",IDC_BTN_OCR_COPY,10,348,60,20
+    EDITTEXT        IDC_EDIT_OCR_RESULT,12,60,330,163,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
+    PUSHBUTTON      "复制结果",IDC_BTN_OCR_COPY,22,236,60,20
 END
 
-IDD_BATCH_RENAME_DLG DIALOGEX 0, 0, 425, 430
+IDD_BATCH_RENAME_DLG DIALOGEX 0, 0, 425, 359
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "批量重命名"
 FONT 9, "MS Shell Dlg", 0, 0, 0x1
@@ -342,8 +342,8 @@ BEGIN
     EDITTEXT        IDC_EDIT_RENAME_SUFFIX,160,263,80,14,ES_AUTOHSCROLL
     LTEXT           "替换:",IDC_STATIC,10,288,25,10
     EDITTEXT        IDC_EDIT_RENAME_REPLACE_FROM,40,286,80,14,ES_AUTOHSCROLL
-    LTEXT           "为:",IDC_STATIC,125,288,15,10
-    EDITTEXT        IDC_EDIT_RENAME_REPLACE_TO,140,286,80,14,ES_AUTOHSCROLL
+    LTEXT           "为:",IDC_STATIC,133,288,15,10
+    EDITTEXT        IDC_EDIT_RENAME_REPLACE_TO,160,286,80,14,ES_AUTOHSCROLL
     CONTROL         "添加序号",IDC_CHECK_RENAME_NUMBER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,275,265,38,10
     LTEXT           "起始:",IDC_STATIC,318,266,20,10
     EDITTEXT        IDC_EDIT_RENAME_START_NUM,343,264,40,14,ES_AUTOHSCROLL | ES_NUMBER
@@ -461,6 +461,11 @@ BEGIN
     0
 END
 
+IDD_SCREENSHOT_OCR_DLG AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -504,10 +509,10 @@ END
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
 LANGUAGE 4, 2
-#include "res\MFCApplication1.rc2"  // 闂?Microsoft Visual C++ 缂傚倸鍊搁崐鎼佸磹瑜版帗鍋嬮柣鎰仛椤愯姤銇勯幇鍫曟闁稿骸绉归弻娑㈠即閵娿儲鐏撻梺闈涚墱閸嬪懐鎹?
-#include "l.CHS\afxres.rc"      // 闂傚倷绀侀幖顐ょ矓閺夋嚚娲Χ婢跺﹪妫峰銈嗙墬缁海澹曟總鍛婄厱闁哄洢鍔嬬花鍏笺亜?
+#include "res\MFCApplication1.rc2"  // 闂?Microsoft Visual C++ 缂傚倸鍊搁崐鎼佸磹閹间礁纾圭憸鐗堝笚閸嬪鏌ｉ幇顒備粵妞ゆ劘濮ら妵鍕箛閸洘顎嶉梺绋块缁夊綊寮诲☉銏犲嵆闁靛鍎查悘鎾绘⒑闂堟稓澧遍柛瀣噽閹?
+#include "l.CHS\afxres.rc"      // 闂傚倸鍊风粈渚€骞栭銈囩煋闁哄鍤氬ú顏勎у璺猴躬濡嘲顪冮妶鍡欏缂侇喖娴锋竟鏇熺附閸涘﹦鍘遍梺鍝勬储閸斿鑺遍崗绗轰簻?
 #if !defined(_AFXDLL)
-#include "l.CHS\afxribbon.rc"   // MFC 闂傚倷绀侀幉鈥愁潖婵犳艾绐楅柡鍥ュ灩缁€鍌涙叏濡炶浜鹃悗瑙勬礈婵炩偓鐎规洦鍋婂畷鐔碱敆閳ь剟顢旈鐐粹拺缁绢厼鎳愰悞浠嬫煕閹扳晛濡块柛姗嗗墴濮婃椽宕崟鍨紖闂侀潧鐗嗗ú銏ゅ磻閹烘垟鏀?
+#include "l.CHS\afxribbon.rc"   // MFC 闂傚倸鍊风粈渚€骞夐垾鎰佹綎濠电姵鑹剧粣妤呮煛閸ャ儱鐏╃紒鈧崒娑欏弿婵＄偠顕ф禍楣冩倵鐟欏嫭绀堝┑鐐╁亾閻庤娲﹂崑濠傜暦閻旂⒈鏁嗛柍褜鍓熼、鏃堫敍閻愮补鎷虹紒缁㈠幖閹虫劙鎮炴禒瀣厱闁规壋鏅涙俊鍧楁煕濮楀棗澧存慨濠冩そ瀹曨偊宕熼崹顐礀闂備線娼ч悧鍡椕洪姀銈呯；闁圭儤鍨熼弨?
 #endif
 #endif
 

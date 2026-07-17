@@ -27,6 +27,7 @@ private:
     afx_msg void OnBnClickedPreview();
     afx_msg void OnBnClickedExecute();
     afx_msg void OnEnChangeRule();
+    afx_msg void OnDropFiles(HDROP hDrop);
 
     void LoadFiles(const CString& folderPath);
     void ApplyRules();
