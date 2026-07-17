@@ -219,6 +219,10 @@ public:
 	// 速度窗口关闭回调
 	afx_msg LRESULT OnSpeedDlgClosed(WPARAM wParam, LPARAM lParam);
 
+	// 连点器统一启动/停止
+	void StartAutoClicker();
+	void StopAutoClicker();
+
 	// Prevent automatic lock/screen-off checkbox state (IDC_CHECK5)
 	bool m_bPreventLockScreen{false};
 
