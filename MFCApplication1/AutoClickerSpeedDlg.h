@@ -19,10 +19,12 @@ protected:
     afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
     afx_msg void OnEnChangeClickSpeed();
     afx_msg void OnTimer(UINT_PTR nIDEvent);
+    afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
     void UpdateStatus();
     DECLARE_MESSAGE_MAP()
 
 private:
     CAutoClicker* m_pClicker;
     int m_interval{100};
+    int m_lastStatus{-1};  // 0=停止, 1=等待, 2=点击中，避免重复刷新
 };

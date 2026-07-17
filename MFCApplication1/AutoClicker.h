@@ -25,9 +25,16 @@ public:
     // 动态调整点击间隔（毫秒），无需停止连点器
     void SetInterval(int intervalMs);
 
+    // 设置触发键（默认 A=开始, B=停止）
+    void SetKeys(char keyStart, char keyStop);
+
     // 是否正在运行
     [[nodiscard]] bool IsRunning() const { return m_bEnabled.load(); }
     [[nodiscard]] bool IsClicking() const { return m_bClicking.load(); }
+
+    // 获取当前触发键
+    [[nodiscard]] char GetKeyStart() const { return m_keyStart.load(); }
+    [[nodiscard]] char GetKeyStop() const { return m_keyStop.load(); }
 
     // 自定义消息：连点已停止，wParam 和 lParam 均为 0
     static constexpr UINT WM_STOPPED = WM_APP + 4;
@@ -47,6 +54,8 @@ private:
     std::atomic<bool> m_bClicking{false};
     std::atomic<bool> m_bMonitorRunning{false};
     std::atomic<int> m_intervalMs{100};
+    std::atomic<char> m_keyStart{'A'};
+    std::atomic<char> m_keyStop{'B'};
 
     std::jthread m_clickThread;
     std::jthread m_monitorThread;

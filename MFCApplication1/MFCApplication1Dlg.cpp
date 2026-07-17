@@ -161,7 +161,7 @@ void CMFCApplication1Dlg::OnBiliNext()
 void CMFCApplication1Dlg::OnCopyGitCommand()
 {
     CWnd* pWnd = GetDlgItem(IDC_LIST4);
-    if (!pWnd || !::IsWindow(pWnd->GetSafeHwnd())) return;
+    if (!pWnd || !IsValidWindow(pWnd->GetSafeHwnd())) return;
     TCHAR cls[64] = {0};
     GetClassName(pWnd->GetSafeHwnd(), cls, _countof(cls));
     CString className = cls;
@@ -211,7 +211,7 @@ void CMFCApplication1Dlg::OnNMDblclkList4(NMHDR* pNMHDR, LRESULT* pResult)
     if (idx >= 0)
     {
         CWnd* pWnd = GetDlgItem(IDC_LIST4);
-        if (pWnd && ::IsWindow(pWnd->GetSafeHwnd()))
+        if (pWnd && IsValidWindow(pWnd->GetSafeHwnd()))
         {
             TCHAR cls[64] = {0};
             GetClassName(pWnd->GetSafeHwnd(), cls, _countof(cls));
@@ -244,7 +244,7 @@ void CMFCApplication1Dlg::OnNMDblclkList4(NMHDR* pNMHDR, LRESULT* pResult)
 void CMFCApplication1Dlg::OnLbnDblclkList4()
 {
     CWnd* pWnd = GetDlgItem(IDC_LIST4);
-    if (pWnd && ::IsWindow(pWnd->GetSafeHwnd()))
+    if (pWnd && IsValidWindow(pWnd->GetSafeHwnd()))
     {
         TCHAR cls[64] = {0};
         GetClassName(pWnd->GetSafeHwnd(), cls, _countof(cls));
@@ -1060,7 +1060,7 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
 			for (size_t i = 0; i < m_topmostWnds.size(); ++i)
 			{
 				HWND h = m_topmostWnds[i];
-				if (!::IsWindow(h)) continue;
+				if (!IsValidWindow(h)) continue;
 
 				TCHAR title[256] = {0};
 				::GetWindowText(h, title, _countof(title));
@@ -1087,7 +1087,7 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
 			for (size_t i = 0; i < m_historyWnds.size(); ++i)
 			{
 				HWND h = m_historyWnds[i];
-				if (!::IsWindow(h)) continue;
+				if (!IsValidWindow(h)) continue;
 
 				TCHAR title[256] = {0};
 				::GetWindowText(h, title, _countof(title));
@@ -1242,8 +1242,7 @@ void CMFCApplication1Dlg::OnDestroy()
     if (m_pSpeedDlg)
     {
         m_pSpeedDlg->DestroyWindow();
-        delete m_pSpeedDlg;
-        m_pSpeedDlg = nullptr;
+        m_pSpeedDlg.reset();
     }
 
     // Ensure autoclicker threads are stopped (C++20: using CAutoClicker class)
@@ -1255,7 +1254,7 @@ void CMFCApplication1Dlg::OnDestroy()
     // Remove topmost status from all managed windows
     for (HWND hWnd : m_topmostWnds)
     {
-        if (::IsWindow(hWnd))
+        if (IsValidWindow(hWnd))
             ::SetWindowPos(hWnd, HWND_NOTOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
     }
     m_topmostWnds.clear();
@@ -1264,7 +1263,7 @@ void CMFCApplication1Dlg::OnDestroy()
     ::DragAcceptFiles(m_hWnd, FALSE);
 
     // Destroy any lingering overlay capture window created for locating targets
-    if (m_hCaptureWnd && ::IsWindow(m_hCaptureWnd))
+    if (m_hCaptureWnd && IsValidWindow(m_hCaptureWnd))
     {
         ::DestroyWindow(m_hCaptureWnd);
         m_hCaptureWnd = NULL;
@@ -1354,7 +1353,7 @@ void CMFCApplication1Dlg::OnClose()
         // 取消剪贴板监听
         ::RemoveClipboardFormatListener(m_hWnd);
         // 清理可能存在的捕获窗口
-        if (m_hCaptureWnd && ::IsWindow(m_hCaptureWnd))
+        if (m_hCaptureWnd && IsValidWindow(m_hCaptureWnd))
         {
             ::DestroyWindow(m_hCaptureWnd);
             m_hCaptureWnd = NULL;
@@ -1661,7 +1660,7 @@ static UINT WINAPI EnumProcessesThread(LPVOID pParam)
     // If the dialog window is still valid, post the results. Otherwise
     // free the results to avoid leaking memory when the UI has been destroyed.
     HWND hwnd = dlg->GetSafeHwnd();
-    if (hwnd != NULL && ::IsWindow(hwnd))
+    if (hwnd != NULL && IsValidWindow(hwnd))
     {
         // If posting the message fails for any reason, free the results to avoid leaking.
         if (!::PostMessage(hwnd, CMFCApplication1Dlg::WM_REFRESH_PROCESSES_DONE, (WPARAM)results, 0))
@@ -1711,7 +1710,7 @@ static UINT WINAPI EnumStartupsThread(LPVOID pParam)
     }
 
     HWND hwnd = dlg->GetSafeHwnd();
-    if (hwnd != NULL && ::IsWindow(hwnd))
+    if (hwnd != NULL && IsValidWindow(hwnd))
     {
         if (!::PostMessage(hwnd, CMFCApplication1Dlg::WM_REFRESH_STARTUPS_DONE, (WPARAM)results, 0))
         {
@@ -1918,7 +1917,7 @@ void CMFCApplication1Dlg::OnContextMenu(CWnd* pWnd, CPoint point)
             if (idx < m_historyWnds.size())
             {
                 HWND hWnd = m_historyWnds[idx];
-                bool bAlreadyTopmost = ::IsWindow(hWnd) &&
+                bool bAlreadyTopmost = IsValidWindow(hWnd) &&
                     std::find(m_topmostWnds.begin(), m_topmostWnds.end(), hWnd) != m_topmostWnds.end();
 
                 CMenu menu;
@@ -2750,7 +2749,7 @@ void CMFCApplication1Dlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScroll
             label.Format(_T("透明度: %d%%"), percent);
             SetDlgItemText(IDC_STATIC18, label);
 
-            if (m_hSelectedWnd && ::IsWindow(m_hSelectedWnd))
+            if (m_hSelectedWnd && IsValidWindow(m_hSelectedWnd))
             {
                 // 设置分层窗口透明度
                 LONG style = ::GetWindowLong(m_hSelectedWnd, GWL_EXSTYLE);
@@ -2936,16 +2935,23 @@ void CMFCApplication1Dlg::OnBnClickedButton18()
 void CMFCApplication1Dlg::StartAutoClicker()
 {
     int interval = AfxGetApp()->GetProfileInt(_T("AutoClicker"), _T("IntervalMs"), 100);
+
+    // 读取触发键配置，默认 A/B
+    CString strKey = AfxGetApp()->GetProfileString(_T("AutoClicker"), _T("KeyStart"), _T("A"));
+    char keyStart = static_cast<char>(strKey.IsEmpty() ? 'A' : strKey[0]);
+    strKey = AfxGetApp()->GetProfileString(_T("AutoClicker"), _T("KeyStop"), _T("B"));
+    char keyStop = static_cast<char>(strKey.IsEmpty() ? 'B' : strKey[0]);
+    m_autoClicker.SetKeys(keyStart, keyStop);
     m_autoClicker.Start(interval, m_hWnd);
 
     // 显示速度调节窗口
     if (!m_pSpeedDlg)
     {
-        auto* pDlg = new CAutoClickerSpeedDlg(&m_autoClicker);
+        auto pDlg = std::make_unique<CAutoClickerSpeedDlg>(&m_autoClicker);
         pDlg->SetInterval(interval);
         pDlg->Create(IDD_CLICK_SPEED_DIALOG, this);
         pDlg->ShowWindow(SW_SHOW);
-        m_pSpeedDlg = pDlg;
+        m_pSpeedDlg = std::move(pDlg);
     }
 }
 
@@ -2957,8 +2963,7 @@ void CMFCApplication1Dlg::StopAutoClicker()
     if (m_pSpeedDlg)
     {
         m_pSpeedDlg->DestroyWindow();
-        delete m_pSpeedDlg;
-        m_pSpeedDlg = nullptr;
+        m_pSpeedDlg.reset();
     }
 }
 
@@ -2984,12 +2989,11 @@ afx_msg LRESULT CMFCApplication1Dlg::OnAutoClickStopped(WPARAM wParam, LPARAM lP
     if (m_pSpeedDlg)
     {
         m_pSpeedDlg->DestroyWindow();
-        delete m_pSpeedDlg;
-        m_pSpeedDlg = nullptr;
+        m_pSpeedDlg.reset();
     }
 
-    // 托盘气泡通知
-    if (m_bTrayVisible)
+    // 托盘气泡通知（托盘已初始化才发送）
+    if (m_bTrayVisible && m_nid.hWnd != NULL)
     {
         m_nid.uFlags = NIF_INFO;
         m_nid.dwInfoFlags = NIIF_INFO;
@@ -3008,7 +3012,7 @@ afx_msg LRESULT CMFCApplication1Dlg::OnSpeedDlgClosed(WPARAM wParam, LPARAM lPar
     CButton* pCheck = static_cast<CButton*>(GetDlgItem(IDC_CHECK4));
     if (pCheck) pCheck->SetCheck(BST_UNCHECKED);
 
-    m_pSpeedDlg = nullptr;
+    m_pSpeedDlg.reset();
     return 0;
 }
 
@@ -3228,7 +3232,7 @@ void CMFCApplication1Dlg::OnBnClickedButton32()
     // Clear stored path and update static control text
     m_strDroppedFilePath.Empty();
     CWnd* pStatic = GetDlgItem(IDC_STATIC_PATH);
-    if (pStatic && ::IsWindow(pStatic->GetSafeHwnd()))
+    if (pStatic && IsValidWindow(pStatic->GetSafeHwnd()))
     {
         // Show placeholder to indicate no file
         pStatic->SetWindowText(_T("拖拽文件到此"));

@@ -54,10 +54,10 @@ BEGIN
     "\r\n"
     "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)\r\n"
     "LANGUAGE 4, 2\r\n"
-    "#include ""res\\MFCApplication1.rc2""  // 闂?Microsoft Visual C++ 缂傛牞绶惃鍕カ濠?\n"
-    "#include ""l.CHS\\afxres.rc""      // 閺嶅洤鍣紒鍕\r\n"
+    "#include ""res\\MFCApplication1.rc2""  // 闂?Microsoft Visual C++ 缂傚倹鐗炵欢顐︽儍閸曨喚銈繝?\n"
+    "#include ""l.CHS\\afxres.rc""      // 闁哄秴娲ら崳顖滅磼閸曨亝顐?\n"
     "#if !defined(_AFXDLL)\r\n"
-    "#include ""l.CHS\\afxribbon.rc""   // MFC 閸旂喕鍏橀崠鍝勬嫲閹貉冨煑閺壜ょカ濠?\n"
+    "#include ""l.CHS\\afxribbon.rc""   // MFC 闁告梻鍠曢崗姗€宕犻崫鍕闁硅矇鍐ㄧ厬闁哄銈囥偒婵?\n"
     "#endif\r\n"
     "#endif\r\n"
     "\0"
@@ -166,7 +166,7 @@ BEGIN
     LTEXT           "拖拽文件到此",IDC_STATIC_PATH,21,37,180,12,SS_NOTIFY | SS_CENTERIMAGE | WS_BORDER,WS_EX_ACCEPTFILES
     CONTROL         "开机自启动",IDC_CHECK1,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,24,216,58,14
     CONTROL         "窗口置顶",IDC_CHECK3,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,24,229,58,14
-    CONTROL         "连点器：A开B关",IDC_CHECK4,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,86,216,69,14
+    CONTROL         "连点器",IDC_CHECK4,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,86,216,58,14
     CONTROL         "最小化到托盘",IDC_CHECK2,"Button",BS_AUTOCHECKBOX | BS_LEFTTEXT | WS_TABSTOP,356,0,54,12
     LTEXT           "时",IDC_STATIC,262,51,8,10
     EDITTEXT        IDC_EDIT2,272,49,18,12,ES_AUTOHSCROLL
@@ -206,7 +206,7 @@ BEGIN
     PUSHBUTTON      "移动到",IDC_BUTTON26,144,79,29,12
     CONTROL         "",IDC_MFCEDITBROWSE2,"MfcEditBrowse",WS_BORDER | WS_TABSTOP | 0x80,79,65,121,12
     GROUPBOX        "复制/移动",IDC_STATIC14,73,55,135,39
-    CONTROL         "禁止自动锁屏",IDC_CHECK5,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,86,229,63,14
+    CONTROL         "禁止自动锁屏",IDC_CHECK5,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,86,229,58,14
     PUSHBUTTON      "powershell",IDC_BUTTON27,297,90,38,14
     CONTROL         "非管理员打开",IDC_CHECK6,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,241,90,54,14
     PUSHBUTTON      "wsl",IDC_BUTTON28,339,90,30,14
@@ -229,7 +229,7 @@ BEGIN
     CONTROL         "",IDC_LIST7,"SysListView32",LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP,112,50,94,77
 END
 
-IDD_SETTINGS_DIALOG DIALOGEX 0, 0, 410, 367
+IDD_SETTINGS_DIALOG DIALOGEX 0, 0, 410, 397
 STYLE DS_SETFONT | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "配置"
 FONT 9, "MS Shell Dlg", 0, 0, 0x1
@@ -237,7 +237,7 @@ BEGIN
     GROUPBOX        "文件命名",IDC_STATIC,7,13,396,30
     LTEXT           "默认文件名:",IDC_STATIC,14,26,63,10
     EDITTEXT        IDC_EDIT_DEFAULT_NAME,89,24,304,12,ES_AUTOHSCROLL
-    GROUPBOX        "路径设置",IDC_STATIC,7,47,396,244
+    GROUPBOX        "路径设置",IDC_STATIC,7,47,396,259
     LTEXT           "Bilibili:",IDC_STATIC,14,66,45,10
     EDITTEXT        IDC_EDIT_BILI_PATH,89,64,254,12,ES_AUTOHSCROLL
     PUSHBUTTON      "浏览",IDC_BROWSE_BILI,350,64,44,12
@@ -268,28 +268,31 @@ BEGIN
     LTEXT           "截图保存目录:",IDC_STATIC,14,255,60,10
     EDITTEXT        IDC_EDIT_SCREENSHOT_DIR,89,253,254,12,ES_AUTOHSCROLL
     PUSHBUTTON      "浏览",IDC_BROWSE_SCREENSHOT,350,253,44,12
-    LTEXT           "连点器间隔(ms):",IDC_STATIC,14,276,75,10
-    EDITTEXT        IDC_EDIT_CLICK_INTERVAL,89,274,60,12,ES_AUTOHSCROLL | ES_NUMBER
-    GROUPBOX        "网址",IDC_STATIC,7,296,396,47
-    LTEXT           "MOOC:",IDC_STATIC,14,310,35,10
-    EDITTEXT        IDC_EDIT_MOOC_URL,89,308,306,12,ES_AUTOHSCROLL
-    LTEXT           "SDUCS:",IDC_STATIC,14,327,35,10
-    EDITTEXT        IDC_EDIT_SDUCS_URL,89,325,306,12,ES_AUTOHSCROLL
-    PUSHBUTTON      "确定",IDOK,272,347,50,14
-    PUSHBUTTON      "取消",IDCANCEL,330,347,50,14
+    LTEXT           "连点器间隔(ms):",IDC_STATIC,14,283,75,10
+    EDITTEXT        IDC_EDIT_CLICK_INTERVAL,89,281,60,12,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "开始键:",IDC_STATIC,192,283,28,10
+    EDITTEXT        IDC_EDIT_CLICK_KEY_START,226,282,30,12,ES_UPPERCASE | ES_AUTOHSCROLL
+    LTEXT           "停止键:",IDC_STATIC,286,283,30,10
+    EDITTEXT        IDC_EDIT_CLICK_KEY_STOP,321,282,30,12,ES_UPPERCASE | ES_AUTOHSCROLL
+    GROUPBOX        "网址",IDC_STATIC,7,326,396,47
+    LTEXT           "MOOC:",IDC_STATIC,14,340,35,10
+    EDITTEXT        IDC_EDIT_MOOC_URL,89,338,306,12,ES_AUTOHSCROLL
+    LTEXT           "SDUCS:",IDC_STATIC,14,357,35,10
+    EDITTEXT        IDC_EDIT_SDUCS_URL,89,355,306,12,ES_AUTOHSCROLL
+    PUSHBUTTON      "确定",IDOK,272,377,50,14
+    PUSHBUTTON      "取消",IDCANCEL,330,377,50,14
 END
 
-
 IDD_CLICK_SPEED_DIALOG DIALOGEX 0, 0, 210, 70
-STYLE DS_SETFONT | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_VISIBLE
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
 EXSTYLE WS_EX_TOPMOST | WS_EX_TOOLWINDOW
 CAPTION "连点器速度"
 FONT 9, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     LTEXT           "间隔(ms):",IDC_STATIC,7,10,35,10
     EDITTEXT        IDC_EDIT_CLICK_SPEED,45,8,45,12,ES_AUTOHSCROLL | ES_NUMBER
-    CONTROL         "",IDC_SLIDER_CLICK_SPEED,"msctls_trackbar32",TBS_HORZ | TBS_BOTTOM | WS_TABSTOP,7,25,196,15
-    LTEXT           "已停止",IDC_STATIC_CLICK_STATUS,7,45,196,18,SS_CENTER
+    CONTROL         "",IDC_SLIDER_CLICK_SPEED,"msctls_trackbar32",WS_TABSTOP,7,25,196,15
+    CTEXT           "已停止",IDC_STATIC_CLICK_STATUS,7,45,196,18
 END
 
 
@@ -361,6 +364,10 @@ BEGIN
     BEGIN
         VERTGUIDE, 89
     END
+
+    IDD_CLICK_SPEED_DIALOG, DIALOG
+    BEGIN
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -423,10 +430,10 @@ END
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
 LANGUAGE 4, 2
-#include "res\MFCApplication1.rc2"  // 闂?Microsoft Visual C++ 缂傛牞绶惃鍕カ濠?
-#include "l.CHS\afxres.rc"      // 閺嶅洤鍣紒鍕
+#include "res\MFCApplication1.rc2"  // 闂?Microsoft Visual C++ 缂傚倹鐗炵欢顐︽儍閸曨喚銈繝?
+#include "l.CHS\afxres.rc"      // 闁哄秴娲ら崳顖滅磼閸曨亝顐?
 #if !defined(_AFXDLL)
-#include "l.CHS\afxribbon.rc"   // MFC 閸旂喕鍏橀崠鍝勬嫲閹貉冨煑閺壜ょカ濠?
+#include "l.CHS\afxribbon.rc"   // MFC 闁告梻鍠曢崗姗€宕犻崫鍕闁硅矇鍐ㄧ厬闁哄銈囥偒婵?
 #endif
 #endif
 

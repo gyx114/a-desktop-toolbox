@@ -24,3 +24,9 @@ void AllowUIPIMessage(HWND hwnd, UINT msg, BOOL allow);
 
 // 以当前桌面用户（非管理员）身份启动进程
 bool LaunchProcessAsShellUser(LPCTSTR exe, LPCTSTR params, CString* pError = nullptr);
+
+// 检查窗口句柄是否有效（非空且 IsWindow 为真）
+[[nodiscard]] inline bool IsValidWindow(HWND hWnd) noexcept
+{
+    return hWnd != nullptr && ::IsWindow(hWnd);
+}

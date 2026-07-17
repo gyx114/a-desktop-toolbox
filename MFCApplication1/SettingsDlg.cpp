@@ -56,6 +56,25 @@ BOOL CSettingsDlg::OnInitDialog()
     // 连点器间隔，默认100ms
     SetDlgItemInt(IDC_EDIT_CLICK_INTERVAL,
         AfxGetApp()->GetProfileInt(_T("AutoClicker"), _T("IntervalMs"), 100));
+
+    // 连点器触发键，默认A和B，配置不存在时自动创建
+    TCHAR szKey[2] = {};
+    CString strKey = AfxGetApp()->GetProfileString(_T("AutoClicker"), _T("KeyStart"), _T(""));
+    if (strKey.IsEmpty())
+    {
+        strKey = _T("A");
+        AfxGetApp()->WriteProfileString(_T("AutoClicker"), _T("KeyStart"), strKey);
+    }
+    SetDlgItemText(IDC_EDIT_CLICK_KEY_START, strKey);
+
+    strKey = AfxGetApp()->GetProfileString(_T("AutoClicker"), _T("KeyStop"), _T(""));
+    if (strKey.IsEmpty())
+    {
+        strKey = _T("B");
+        AfxGetApp()->WriteProfileString(_T("AutoClicker"), _T("KeyStop"), strKey);
+    }
+    SetDlgItemText(IDC_EDIT_CLICK_KEY_STOP, strKey);
+
     return TRUE;
 }
 
@@ -76,6 +95,8 @@ void CSettingsDlg::OnOK()
     GetDlgItemText(IDC_EDIT_MOOC_URL, v); AfxGetApp()->WriteProfileString(_T("Sites"), _T("MoocUrl"), v);
     GetDlgItemText(IDC_EDIT_SDUCS_URL, v); AfxGetApp()->WriteProfileString(_T("Sites"), _T("Sducs"), v);
     AfxGetApp()->WriteProfileInt(_T("AutoClicker"), _T("IntervalMs"), GetDlgItemInt(IDC_EDIT_CLICK_INTERVAL));
+    GetDlgItemText(IDC_EDIT_CLICK_KEY_START, v); AfxGetApp()->WriteProfileString(_T("AutoClicker"), _T("KeyStart"), v);
+    GetDlgItemText(IDC_EDIT_CLICK_KEY_STOP, v); AfxGetApp()->WriteProfileString(_T("AutoClicker"), _T("KeyStop"), v);
     CDialogEx::OnOK();
 }
 

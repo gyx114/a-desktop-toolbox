@@ -9,6 +9,7 @@
 #include <string>
 #include <memory>
 #include "AutoClicker.h"
+#include "AutoClickerSpeedDlg.h"
 
 // 按钮语义化别名
 #define IDC_BTN_SHUTDOWN       IDC_BUTTON1   // 关机/重启
@@ -214,7 +215,7 @@ public:
 	static constexpr UINT WM_SPEED_DLG_CLOSED = WM_APP + 6;
 
 	// 连点器速度调节窗口（置顶）
-	CDialogEx* m_pSpeedDlg{nullptr};
+	std::unique_ptr<CAutoClickerSpeedDlg> m_pSpeedDlg;
 
 	// 速度窗口关闭回调
 	afx_msg LRESULT OnSpeedDlgClosed(WPARAM wParam, LPARAM lParam);

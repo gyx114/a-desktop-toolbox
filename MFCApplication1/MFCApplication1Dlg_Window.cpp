@@ -32,7 +32,7 @@ static LRESULT CALLBACK OverlayWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPAR
 void CMFCApplication1Dlg::OnBnClickedButton19()
 {
     // If overlay exists, cancel it
-    if (m_hCaptureWnd && ::IsWindow(m_hCaptureWnd))
+    if (m_hCaptureWnd && IsValidWindow(m_hCaptureWnd))
     {
         ::DestroyWindow(m_hCaptureWnd);
         m_hCaptureWnd = NULL;
@@ -140,7 +140,7 @@ void CMFCApplication1Dlg::OnTargetSelected(HWND hTarget, POINT pt)
 
 void CMFCApplication1Dlg::OnForceKillProcess()
 {
-	if (!m_hSelectedWnd || !::IsWindow(m_hSelectedWnd))
+	if (!m_hSelectedWnd || !IsValidWindow(m_hSelectedWnd))
 	{
 		MessageBox(_T("请先定位一个窗口。"), _T("提示"), MB_OK | MB_ICONWARNING);
 		return;
@@ -174,7 +174,7 @@ void CMFCApplication1Dlg::OnForceKillProcess()
 		// 从置顶列表中移除已结束的窗口
 		m_topmostWnds.erase(
 			std::remove_if(m_topmostWnds.begin(), m_topmostWnds.end(),
-				[](HWND h) { return !::IsWindow(h); }),
+				[](HWND h) { return !IsValidWindow(h); }),
 			m_topmostWnds.end());
 		// 刷新显示
 		CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
@@ -189,7 +189,7 @@ void CMFCApplication1Dlg::OnForceKillProcess()
 
 void CMFCApplication1Dlg::OnWindowScreenshot()
 {
-	if (!m_hSelectedWnd || !::IsWindow(m_hSelectedWnd))
+	if (!m_hSelectedWnd || !IsValidWindow(m_hSelectedWnd))
 	{
 		MessageBox(_T("请先定位一个窗口。"), _T("提示"), MB_OK | MB_ICONWARNING);
 		return;
@@ -291,7 +291,7 @@ void CMFCApplication1Dlg::OnWindowUntopmost()
 {
 	for (HWND hWnd : m_topmostWnds)
 	{
-		if (::IsWindow(hWnd))
+		if (IsValidWindow(hWnd))
 			::SetWindowPos(hWnd, HWND_NOTOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
 	}
 	m_topmostWnds.clear();
@@ -307,7 +307,7 @@ void CMFCApplication1Dlg::OnWindowUntopmost()
 
 void CMFCApplication1Dlg::OnWindowClose()
 {
-	if (m_hSelectedWnd && ::IsWindow(m_hSelectedWnd))
+	if (m_hSelectedWnd && IsValidWindow(m_hSelectedWnd))
 	{
 		CString title;
 		::GetWindowText(m_hSelectedWnd, title.GetBuffer(256), 256);
@@ -321,7 +321,7 @@ void CMFCApplication1Dlg::OnWindowClose()
 			// 从置顶列表中移除
 			m_topmostWnds.erase(
 				std::remove_if(m_topmostWnds.begin(), m_topmostWnds.end(),
-					[](HWND h) { return !::IsWindow(h); }),
+					[](HWND h) { return !IsValidWindow(h); }),
 				m_topmostWnds.end());
 			m_hSelectedWnd = nullptr;
 			CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
@@ -346,7 +346,7 @@ void CMFCApplication1Dlg::OnUntopmostWindow()
 	if (idx >= m_topmostWnds.size()) return;
 
 	HWND hWnd = m_topmostWnds[idx];
-	if (::IsWindow(hWnd))
+	if (IsValidWindow(hWnd))
 		::SetWindowPos(hWnd, HWND_NOTOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
 
 	m_topmostWnds.erase(m_topmostWnds.begin() + idx);
@@ -407,7 +407,7 @@ void CMFCApplication1Dlg::LoadWindowDetailToList5(HWND hWnd)
 
 	pList5->DeleteAllItems();
 
-	if (!hWnd || !::IsWindow(hWnd)) return;
+	if (!hWnd || !IsValidWindow(hWnd)) return;
 
 	DWORD pid = 0; GetWindowThreadProcessId(hWnd, &pid);
 
@@ -452,7 +452,7 @@ void CMFCApplication1Dlg::OnClickList6(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 	if (idx >= m_topmostWnds.size()) { *pResult = 0; return; }
 
 	HWND hWnd = m_topmostWnds[idx];
-	if (hWnd && ::IsWindow(hWnd))
+	if (hWnd && IsValidWindow(hWnd))
 	{
 		m_hSelectedWnd = hWnd;
 		LoadWindowDetailToList5(hWnd);
@@ -473,7 +473,7 @@ void CMFCApplication1Dlg::OnClickList7(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 	if (idx >= m_historyWnds.size()) { *pResult = 0; return; }
 
 	HWND hWnd = m_historyWnds[idx];
-	if (hWnd && ::IsWindow(hWnd))
+	if (hWnd && IsValidWindow(hWnd))
 	{
 		m_hSelectedWnd = hWnd;
 		LoadWindowDetailToList5(hWnd);
@@ -494,7 +494,7 @@ void CMFCApplication1Dlg::OnDeleteList6Record()
 	if (idx >= m_topmostWnds.size()) return;
 
 	HWND hWnd = m_topmostWnds[idx];
-	if (::IsWindow(hWnd))
+	if (IsValidWindow(hWnd))
 		::SetWindowPos(hWnd, HWND_NOTOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
 
 	if (hWnd == m_hWnd)
@@ -537,7 +537,7 @@ void CMFCApplication1Dlg::OnTopmostFromHistory()
 	if (idx >= m_historyWnds.size()) return;
 
 	HWND hWnd = m_historyWnds[idx];
-	if (!::IsWindow(hWnd)) return;
+	if (!IsValidWindow(hWnd)) return;
 
 	if (!::SetWindowPos(hWnd, HWND_TOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE))
 	{
@@ -571,7 +571,7 @@ void CMFCApplication1Dlg::OnUntopmostFromHistory()
 	if (idx >= m_historyWnds.size()) return;
 
 	HWND hWnd = m_historyWnds[idx];
-	if (::IsWindow(hWnd))
+	if (IsValidWindow(hWnd))
 		::SetWindowPos(hWnd, HWND_NOTOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
 
 	m_topmostWnds.erase(

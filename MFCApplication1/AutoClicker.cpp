@@ -51,6 +51,12 @@ void CAutoClicker::SetInterval(int intervalMs)
     }
 }
 
+void CAutoClicker::SetKeys(char keyStart, char keyStop)
+{
+    m_keyStart = static_cast<char>(toupper(keyStart));
+    m_keyStop = static_cast<char>(toupper(keyStop));
+}
+
 void CAutoClicker::ClickThreadFunc(std::stop_token stoken, int intervalMs)
 {
     INPUT inputs[2]{};
@@ -71,7 +77,7 @@ void CAutoClicker::MonitorThreadFunc(std::stop_token stoken)
     m_bMonitorRunning = true;
     while (!stoken.stop_requested())
     {
-        if (!m_bClicking.load() && IsUppercaseKeyPressed('A'))
+        if (!m_bClicking.load() && IsUppercaseKeyPressed(m_keyStart.load()))
         {
             m_bClicking = true;
             m_clickStopSource.request_stop();
@@ -80,7 +86,7 @@ void CAutoClicker::MonitorThreadFunc(std::stop_token stoken)
             m_clickThread = std::jthread(ClickThreadFunc, m_clickStopSource.get_token(), m_intervalMs.load());
         }
 
-        if (m_bClicking.load() && IsUppercaseKeyPressed('B'))
+        if (m_bClicking.load() && IsUppercaseKeyPressed(m_keyStop.load()))
         {
             m_bClicking = false;
             m_clickStopSource.request_stop();

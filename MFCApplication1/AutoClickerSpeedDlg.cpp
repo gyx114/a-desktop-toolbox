@@ -90,7 +90,12 @@ void CAutoClickerSpeedDlg::UpdateStatus()
 
     if (!m_pClicker->IsRunning())
     {
-        pStatus->SetWindowText(_T("已停止"));
+        if (m_lastStatus != 0)
+        {
+            m_lastStatus = 0;
+            pStatus->SetWindowText(_T("已停止"));
+            pStatus->Invalidate();
+        }
         // 自销毁：连点器已停止，关闭窗口
         KillTimer(1);
         if (GetParent())
@@ -99,17 +104,55 @@ void CAutoClickerSpeedDlg::UpdateStatus()
     }
     else if (m_pClicker->IsClicking())
     {
-        pStatus->SetWindowText(_T("正在点击"));
+        if (m_lastStatus != 2)
+        {
+            m_lastStatus = 2;
+            pStatus->SetWindowText(_T("正在点击"));
+            pStatus->Invalidate();
+        }
     }
     else
     {
-        pStatus->SetWindowText(_T("等待触发 (按 A 开始)"));
+        if (m_lastStatus != 1)
+        {
+            m_lastStatus = 1;
+            CString strMsg;
+            strMsg.Format(_T("等待触发 (按 %c 开始, %c 停止)"),
+                m_pClicker->GetKeyStart(), m_pClicker->GetKeyStop());
+            pStatus->SetWindowText(strMsg);
+            pStatus->Invalidate();
+        }
     }
+}
+
+HBRUSH CAutoClickerSpeedDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+
+    if (pWnd && pWnd->GetDlgCtrlID() == IDC_STATIC_CLICK_STATUS)
+    {
+        pDC->SetBkMode(TRANSPARENT);
+        switch (m_lastStatus)
+        {
+        case 2:  // 点击中 → 绿色
+            pDC->SetTextColor(RGB(0, 170, 0));
+            break;
+        case 1:  // 等待触发 → 橙色
+            pDC->SetTextColor(RGB(204, 136, 0));
+            break;
+        default:  // 已停止 → 灰色
+            pDC->SetTextColor(RGB(136, 136, 136));
+            break;
+        }
+    }
+
+    return hbr;
 }
 
 BEGIN_MESSAGE_MAP(CAutoClickerSpeedDlg, CDialogEx)
     ON_WM_HSCROLL()
     ON_WM_CLOSE()
     ON_WM_TIMER()
+    ON_WM_CTLCOLOR()
     ON_EN_CHANGE(IDC_EDIT_CLICK_SPEED, &CAutoClickerSpeedDlg::OnEnChangeClickSpeed)
 END_MESSAGE_MAP()
