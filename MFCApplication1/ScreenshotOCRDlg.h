@@ -19,9 +19,11 @@ protected:
 private:
     afx_msg void OnBnClickedCapture();
     afx_msg void OnBnClickedCopyResult();
+    afx_msg void OnBnClickedTranslate();
     afx_msg LRESULT OnCaptureComplete(WPARAM wParam, LPARAM lParam);
 
     CString RecognizeText(HBITMAP hBitmap);
+    CString TranslateText(const CString& text);
 
     HBITMAP m_hCapturedBitmap{nullptr};
     CAutoClicker* m_pAutoClicker{nullptr};

@@ -5,8 +5,11 @@
 #include "OcrEngine.h"
 #include "resource.h"
 #include <gdiplus.h>
+#include <winhttp.h>
+#include <string>
 
 #pragma comment(lib, "gdiplus.lib")
+#pragma comment(lib, "winhttp.lib")
 
 // ========== 截图区域选择覆盖窗口（纯 Win32 窗口过程） ==========
 
@@ -263,6 +266,7 @@ void CScreenshotOCRDlg::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CScreenshotOCRDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BTN_OCR_CAPTURE, &CScreenshotOCRDlg::OnBnClickedCapture)
     ON_BN_CLICKED(IDC_BTN_OCR_COPY, &CScreenshotOCRDlg::OnBnClickedCopyResult)
+    ON_BN_CLICKED(IDC_BTN_OCR_TRANSLATE, &CScreenshotOCRDlg::OnBnClickedTranslate)
     ON_MESSAGE(WM_APP + 10, &CScreenshotOCRDlg::OnCaptureComplete)
 END_MESSAGE_MAP()
 
@@ -270,6 +274,7 @@ BOOL CScreenshotOCRDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
     GetDlgItem(IDC_BTN_OCR_COPY)->EnableWindow(FALSE);
+    GetDlgItem(IDC_BTN_OCR_TRANSLATE)->EnableWindow(FALSE);
     return TRUE;
 }
 
@@ -343,6 +348,7 @@ LRESULT CScreenshotOCRDlg::OnCaptureComplete(WPARAM wParam, LPARAM lParam)
     SetDlgItemText(IDC_EDIT_OCR_RESULT, text);
 
     GetDlgItem(IDC_BTN_OCR_COPY)->EnableWindow(!text.IsEmpty());
+    GetDlgItem(IDC_BTN_OCR_TRANSLATE)->EnableWindow(!text.IsEmpty());
 
     return 0;
 }
@@ -416,6 +422,144 @@ CString CScreenshotOCRDlg::RecognizeText(HBITMAP hBitmap)
         result = _T("OCR 识别失败。");
         ::DeleteFile(tempFilePath);
     }
+
+    return result;
+}
+
+// URL 编码（简单实现，仅编码非 ASCII 和特殊字符）
+static std::wstring UrlEncode(const std::wstring& str)
+{
+    std::wstring encoded;
+    for (wchar_t ch : str)
+    {
+        if ((ch >= L'A' && ch <= L'Z') || (ch >= L'a' && ch <= L'z') ||
+            (ch >= L'0' && ch <= L'9') || ch == L'-' || ch == L'_' ||
+            ch == L'.' || ch == L'~')
+        {
+            encoded += ch;
+        }
+        else if (ch == L' ')
+        {
+            encoded += L'+';
+        }
+        else
+        {
+            wchar_t hex[8];
+            swprintf_s(hex, L"%%%04X", (unsigned short)ch);
+            encoded += hex;
+        }
+    }
+    return encoded;
+}
+
+void CScreenshotOCRDlg::OnBnClickedTranslate()
+{
+    CString text;
+    GetDlgItemText(IDC_EDIT_OCR_RESULT, text);
+    if (text.IsEmpty()) return;
+
+    // 显示翻译中状态
+    SetDlgItemText(IDC_EDIT_OCR_TRANSLATED, _T("翻译中..."));
+    GetDlgItem(IDC_BTN_OCR_TRANSLATE)->EnableWindow(FALSE);
+
+    CString translated = TranslateText(text);
+
+    SetDlgItemText(IDC_EDIT_OCR_TRANSLATED, translated);
+    GetDlgItem(IDC_BTN_OCR_TRANSLATE)->EnableWindow(TRUE);
+}
+
+CString CScreenshotOCRDlg::TranslateText(const CString& text)
+{
+    CString result;
+    if (text.IsEmpty()) return result;
+
+    HINTERNET hSession = nullptr;
+    HINTERNET hConnect = nullptr;
+    HINTERNET hRequest = nullptr;
+
+    try
+    {
+        // 使用 MyMemory 免费翻译 API（zh|en = 中译英）
+        std::wstring encoded = UrlEncode(static_cast<LPCWSTR>(text));
+        std::wstring url = L"/get?q=" + encoded + L"&langpair=zh|en";
+
+        hSession = ::WinHttpOpen(L"MFCApp/1.0",
+            WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+            WINHTTP_NO_PROXY_NAME,
+            WINHTTP_NO_PROXY_BYPASS, 0);
+        if (!hSession) throw std::runtime_error("WinHttpOpen failed");
+
+        hConnect = ::WinHttpConnect(hSession, L"api.mymemory.translated.net",
+            INTERNET_DEFAULT_HTTPS_PORT, 0);
+        if (!hConnect) throw std::runtime_error("WinHttpConnect failed");
+
+        hRequest = ::WinHttpOpenRequest(hConnect, L"GET", url.c_str(),
+            nullptr, WINHTTP_NO_REFERER,
+            WINHTTP_DEFAULT_ACCEPT_TYPES,
+            WINHTTP_FLAG_SECURE);
+        if (!hRequest) throw std::runtime_error("WinHttpOpenRequest failed");
+
+        if (!::WinHttpSendRequest(hRequest,
+            WINHTTP_NO_ADDITIONAL_HEADERS, 0,
+            WINHTTP_NO_REQUEST_DATA, 0, 0, 0))
+            throw std::runtime_error("WinHttpSendRequest failed");
+
+        if (!::WinHttpReceiveResponse(hRequest, nullptr))
+            throw std::runtime_error("WinHttpReceiveResponse failed");
+
+        // 读取响应
+        std::string response;
+        DWORD dwSize = 0;
+        DWORD dwDownloaded = 0;
+        char buffer[4096];
+
+        do
+        {
+            dwSize = 0;
+            if (!::WinHttpQueryDataAvailable(hRequest, &dwSize))
+                break;
+            if (dwSize == 0) break;
+
+            if (dwSize > sizeof(buffer))
+                dwSize = sizeof(buffer);
+
+            if (!::WinHttpReadData(hRequest, buffer, dwSize, &dwDownloaded))
+                break;
+            response.append(buffer, dwDownloaded);
+        } while (dwSize > 0);
+
+        // 简单 JSON 解析：提取 "translatedText":"..."
+        auto pos = response.find("\"translatedText\":\"");
+        if (pos == std::string::npos)
+        {
+            result = _T("翻译失败：未找到翻译结果");
+        }
+        else
+        {
+            pos += 18; // 跳过 "translatedText":"
+            auto endPos = response.find('\"', pos);
+            if (endPos != std::string::npos)
+            {
+                std::string translated = response.substr(pos, endPos - pos);
+                // 处理 JSON 转义（\\n, \\t, \\\" 等）
+                int nLen = MultiByteToWideChar(CP_UTF8, 0, translated.c_str(), -1, nullptr, 0);
+                if (nLen > 0)
+                {
+                    std::vector<wchar_t> wbuf(nLen);
+                    MultiByteToWideChar(CP_UTF8, 0, translated.c_str(), -1, wbuf.data(), nLen);
+                    result = wbuf.data();
+                }
+            }
+        }
+    }
+    catch (const std::exception& e)
+    {
+        result = _T("翻译失败：网络错误");
+    }
+
+    if (hRequest) ::WinHttpCloseHandle(hRequest);
+    if (hConnect) ::WinHttpCloseHandle(hConnect);
+    if (hSession) ::WinHttpCloseHandle(hSession);
 
     return result;
 }

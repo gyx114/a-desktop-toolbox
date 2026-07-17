@@ -128,6 +128,9 @@
 #define IDC_EDIT_RENAME_START_NUM       1129
 #define IDC_BTN_RENAME_PREVIEW          1130
 #define IDC_BTN_RENAME_EXECUTE          1131
+#define IDC_CHECK_RENAME_REGEX          1132
+#define IDC_BTN_OCR_TRANSLATE          1133
+#define IDC_EDIT_OCR_TRANSLATED        1134
 #define ID_FILE_SETTINGS                32775
 #define ID_FILE_EXIT                    32776
 #define ID_HELP_ABOUT                   32777

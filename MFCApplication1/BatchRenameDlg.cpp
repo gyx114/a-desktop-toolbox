@@ -39,8 +39,15 @@ BOOL CBatchRenameDlg::OnInitDialog()
     {
         pList->ModifyStyle(0, LVS_REPORT);
         pList->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
-        pList->InsertColumn(0, _T("原文件名"), LVCFMT_LEFT, 280);
-        pList->InsertColumn(1, _T("新文件名"), LVCFMT_LEFT, 280);
+
+        CRect rcList;
+        pList->GetClientRect(&rcList);
+        int totalWidth = rcList.Width() - ::GetSystemMetrics(SM_CXVSCROLL) - 4;
+        int col0Width = totalWidth * 3 / 4;
+        int col1Width = totalWidth - col0Width;
+
+        pList->InsertColumn(0, _T("原文件名"), LVCFMT_LEFT, col0Width);
+        pList->InsertColumn(1, _T("新文件名"), LVCFMT_LEFT, col1Width);
     }
 
     GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(FALSE);
@@ -118,6 +125,7 @@ void CBatchRenameDlg::ApplyRules()
     GetDlgItemText(IDC_EDIT_RENAME_REPLACE_TO, replaceTo);
 
     BOOL bNumbering = static_cast<CButton*>(GetDlgItem(IDC_CHECK_RENAME_NUMBER))->GetCheck() == BST_CHECKED;
+    BOOL bRegex = static_cast<CButton*>(GetDlgItem(IDC_CHECK_RENAME_REGEX))->GetCheck() == BST_CHECKED;
     int startNum = GetDlgItemInt(IDC_EDIT_RENAME_START_NUM, nullptr, FALSE);
 
     for (size_t i = 0; i < m_entries.size(); i++)
@@ -141,7 +149,26 @@ void CBatchRenameDlg::ApplyRules()
         // 替换
         if (!replaceFrom.IsEmpty())
         {
-            stem.Replace(replaceFrom, replaceTo);
+            if (bRegex)
+            {
+                try
+                {
+                    std::wstring wStem = static_cast<LPCWSTR>(stem);
+                    std::wstring wFrom = static_cast<LPCWSTR>(replaceFrom);
+                    std::wstring wTo = static_cast<LPCWSTR>(replaceTo);
+                    std::wregex re(wFrom);
+                    std::wstring result = std::regex_replace(wStem, re, wTo);
+                    stem = result.c_str();
+                }
+                catch (const std::regex_error&)
+                {
+                    // 正则表达式无效，保持原样
+                }
+            }
+            else
+            {
+                stem.Replace(replaceFrom, replaceTo);
+            }
         }
 
         // 序号
