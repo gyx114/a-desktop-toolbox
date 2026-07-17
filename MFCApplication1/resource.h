@@ -131,6 +131,9 @@
 #define IDC_CHECK_RENAME_REGEX          1132
 #define IDC_BTN_OCR_TRANSLATE          1133
 #define IDC_EDIT_OCR_TRANSLATED        1134
+#define IDC_BTN_RENAME_CLEAR           1135
+#define IDC_BTN_RENAME_REGEX_HELP      1136
+#define IDD_REGEX_GUIDE_DLG            139
 #define ID_FILE_SETTINGS                32775
 #define ID_FILE_EXIT                    32776
 #define ID_HELP_ABOUT                   32777
@@ -158,6 +161,7 @@
 #define ID_TOOLS_QRCODE                 32811
 #define ID_TOOLS_SCREENSHOT_OCR         32812
 #define ID_TOOLS_BATCH_RENAME           32813
+#define ID_HELP_REGEX_GUIDE            32814
 
 // Next default values for new objects
 // 

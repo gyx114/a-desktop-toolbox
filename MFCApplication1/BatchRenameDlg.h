@@ -26,6 +26,8 @@ private:
     afx_msg void OnBnClickedBrowse();
     afx_msg void OnBnClickedPreview();
     afx_msg void OnBnClickedExecute();
+    afx_msg void OnBnClickedClear();
+    afx_msg void OnBnClickedRegexHelp();
     afx_msg void OnEnChangeRule();
     afx_msg void OnDropFiles(HDROP hDrop);
 

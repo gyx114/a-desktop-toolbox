@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "framework.h"
 #include "BatchRenameDlg.h"
+#include "RegexGuideDlg.h"
 #include "resource.h"
 #include <algorithm>
 #include <set>
@@ -21,6 +22,8 @@ BEGIN_MESSAGE_MAP(CBatchRenameDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BTN_RENAME_BROWSE, &CBatchRenameDlg::OnBnClickedBrowse)
     ON_BN_CLICKED(IDC_BTN_RENAME_PREVIEW, &CBatchRenameDlg::OnBnClickedPreview)
     ON_BN_CLICKED(IDC_BTN_RENAME_EXECUTE, &CBatchRenameDlg::OnBnClickedExecute)
+    ON_BN_CLICKED(IDC_BTN_RENAME_CLEAR, &CBatchRenameDlg::OnBnClickedClear)
+    ON_BN_CLICKED(IDC_BTN_RENAME_REGEX_HELP, &CBatchRenameDlg::OnBnClickedRegexHelp)
     ON_EN_CHANGE(IDC_EDIT_RENAME_PREFIX, &CBatchRenameDlg::OnEnChangeRule)
     ON_EN_CHANGE(IDC_EDIT_RENAME_SUFFIX, &CBatchRenameDlg::OnEnChangeRule)
     ON_EN_CHANGE(IDC_EDIT_RENAME_REPLACE_FROM, &CBatchRenameDlg::OnEnChangeRule)
@@ -43,7 +46,7 @@ BOOL CBatchRenameDlg::OnInitDialog()
         CRect rcList;
         pList->GetClientRect(&rcList);
         int totalWidth = rcList.Width() - ::GetSystemMetrics(SM_CXVSCROLL) - 4;
-        int col0Width = totalWidth * 3 / 4;
+        int col0Width = totalWidth * 2 / 5;
         int col1Width = totalWidth - col0Width;
 
         pList->InsertColumn(0, _T("原文件名"), LVCFMT_LEFT, col0Width);
@@ -291,4 +294,23 @@ void CBatchRenameDlg::OnDropFiles(HDROP hDrop)
     m_folderPath = path;
     SetDlgItemText(IDC_EDIT_RENAME_FOLDER, m_folderPath);
     LoadFiles(m_folderPath);
+}
+
+void CBatchRenameDlg::OnBnClickedClear()
+{
+    SetDlgItemText(IDC_EDIT_RENAME_PREFIX, _T(""));
+    SetDlgItemText(IDC_EDIT_RENAME_SUFFIX, _T(""));
+    SetDlgItemText(IDC_EDIT_RENAME_REPLACE_FROM, _T(""));
+    SetDlgItemText(IDC_EDIT_RENAME_REPLACE_TO, _T(""));
+    static_cast<CButton*>(GetDlgItem(IDC_CHECK_RENAME_NUMBER))->SetCheck(BST_UNCHECKED);
+    static_cast<CButton*>(GetDlgItem(IDC_CHECK_RENAME_REGEX))->SetCheck(BST_UNCHECKED);
+
+    m_bPreviewDone = false;
+    GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(FALSE);
+}
+
+void CBatchRenameDlg::OnBnClickedRegexHelp()
+{
+    CRegexGuideDlg dlg(this);
+    dlg.DoModal();
 }

@@ -210,6 +210,7 @@ public:
 	afx_msg void OnUntopmostFromHistory();                             // LIST7 右键取消置顶
 	afx_msg void OnHelpShortcuts();
 	afx_msg void OnHelpGithub();
+	afx_msg void OnHelpRegexGuide();
 
 	// UI: track whether file management tab exists (index 4)
 	int m_fileTabIndex = 4;

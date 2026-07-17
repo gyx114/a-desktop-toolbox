@@ -16,6 +16,7 @@
 #include "QRCodeGenDlg.h"
 #include "ScreenshotOCRDlg.h"
 #include "BatchRenameDlg.h"
+#include "RegexGuideDlg.h"
 #include <TlHelp32.h>
 #include <Shellapi.h>
 #include <Psapi.h>
@@ -174,6 +175,7 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_COMMAND(ID_WINDOW_CLOSE,     &CMFCApplication1Dlg::OnWindowClose)
     ON_COMMAND(ID_HELP_SHORTCUTS,   &CMFCApplication1Dlg::OnHelpShortcuts)
     ON_COMMAND(ID_HELP_GITHUB,      &CMFCApplication1Dlg::OnHelpGithub)
+    ON_COMMAND(ID_HELP_REGEX_GUIDE, &CMFCApplication1Dlg::OnHelpRegexGuide)
     ON_BN_CLICKED(IDC_BUTTON21, &CMFCApplication1Dlg::OnBnClickedButton21)
     ON_BN_CLICKED(IDC_BUTTON22, &CMFCApplication1Dlg::OnBnClickedButton22)
     ON_BN_CLICKED(IDC_BUTTON23, &CMFCApplication1Dlg::OnBnClickedButton23)
@@ -997,6 +999,12 @@ void CMFCApplication1Dlg::OnHelpAbout()
 {
     CAboutDlg dlgAbout;
     dlgAbout.DoModal();
+}
+
+void CMFCApplication1Dlg::OnHelpRegexGuide()
+{
+    CRegexGuideDlg dlg(this);
+    dlg.DoModal();
 }
 
 void CMFCApplication1Dlg::OnToolsQRCode()

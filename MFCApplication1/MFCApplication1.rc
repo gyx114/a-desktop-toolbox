@@ -54,10 +54,10 @@ BEGIN
     "\r\n"
     "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)\r\n"
     "LANGUAGE 4, 2\r\n"
-    "#include ""res\\MFCApplication1.rc2""  // 闂?Microsoft Visual C++ 缂傚倸鍊搁崐鎼佸磹閹间礁纾圭憸鐗堝笚閸嬪鏌ｉ幇顒備粵妞ゆ劘濮ら妵鍕箛閸洘顎嶉梺绋块缁夊綊寮诲☉銏犲嵆闁靛鍎查悘鎾绘⒑闂堟稓澧遍柛瀣噽閹?\n"
-    "#include ""l.CHS\\afxres.rc""      // 闂傚倸鍊风粈渚€骞栭銈囩煋闁哄鍤氬ú顏勎у璺猴躬濡嘲顪冮妶鍡欏缂侇喖娴锋竟鏇熺附閸涘﹦鍘遍梺鍝勬储閸斿鑺遍崗绗轰簻?\n"
+    "#include ""res\\MFCApplication1.rc2""  // 闂?Microsoft Visual C++ 缂傚倸鍊搁崐鎼佸磹閹间礁纾归柟闂寸绾惧湱鎲搁悧鍫濈瑲闁稿顑夐弻锝夊箛椤掑倷绮靛銈嗗姌婵倝濡甸崟顖氱疀闁割偅娲橀宥夋⒑缁嬪潡顎楃紒澶婄秺瀵鈽夐姀鐘插祮闂侀潧顭堥崕鏌ユ倶閹剧粯鈷戦梻鍫熺〒婢ч亶鏌涚€ｎ亝鍣介柟?\n"
+    "#include ""l.CHS\\afxres.rc""      // 闂傚倸鍊搁崐椋庣矆娓氣偓楠炴牠顢曢妶鍥╃厠闂佸搫顦伴崵姘洪鍕幯冾熆鐠虹尨韬俊顐㈠槻椤啴濡堕崱娆忣潷缂備緡鍠栧ù閿嬬珶閺囩喓闄勯柛娑橈功閸橀亶姊洪崫鍕偍闁告柨顑囬懞閬嶅礂缁楄桨绨?\n"
     "#if !defined(_AFXDLL)\r\n"
-    "#include ""l.CHS\\afxribbon.rc""   // MFC 闂傚倸鍊风粈渚€骞夐垾鎰佹綎濠电姵鑹剧粣妤呮煛閸ャ儱鐏╃紒鈧崒娑欏弿婵＄偠顕ф禍楣冩倵鐟欏嫭绀堝┑鐐╁亾閻庤娲﹂崑濠傜暦閻旂⒈鏁嗛柍褜鍓熼、鏃堫敍閻愮补鎷虹紒缁㈠幖閹虫劙鎮炴禒瀣厱闁规壋鏅涙俊鍧楁煕濮楀棗澧存慨濠冩そ瀹曨偊宕熼崹顐礀闂備線娼ч悧鍡椕洪姀銈呯；闁圭儤鍨熼弨?\n"
+    "#include ""l.CHS\\afxribbon.rc""   // MFC 闂傚倸鍊搁崐椋庣矆娓氣偓楠炲鍨鹃幇浣圭稁婵犵數濮甸懝鍓х玻濡ゅ懏鐓涢柛銉ｅ劚閻忊晝绱掗埀顒勫磼濞戞瑥寮垮┑锛勫仩椤曆勭妤ｅ啯鍊甸悷娆忓缁€鍫濃攽閻愨晛浜鹃柣搴ゎ潐濞诧箓宕戞繝鍌滄殾闁绘梻鈷堥弫鍡涙煃瑜滈崜鐔笺€侀弮鍫晬闁绘劗琛ラ幏铏圭磼缂併垹骞栭柟铏姍閹偞绂掔€ｎ偆鍘遍梺瑙勫閺呮稒淇婇崸妤佺厱婵妫楁晶瀛樻叏婵犲啯銇濈€规洦鍋婂畷鐔煎垂椤愵剛绀€闂傚倷绶氬褔鎮ч崱妞曟椽濮€閵堝懐锛涢梺鍦劋閸ㄧ喖寮?\n"
     "#endif\r\n"
     "#endif\r\n"
     "\0"
@@ -129,6 +129,7 @@ BEGIN
     BEGIN
         MENUITEM "关于...(&A)",                   ID_HELP_ABOUT
         MENUITEM "快捷键列表(&K)",                   ID_HELP_SHORTCUTS
+        MENUITEM "正则表达式规则(&R)",                 ID_HELP_REGEX_GUIDE
         MENUITEM "GitHub(&G)",                  ID_HELP_GITHUB
     END
 END
@@ -320,14 +321,14 @@ STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSM
 CAPTION "截图OCR"
 FONT 9, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    PUSHBUTTON      "开始截图",IDC_BTN_OCR_CAPTURE,34,12,80,25
-    CTEXT           "点击按钮后拖拽选择屏幕区域,按ESC取消",IDC_STATIC_OCR_STATUS,134,17,154,14
-    LTEXT           "识别结果:",IDC_STATIC,10,46,60,10
-    EDITTEXT        IDC_EDIT_OCR_RESULT,12,60,330,80,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
-    PUSHBUTTON      "翻译 >>",IDC_BTN_OCR_TRANSLATE,12,148,50,20
-    LTEXT           "翻译结果:",IDC_STATIC,72,152,60,10
-    EDITTEXT        IDC_EDIT_OCR_TRANSLATED,12,165,330,80,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
-    PUSHBUTTON      "复制结果",IDC_BTN_OCR_COPY,12,255,60,20
+    PUSHBUTTON      "开始截图",IDC_BTN_OCR_CAPTURE,34,7,74,23
+    CTEXT           "点击按钮后拖拽选择屏幕区域,按ESC取消",IDC_STATIC_OCR_STATUS,134,13,154,14
+    LTEXT           "识别结果:",IDC_STATIC,10,36,60,10
+    EDITTEXT        IDC_EDIT_OCR_RESULT,12,49,330,80,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
+    PUSHBUTTON      "翻译 >>",IDC_BTN_OCR_TRANSLATE,12,138,50,20
+    LTEXT           "翻译结果:",IDC_STATIC,70,144,60,10
+    EDITTEXT        IDC_EDIT_OCR_TRANSLATED,12,164,330,83,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
+    PUSHBUTTON      "复制结果",IDC_BTN_OCR_COPY,13,259,60,20
 END
 
 IDD_BATCH_RENAME_DLG DIALOGEX 0, 0, 425, 359
@@ -338,7 +339,7 @@ BEGIN
     LTEXT           "文件夹:",IDC_STATIC,10,12,35,10
     EDITTEXT        IDC_EDIT_RENAME_FOLDER,50,10,300,14,ES_AUTOHSCROLL | ES_READONLY
     PUSHBUTTON      "浏览...",IDC_BTN_RENAME_BROWSE,355,9,60,16
-    CONTROL         "",IDC_LIST_RENAME,"SysListView32",LVS_REPORT | WS_BORDER | WS_TABSTOP,10,36,405,220
+    CONTROL         "",IDC_LIST_RENAME,"SysListView32",LVS_REPORT | WS_BORDER | WS_TABSTOP,12,36,401,220
     LTEXT           "前缀:",IDC_STATIC,10,265,25,10
     EDITTEXT        IDC_EDIT_RENAME_PREFIX,40,263,80,14,ES_AUTOHSCROLL
     LTEXT           "后缀:",IDC_STATIC,130,265,25,10
@@ -347,13 +348,24 @@ BEGIN
     EDITTEXT        IDC_EDIT_RENAME_REPLACE_FROM,40,286,80,14,ES_AUTOHSCROLL
     LTEXT           "为:",IDC_STATIC,133,288,15,10
     EDITTEXT        IDC_EDIT_RENAME_REPLACE_TO,160,286,80,14,ES_AUTOHSCROLL
-    CONTROL         "使用正则",IDC_CHECK_RENAME_REGEX,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,250,287,55,10
-    CONTROL         "添加序号",IDC_CHECK_RENAME_NUMBER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,275,265,38,10
-    LTEXT           "起始:",IDC_STATIC,318,266,20,10
-    EDITTEXT        IDC_EDIT_RENAME_START_NUM,343,264,40,14,ES_AUTOHSCROLL | ES_NUMBER
-    PUSHBUTTON      "预览",IDC_BTN_RENAME_PREVIEW,250,310,60,25
-    PUSHBUTTON      "执行重命名",IDC_BTN_RENAME_EXECUTE,320,310,60,25
-    LTEXT           "提示: 扩展名不会被修改",IDC_STATIC,10,316,150,10
+    CONTROL         "使用正则表达式",IDC_CHECK_RENAME_REGEX,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,275,287,71,10
+    PUSHBUTTON      "正则表达式手册",IDC_BTN_RENAME_REGEX_HELP,345,310,60,24
+    CONTROL         "添加序号(后缀之前)",IDC_CHECK_RENAME_NUMBER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,275,265,76,10
+    LTEXT           "起始:",IDC_STATIC,356,266,20,10
+    EDITTEXT        IDC_EDIT_RENAME_START_NUM,378,264,40,14,ES_AUTOHSCROLL | ES_NUMBER
+    PUSHBUTTON      "清空编辑框",IDC_BTN_RENAME_CLEAR,145,310,50,25
+    PUSHBUTTON      "预览更改",IDC_BTN_RENAME_PREVIEW,210,310,55,25
+    PUSHBUTTON      "执行重命名",IDC_BTN_RENAME_EXECUTE,275,310,60,25
+    LTEXT           "提示: 扩展名不会被修改",IDC_STATIC,24,317,84,11
+END
+
+IDD_REGEX_GUIDE_DLG DIALOGEX 0, 0, 380, 320
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "正则表达式规则指南"
+FONT 9, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    EDITTEXT        IDC_STATIC,10,10,360,275,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
+    PUSHBUTTON      "关闭",IDOK,160,295,60,20
 END
 
 
@@ -440,6 +452,11 @@ BEGIN
 
     IDD_BATCH_RENAME_DLG, DIALOG
     BEGIN
+        BOTTOMMARGIN, 347
+    END
+
+    IDD_REGEX_GUIDE_DLG, DIALOG
+    BEGIN
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -466,6 +483,11 @@ BEGIN
 END
 
 IDD_SCREENSHOT_OCR_DLG AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_REGEX_GUIDE_DLG AFX_DIALOG_LAYOUT
 BEGIN
     0
 END
@@ -513,10 +535,10 @@ END
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
 LANGUAGE 4, 2
-#include "res\MFCApplication1.rc2"  // 闂?Microsoft Visual C++ 缂傚倸鍊搁崐鎼佸磹閹间礁纾圭憸鐗堝笚閸嬪鏌ｉ幇顒備粵妞ゆ劘濮ら妵鍕箛閸洘顎嶉梺绋块缁夊綊寮诲☉銏犲嵆闁靛鍎查悘鎾绘⒑闂堟稓澧遍柛瀣噽閹?
-#include "l.CHS\afxres.rc"      // 闂傚倸鍊风粈渚€骞栭銈囩煋闁哄鍤氬ú顏勎у璺猴躬濡嘲顪冮妶鍡欏缂侇喖娴锋竟鏇熺附閸涘﹦鍘遍梺鍝勬储閸斿鑺遍崗绗轰簻?
+#include "res\MFCApplication1.rc2"  // 闂?Microsoft Visual C++ 缂傚倸鍊搁崐鎼佸磹閹间礁纾归柟闂寸绾惧湱鎲搁悧鍫濈瑲闁稿顑夐弻锝夊箛椤掑倷绮靛銈嗗姌婵倝濡甸崟顖氱疀闁割偅娲橀宥夋⒑缁嬪潡顎楃紒澶婄秺瀵鈽夐姀鐘插祮闂侀潧顭堥崕鏌ユ倶閹剧粯鈷戦梻鍫熺〒婢ч亶鏌涚€ｎ亝鍣介柟?
+#include "l.CHS\afxres.rc"      // 闂傚倸鍊搁崐椋庣矆娓氣偓楠炴牠顢曢妶鍥╃厠闂佸搫顦伴崵姘洪鍕幯冾熆鐠虹尨韬俊顐㈠槻椤啴濡堕崱娆忣潷缂備緡鍠栧ù閿嬬珶閺囩喓闄勯柛娑橈功閸橀亶姊洪崫鍕偍闁告柨顑囬懞閬嶅礂缁楄桨绨?
 #if !defined(_AFXDLL)
-#include "l.CHS\afxribbon.rc"   // MFC 闂傚倸鍊风粈渚€骞夐垾鎰佹綎濠电姵鑹剧粣妤呮煛閸ャ儱鐏╃紒鈧崒娑欏弿婵＄偠顕ф禍楣冩倵鐟欏嫭绀堝┑鐐╁亾閻庤娲﹂崑濠傜暦閻旂⒈鏁嗛柍褜鍓熼、鏃堫敍閻愮补鎷虹紒缁㈠幖閹虫劙鎮炴禒瀣厱闁规壋鏅涙俊鍧楁煕濮楀棗澧存慨濠冩そ瀹曨偊宕熼崹顐礀闂備線娼ч悧鍡椕洪姀銈呯；闁圭儤鍨熼弨?
+#include "l.CHS\afxribbon.rc"   // MFC 闂傚倸鍊搁崐椋庣矆娓氣偓楠炲鍨鹃幇浣圭稁婵犵數濮甸懝鍓х玻濡ゅ懏鐓涢柛銉ｅ劚閻忊晝绱掗埀顒勫磼濞戞瑥寮垮┑锛勫仩椤曆勭妤ｅ啯鍊甸悷娆忓缁€鍫濃攽閻愨晛浜鹃柣搴ゎ潐濞诧箓宕戞繝鍌滄殾闁绘梻鈷堥弫鍡涙煃瑜滈崜鐔笺€侀弮鍫晬闁绘劗琛ラ幏铏圭磼缂併垹骞栭柟铏姍閹偞绂掔€ｎ偆鍘遍梺瑙勫閺呮稒淇婇崸妤佺厱婵妫楁晶瀛樻叏婵犲啯銇濈€规洦鍋婂畷鐔煎垂椤愵剛绀€闂傚倷绶氬褔鎮ч崱妞曟椽濮€閵堝懐锛涢梺鍦劋閸ㄧ喖寮?
 #endif
 #endif
 
