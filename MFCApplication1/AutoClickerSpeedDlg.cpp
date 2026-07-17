@@ -90,9 +90,9 @@ void CAutoClickerSpeedDlg::UpdateStatus()
 
     if (!m_pClicker->IsRunning())
     {
-        if (m_lastStatus != 0)
+        if (m_lastStatus != ClickStatus::Stopped)
         {
-            m_lastStatus = 0;
+            m_lastStatus = ClickStatus::Stopped;
             pStatus->SetWindowText(_T("已停止"));
             pStatus->Invalidate();
         }
@@ -104,9 +104,9 @@ void CAutoClickerSpeedDlg::UpdateStatus()
     }
     else if (m_pClicker->IsClicking())
     {
-        if (m_lastStatus != 2)
+        if (m_lastStatus != ClickStatus::Clicking)
         {
-            m_lastStatus = 2;
+            m_lastStatus = ClickStatus::Clicking;
             CString strMsg;
             strMsg.Format(_T("正在点击 (按 %c 停止)"), m_pClicker->GetKeyStop());
             pStatus->SetWindowText(strMsg);
@@ -115,9 +115,9 @@ void CAutoClickerSpeedDlg::UpdateStatus()
     }
     else
     {
-        if (m_lastStatus != 1)
+        if (m_lastStatus != ClickStatus::Waiting)
         {
-            m_lastStatus = 1;
+            m_lastStatus = ClickStatus::Waiting;
             CString strMsg;
             strMsg.Format(_T("等待触发 (按 %c 开始, %c 停止)"),
                 m_pClicker->GetKeyStart(), m_pClicker->GetKeyStop());
@@ -136,13 +136,13 @@ HBRUSH CAutoClickerSpeedDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
         pDC->SetBkMode(TRANSPARENT);
         switch (m_lastStatus)
         {
-        case 2:  // 点击中 → 绿色
+        case ClickStatus::Clicking:  // 点击中 → 绿色
             pDC->SetTextColor(RGB(0, 170, 0));
             break;
-        case 1:  // 等待触发 → 橙色
+        case ClickStatus::Waiting:   // 等待触发 → 橙色
             pDC->SetTextColor(RGB(204, 136, 0));
             break;
-        default:  // 已停止 → 灰色
+        case ClickStatus::Stopped:   // 已停止 → 灰色
             pDC->SetTextColor(RGB(136, 136, 136));
             break;
         }

@@ -24,7 +24,8 @@ protected:
     DECLARE_MESSAGE_MAP()
 
 private:
+    enum class ClickStatus { Stopped, Waiting, Clicking };
     CAutoClicker* m_pClicker;
     int m_interval{100};
-    int m_lastStatus{-1};  // 0=停止, 1=等待, 2=点击中，避免重复刷新
+    ClickStatus m_lastStatus{ClickStatus::Stopped};
 };

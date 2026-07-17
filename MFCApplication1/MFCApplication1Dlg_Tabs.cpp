@@ -1,0 +1,387 @@
+#include "pch.h"
+#include "framework.h"
+#include "MFCApplication1Dlg.h"
+#include "resource.h"
+#include "Utils.h"
+#include <algorithm>
+
+// ========== 标签页初始化辅助函数 ==========
+
+void CMFCApplication1Dlg::InitTabControl()
+{
+    CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+    if (!pTab) return;
+
+    pTab->InsertItem(0, _T("进程管理"));
+    pTab->InsertItem(1, _T("启动项管理"));
+    pTab->InsertItem(2, _T("剪贴板"));
+    pTab->InsertItem(3, _T("窗口处理"));
+    pTab->InsertItem(4, _T("文件管理"));
+    pTab->InsertItem(5, _T("git工具箱"));
+}
+
+void CMFCApplication1Dlg::InitProcessTab()
+{
+    CListCtrl* pList1 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST1));
+    if (!pList1) return;
+
+    pList1->ModifyStyle(0, LVS_REPORT);
+    pList1->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
+    pList1->InsertColumn(0, _T("进程名"), LVCFMT_LEFT, 200);
+    pList1->InsertColumn(1, _T("PID"), LVCFMT_LEFT, 160);
+    pList1->InsertColumn(2, _T("路径"), LVCFMT_LEFT, 600);
+    pList1->InsertColumn(3, _T("内存(KB)"), LVCFMT_RIGHT, 200);
+}
+
+void CMFCApplication1Dlg::InitStartupTab()
+{
+    CListCtrl* pList2 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST2));
+    if (!pList2) return;
+
+    pList2->ModifyStyle(0, LVS_REPORT);
+    pList2->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
+    pList2->InsertColumn(0, _T("启动项名"), LVCFMT_LEFT, 200);
+    pList2->InsertColumn(1, _T("命令(路径)"), LVCFMT_LEFT, 840);
+}
+
+void CMFCApplication1Dlg::InitClipboardTab()
+{
+    CListCtrl* pList3 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST3));
+    if (!pList3) return;
+
+    pList3->ModifyStyle(0, LVS_REPORT);
+    pList3->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
+    pList3->InsertColumn(0, _T("文本内容(双击复制)"), LVCFMT_LEFT, 780);
+}
+
+void CMFCApplication1Dlg::InitWindowTab()
+{
+    CListCtrl* pList5 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST5));
+    if (pList5)
+    {
+        pList5->ModifyStyle(0, LVS_REPORT);
+        pList5->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
+        pList5->InsertColumn(0, _T("字段"), LVCFMT_LEFT, 84);
+        pList5->InsertColumn(1, _T("值"), LVCFMT_LEFT, 980);
+    }
+
+    // 初始化透明度滑块（资源控件）
+    CSliderCtrl* pSlider2 = static_cast<CSliderCtrl*>(GetDlgItem(IDC_SLIDER2));
+    if (pSlider2)
+    {
+        pSlider2->SetRange(10, 255);
+        pSlider2->SetPos(255);
+        pSlider2->SetTicFreq(25);
+    }
+    SetDlgItemText(IDC_STATIC18, _T("透明度: 100%"));
+
+    // 初始化置顶窗口列表
+    CListCtrl* pList6 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST6));
+    if (pList6)
+    {
+        pList6->ModifyStyle(0, LVS_REPORT);
+        pList6->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+        pList6->InsertColumn(0, _T("类型"), LVCFMT_LEFT, 80);
+        pList6->InsertColumn(1, _T("窗口标题"), LVCFMT_LEFT, 280);
+    }
+
+    // 初始化历史定位窗口列表
+    CListCtrl* pList7 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST7));
+    if (pList7)
+    {
+        pList7->ModifyStyle(0, LVS_REPORT);
+        pList7->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+        pList7->InsertColumn(0, _T("序号"), LVCFMT_LEFT, 60);
+        pList7->InsertColumn(1, _T("窗口标题"), LVCFMT_LEFT, 280);
+    }
+}
+
+void CMFCApplication1Dlg::InitFileTab()
+{
+    // 文件管理标签页的控件在资源编辑器中定义，此处仅做占位
+    // 实际可见性由 UpdateTabVisibility 管理
+}
+
+void CMFCApplication1Dlg::InitGitTab()
+{
+    CListCtrl* pList4 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST4));
+    if (!pList4) return;
+
+    pList4->ModifyStyle(0, LVS_REPORT);
+    pList4->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
+    pList4->InsertColumn(0, _T("说明"), LVCFMT_LEFT, 190);
+    pList4->InsertColumn(1, _T("命令"), LVCFMT_LEFT, 400);
+
+    // 如果 config.ini 不存在，创建默认 Git 命令
+    const TCHAR* section = _T("GitCommands");
+    TCHAR exePath[MAX_PATH] = {0};
+    GetModuleFileName(NULL, exePath, MAX_PATH);
+    CString exeDir = exePath;
+    int p = exeDir.ReverseFind(_T('\\'));
+    CString configPath;
+    if (p != -1) configPath.Format(_T("%s\\config.ini"), exeDir.Left(p));
+    else configPath = _T("config.ini");
+
+    if (GetFileAttributes(configPath) == INVALID_FILE_ATTRIBUTES)
+    {
+        WritePrivateProfileString(section, _T("Cmd1"),  _T("初始化本地仓库|git init"), configPath);
+        WritePrivateProfileString(section, _T("Cmd2"),  _T("添加所有文件到暂存区|git add ."), configPath);
+        WritePrivateProfileString(section, _T("Cmd3"),  _T("提交到本地仓库|git commit -m \"第一次提交\""), configPath);
+        WritePrivateProfileString(section, _T("Cmd4"),  _T("添加远程仓库地址|git remote add origin <地址>"), configPath);
+        WritePrivateProfileString(section, _T("Cmd5"),  _T("重命名分支为main|git branch -M main"), configPath);
+        WritePrivateProfileString(section, _T("Cmd6"),  _T("首次推送并建立关联|git push -u origin main"), configPath);
+        WritePrivateProfileString(section, _T("Cmd7"),  _T("拉取远程更新|git pull"), configPath);
+        WritePrivateProfileString(section, _T("Cmd8"),  _T("克隆远程仓库到本地|git clone <地址>"), configPath);
+        WritePrivateProfileString(section, _T("Cmd9"),  _T("查看当前状态|git status"), configPath);
+        WritePrivateProfileString(section, _T("Cmd10"), _T("添加所有修改到暂存区|git add ."), configPath);
+        WritePrivateProfileString(section, _T("Cmd11"), _T("提交到本地仓库|git commit -m \"说明\""), configPath);
+        WritePrivateProfileString(section, _T("Cmd12"), _T("推送到远程仓库|git push"), configPath);
+        WritePrivateProfileString(section, _T("Cmd13"), _T("查看所有分支含远程|git branch -a"), configPath);
+        WritePrivateProfileString(section, _T("Cmd14"), _T("创建并切换分支|git checkout -b <分支名>"), configPath);
+        WritePrivateProfileString(section, _T("Cmd15"), _T("切换分支|git checkout <分支名>"), configPath);
+        WritePrivateProfileString(section, _T("Cmd16"), _T("合并指定分支到当前分支|git merge <分支名>"), configPath);
+        WritePrivateProfileString(section, _T("Cmd17"), _T("删除已合并的分支|git branch -d <分支名>"), configPath);
+        WritePrivateProfileString(section, _T("Cmd18"), _T("查看简洁版提交历史|git log --oneline"), configPath);
+        WritePrivateProfileString(section, _T("Cmd19"), _T("撤销工作区修改|git restore <文件>"), configPath);
+        WritePrivateProfileString(section, _T("Cmd20"), _T("把暂存区文件撤回来|git restore --staged <文件>"), configPath);
+    }
+
+    // 从 INI 加载命令列表
+    pList4->DeleteAllItems();
+    for (int i = 1; i <= 99; ++i)
+    {
+        CString key; key.Format(_T("Cmd%d"), i);
+        TCHAR buf[1024] = {0};
+        GetPrivateProfileString(section, key, _T(""), buf, 1024, configPath);
+        CString val = buf;
+        if (val.IsEmpty()) break;
+        int sep = val.Find(_T('|'));
+        CString desc, cmd;
+        if (sep != -1) { desc = val.Left(sep); cmd = val.Mid(sep + 1); }
+        else { desc = val; cmd = _T(""); }
+        int idx = pList4->InsertItem(i - 1, desc);
+        pList4->SetItemText(idx, 1, cmd);
+    }
+}
+
+// ========== 统一标签页可见性管理 ==========
+
+void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
+{
+    // 列表控件
+    CListCtrl* pList1 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST1));
+    CListCtrl* pList2 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST2));
+    CListCtrl* pList3 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST3));
+    CListCtrl* pList4 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST4));
+    CListCtrl* pList5 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST5));
+
+    if (pList1) pList1->ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
+    if (pList2) pList2->ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
+    if (pList3) pList3->ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
+    if (pList4) pList4->ShowWindow(nTab == 5 ? SW_SHOW : SW_HIDE);
+    if (pList5)
+    {
+        pList5->ShowWindow(nTab == 3 ? SW_SHOW : SW_HIDE);
+        if (nTab == 3)
+        {
+            ::SetWindowPos(pList5->GetSafeHwnd(), HWND_TOP, 0,0,0,0, SWP_NOMOVE | SWP_NOSIZE);
+            pList5->BringWindowToTop();
+        }
+    }
+
+    // 窗口处理标签页按钮
+    CWnd* pBtn19 = GetDlgItem(IDC_BUTTON19);
+    CWnd* pStatic12 = GetDlgItem(IDC_STATIC12);
+    if (pBtn19) pBtn19->ShowWindow(nTab == 3 ? SW_SHOW : SW_HIDE);
+    if (pStatic12) pStatic12->ShowWindow(nTab == 3 ? SW_SHOW : SW_HIDE);
+
+    // Git 工具按钮
+    CWnd* pBtn30 = GetDlgItem(IDC_BUTTON30);
+    CWnd* pBtn31 = GetDlgItem(IDC_BUTTON31);
+    CWnd* pBtn32 = GetDlgItem(IDC_BUTTON32);
+    if (pBtn30) pBtn30->ShowWindow(nTab == 5 ? SW_SHOW : SW_HIDE);
+    if (pBtn31) pBtn31->ShowWindow(nTab == 5 ? SW_SHOW : SW_HIDE);
+    if (pBtn32)
+    {
+        if (nTab == 5)
+        {
+            pBtn32->ShowWindow(SW_SHOW);
+            pBtn32->EnableWindow(TRUE);
+            pBtn32->BringWindowToTop();
+            pBtn32->SetWindowPos(&wndTop, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
+        }
+        else
+        {
+            pBtn32->ShowWindow(SW_HIDE);
+        }
+    }
+
+    // 文件管理控件
+    BOOL showFile = (nTab == 4);
+    CWnd* pStaticPath = GetDlgItem(IDC_STATIC_PATH);
+    CWnd* pEdit4 = GetDlgItem(IDC_EDIT4);
+    CWnd* pBtn3 = GetDlgItem(IDC_BUTTON3);
+    CWnd* pStatic7 = GetDlgItem(IDC_STATIC7);
+    CWnd* pStatic13 = GetDlgItem(IDC_STATIC13);
+    CWnd* pEdit7 = GetDlgItem(IDC_EDIT7);
+    CWnd* pEdit8 = GetDlgItem(IDC_EDIT8);
+    CWnd* pBtn23 = GetDlgItem(IDC_BUTTON23);
+    CWnd* pBtn24 = GetDlgItem(IDC_BUTTON24);
+    CWnd* pStatic14 = GetDlgItem(IDC_STATIC14);
+    CWnd* pBtn25 = GetDlgItem(IDC_BUTTON25);
+    CWnd* pBtn26 = GetDlgItem(IDC_BUTTON26);
+    CWnd* pBrowse = GetDlgItem(IDC_MFCEDITBROWSE2);
+
+    if (pStaticPath) pStaticPath->ShowWindow((nTab == 4 || nTab == 5) ? SW_SHOW : SW_HIDE);
+    if (pEdit4) pEdit4->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+    if (pBtn3) pBtn3->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+    if (pStatic7) pStatic7->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+    if (pStatic13) pStatic13->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+    if (pEdit7) pEdit7->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+    if (pEdit8) pEdit8->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+    if (pBtn23) pBtn23->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+    if (pBtn24) pBtn24->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+    if (pStatic14) pStatic14->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+    if (pBtn25) pBtn25->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+    if (pBtn26) pBtn26->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+    if (pBrowse) pBrowse->ShowWindow(showFile ? SW_SHOW : SW_HIDE);
+
+    if (showFile || nTab == 5)
+    {
+        CString stDisplay = m_strDroppedFilePath.IsEmpty() ? CString(_T("拖拽文件到此")) : m_strDroppedFilePath;
+        SetDlgItemText(IDC_STATIC_PATH, stDisplay);
+    }
+
+    // 窗口处理标签页：填充窗口信息
+    if (nTab == 3 && pList5)
+    {
+        LoadWindowDetailToList5(m_hSelectedWnd);
+    }
+
+    // 窗口处理标签页的新控件可见性
+    BOOL showWindowTab = (nTab == 3);
+    CWnd* pSlider2 = GetDlgItem(IDC_SLIDER2);
+    CWnd* pStatic18 = GetDlgItem(IDC_STATIC18);
+    CWnd* pBtn15 = GetDlgItem(IDC_BUTTON15);
+    CWnd* pBtn16 = GetDlgItem(IDC_BUTTON16);
+    if (pSlider2) pSlider2->ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
+    if (pStatic18) pStatic18->ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
+    if (pBtn15) pBtn15->ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
+    if (pBtn16) pBtn16->ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
+
+    // 切换到窗口管理tab时，同步工具箱自身置顶复选框状态
+    if (showWindowTab)
+    {
+        CButton* pCheck3 = static_cast<CButton*>(GetDlgItem(IDC_CHECK3));
+        if (pCheck3)
+        {
+            auto it = std::find(m_topmostWnds.begin(), m_topmostWnds.end(), m_hWnd);
+            pCheck3->SetCheck(it != m_topmostWnds.end() ? BST_CHECKED : BST_UNCHECKED);
+        }
+    }
+
+    // 置顶窗口列表 (LIST6)
+    CListCtrl* pList6 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST6));
+    if (pList6)
+    {
+        pList6->ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
+        if (showWindowTab)
+        {
+            pList6->DeleteAllItems();
+            int row = 0;
+            for (size_t i = 0; i < m_topmostWnds.size(); ++i)
+            {
+                HWND h = m_topmostWnds[i];
+                if (!IsValidWindow(h)) continue;
+
+                TCHAR title[256] = {0};
+                ::GetWindowText(h, title, _countof(title));
+
+                CString label;
+                label.Format(_T("置顶[%zu]"), i + 1);
+                int idx = pList6->InsertItem(row, label);
+                pList6->SetItemText(idx, 1, CString(title));
+                pList6->SetItemData(idx, static_cast<DWORD_PTR>(i));
+                ++row;
+            }
+        }
+    }
+
+    // 历史定位窗口列表 (LIST7)
+    CListCtrl* pList7 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST7));
+    if (pList7)
+    {
+        pList7->ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
+        if (showWindowTab)
+        {
+            pList7->DeleteAllItems();
+            int row = 0;
+            for (size_t i = 0; i < m_historyWnds.size(); ++i)
+            {
+                HWND h = m_historyWnds[i];
+                if (!IsValidWindow(h)) continue;
+
+                TCHAR title[256] = {0};
+                ::GetWindowText(h, title, _countof(title));
+
+                CString label;
+                label.Format(_T("%zu"), row + 1);
+                int idx = pList7->InsertItem(row, label);
+                pList7->SetItemText(idx, 1, CString(title));
+                pList7->SetItemData(idx, static_cast<DWORD_PTR>(i));  // 存储真实索引
+                ++row;
+            }
+        }
+    }
+}
+
+// ========== 菜单栏视图切换 ==========
+
+void CMFCApplication1Dlg::OnViewProcess()
+{
+    CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+    if (pTab) { pTab->SetCurSel(0); UpdateTabVisibility(0); }
+}
+
+void CMFCApplication1Dlg::OnViewStartup()
+{
+    CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+    if (pTab) { pTab->SetCurSel(1); UpdateTabVisibility(1); RefreshStartupList(); }
+}
+
+void CMFCApplication1Dlg::OnViewClipboard()
+{
+    CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+    if (pTab) { pTab->SetCurSel(2); UpdateTabVisibility(2); }
+}
+
+void CMFCApplication1Dlg::OnViewWindow()
+{
+    CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+    if (pTab) { pTab->SetCurSel(3); UpdateTabVisibility(3); }
+}
+
+void CMFCApplication1Dlg::OnViewFile()
+{
+    CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+    if (pTab) { pTab->SetCurSel(4); UpdateTabVisibility(4); }
+}
+
+void CMFCApplication1Dlg::OnViewGit()
+{
+    CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+    if (pTab) { pTab->SetCurSel(5); UpdateTabVisibility(5); }
+}
+
+void CMFCApplication1Dlg::OnTcnSelchangeTab1(NMHDR* pNMHDR, LRESULT* pResult)
+{
+    CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+    if (pTab)
+    {
+        int nSel = pTab->GetCurSel();
+        UpdateTabVisibility(nSel);
+        if (nSel == 1)
+            RefreshStartupList();
+    }
+    *pResult = 0;
+}
