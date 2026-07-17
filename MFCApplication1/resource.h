@@ -102,7 +102,6 @@
 #define IDC_SLIDER_CLICK_SPEED          1105
 #define IDC_EDIT_CLICK_SPEED            1106
 #define IDC_EDIT_CLICK_INTERVAL         1107
-#define IDC_STATIC_CLICK_SPEED          1108
 #define IDC_STATIC_CLICK_STATUS         1109
 #define IDC_EDIT_CLICK_KEY_START        1110
 #define IDC_EDIT_CLICK_KEY_STOP         1111
