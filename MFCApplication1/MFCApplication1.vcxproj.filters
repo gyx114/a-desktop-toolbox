@@ -36,6 +36,18 @@
     <ClInclude Include="AboutDlg.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="BatchRenameDlg.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="qrcodegen.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="QRCodeGenDlg.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ScreenshotOCRDlg.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
     <ClInclude Include="AutoClickerSpeedDlg.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -45,6 +57,18 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AboutDlg.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="BatchRenameDlg.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="qrcodegen.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="QRCodeGenDlg.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ScreenshotOCRDlg.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="MFCApplication1Dlg.cpp">

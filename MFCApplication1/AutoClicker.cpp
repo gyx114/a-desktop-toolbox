@@ -26,6 +26,7 @@ void CAutoClicker::Start(int intervalMs, HWND hwndOwner)
 void CAutoClicker::Stop()
 {
     m_bEnabled = false;
+    m_bPaused = false;
     m_bClicking = false;
     m_monitorStopSource.request_stop();
     m_clickStopSource.request_stop();
@@ -33,6 +34,30 @@ void CAutoClicker::Stop()
     if (m_monitorThread.joinable()) m_monitorThread.join();
     m_monitorStopSource = std::stop_source{};
     m_clickStopSource = std::stop_source{};
+}
+
+void CAutoClicker::Pause()
+{
+    if (m_bPaused.load()) return;
+    m_bPaused = true;
+    m_bClicking = false;
+    m_monitorStopSource.request_stop();
+    m_clickStopSource.request_stop();
+    if (m_clickThread.joinable()) m_clickThread.join();
+    if (m_monitorThread.joinable()) m_monitorThread.join();
+    m_monitorStopSource = std::stop_source{};
+    m_clickStopSource = std::stop_source{};
+}
+
+void CAutoClicker::Resume()
+{
+    if (!m_bPaused.load()) return;
+    m_bPaused = false;
+    if (!m_bEnabled.load()) return;
+    m_monitorStopSource.request_stop();
+    if (m_monitorThread.joinable()) m_monitorThread.join();
+    m_monitorStopSource = std::stop_source{};
+    m_monitorThread = std::jthread(&CAutoClicker::MonitorThreadFunc, this, m_monitorStopSource.get_token());
 }
 
 void CAutoClicker::SetInterval(int intervalMs)

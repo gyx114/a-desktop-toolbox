@@ -105,6 +105,29 @@
 #define IDC_STATIC_CLICK_STATUS         1109
 #define IDC_EDIT_CLICK_KEY_START        1110
 #define IDC_EDIT_CLICK_KEY_STOP         1111
+#define IDD_QRCODE_DLG                  136
+#define IDD_SCREENSHOT_OCR_DLG          137
+#define IDD_BATCH_RENAME_DLG            138
+#define IDC_EDIT_QR_TEXT                1112
+#define IDC_BTN_QR_GENERATE             1113
+#define IDC_STATIC_QR_IMAGE             1114
+#define IDC_BTN_QR_COPY                 1115
+#define IDC_BTN_QR_SAVE                 1116
+#define IDC_BTN_OCR_CAPTURE             1117
+#define IDC_EDIT_OCR_RESULT             1118
+#define IDC_BTN_OCR_COPY                1119
+#define IDC_STATIC_OCR_STATUS           1120
+#define IDC_EDIT_RENAME_FOLDER          1121
+#define IDC_BTN_RENAME_BROWSE           1122
+#define IDC_LIST_RENAME                 1123
+#define IDC_EDIT_RENAME_PREFIX          1124
+#define IDC_EDIT_RENAME_SUFFIX          1125
+#define IDC_EDIT_RENAME_REPLACE_FROM    1126
+#define IDC_EDIT_RENAME_REPLACE_TO      1127
+#define IDC_CHECK_RENAME_NUMBER         1128
+#define IDC_EDIT_RENAME_START_NUM       1129
+#define IDC_BTN_RENAME_PREVIEW          1130
+#define IDC_BTN_RENAME_EXECUTE          1131
 #define ID_FILE_SETTINGS                32775
 #define ID_FILE_EXIT                    32776
 #define ID_HELP_ABOUT                   32777
@@ -129,6 +152,9 @@
 #define ID_WINDOW_CLOSE                 32796
 #define ID_HELP_SHORTCUTS               32797
 #define ID_HELP_GITHUB                  32798
+#define ID_TOOLS_QRCODE                 32811
+#define ID_TOOLS_SCREENSHOT_OCR         32812
+#define ID_TOOLS_BATCH_RENAME           32813
 
 // Next default values for new objects
 // 

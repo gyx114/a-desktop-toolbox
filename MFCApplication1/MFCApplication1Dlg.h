@@ -11,6 +11,11 @@
 #include "AutoClicker.h"
 #include "AutoClickerSpeedDlg.h"
 
+// Forward declarations for menu-launched dialogs
+class CQRCodeGenDlg;
+class CScreenshotOCRDlg;
+class CBatchRenameDlg;
+
 // 按钮语义化别名
 #define IDC_BTN_SHUTDOWN       IDC_BUTTON1   // 关机/重启
 #define IDC_BTN_CANCEL_SHUTDOWN IDC_BUTTON2  // 取消关机
@@ -254,4 +259,7 @@ public:
     afx_msg void OnFileSettings();
     afx_msg void OnFileExit();
     afx_msg void OnHelpAbout();
+    afx_msg void OnToolsQRCode();
+    afx_msg void OnToolsScreenshotOCR();
+    afx_msg void OnToolsBatchRename();
 };

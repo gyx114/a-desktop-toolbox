@@ -5,7 +5,7 @@
 #include "Utils.h"
 
 // Forward declaration for static helper function
-static UINT WINAPI EnumStartupsThread(LPVOID pParam);
+static UINT EnumStartupsThread(LPVOID pParam);
 
 // Double-click on CListCtrl: copy command
 void CMFCApplication1Dlg::OnNMDblclkList4(NMHDR* pNMHDR, LRESULT* pResult)
@@ -169,7 +169,7 @@ void CMFCApplication1Dlg::OnRemoveStartup()
     MessageBox(_T("删除启动项失败！请检查权限。"), _T("错误"), MB_OK | MB_ICONERROR);
 }
 
-static UINT WINAPI EnumStartupsThread(LPVOID pParam)
+static UINT EnumStartupsThread(LPVOID pParam)
 {
     auto dlg = reinterpret_cast<CMFCApplication1Dlg*>(pParam);
     std::vector<CMFCApplication1Dlg::StartupInfo>* results = new std::vector<CMFCApplication1Dlg::StartupInfo>();

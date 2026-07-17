@@ -7,6 +7,9 @@
 #ifndef PCH_H
 #define PCH_H
 
+// 避免 Windows min/max 宏干扰 std::min/std::max
+#define NOMINMAX
+
 // 添加要在此处预编译的标头
 #include "framework.h"
 

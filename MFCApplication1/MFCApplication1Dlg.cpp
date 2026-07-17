@@ -13,6 +13,9 @@
 #include "AboutDlg.h"
 #include "AutoClickerSpeedDlg.h"
 #include "SettingsDlg.h"
+#include "QRCodeGenDlg.h"
+#include "ScreenshotOCRDlg.h"
+#include "BatchRenameDlg.h"
 #include <TlHelp32.h>
 #include <Shellapi.h>
 #include <Psapi.h>
@@ -163,6 +166,9 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_COMMAND(ID_TOOLS_POWERSHELL, &CMFCApplication1Dlg::OnBnClickedButton27)
     ON_COMMAND(ID_TOOLS_WSL,        &CMFCApplication1Dlg::OnBnClickedButton28)
     ON_COMMAND(ID_TOOLS_GITBASH,    &CMFCApplication1Dlg::OnBnClickedButton31)
+    ON_COMMAND(ID_TOOLS_QRCODE,         &CMFCApplication1Dlg::OnToolsQRCode)
+    ON_COMMAND(ID_TOOLS_SCREENSHOT_OCR, &CMFCApplication1Dlg::OnToolsScreenshotOCR)
+    ON_COMMAND(ID_TOOLS_BATCH_RENAME,   &CMFCApplication1Dlg::OnToolsBatchRename)
     ON_COMMAND(ID_WINDOW_LOCATE,    &CMFCApplication1Dlg::OnWindowLocate)
     ON_COMMAND(ID_WINDOW_UNTOPMOST, &CMFCApplication1Dlg::OnWindowUntopmost)
     ON_COMMAND(ID_WINDOW_CLOSE,     &CMFCApplication1Dlg::OnWindowClose)
@@ -991,6 +997,24 @@ void CMFCApplication1Dlg::OnHelpAbout()
 {
     CAboutDlg dlgAbout;
     dlgAbout.DoModal();
+}
+
+void CMFCApplication1Dlg::OnToolsQRCode()
+{
+    CQRCodeGenDlg dlg(this);
+    dlg.DoModal();
+}
+
+void CMFCApplication1Dlg::OnToolsScreenshotOCR()
+{
+    CScreenshotOCRDlg dlg(this, &m_autoClicker);
+    dlg.DoModal();
+}
+
+void CMFCApplication1Dlg::OnToolsBatchRename()
+{
+    CBatchRenameDlg dlg(this);
+    dlg.DoModal();
 }
 
 

@@ -1,4 +1,4 @@
-﻿
+
 // MFCApplication1.h: PROJECT_NAME 应用程序的主头文件
 //
 
@@ -23,10 +23,13 @@ public:
 // 重写
 public:
 	virtual BOOL InitInstance();
+	virtual int ExitInstance();
 
 // 实现
-
 	DECLARE_MESSAGE_MAP()
+
+private:
+	ULONG_PTR m_gdiplusToken{0};
 };
 
 extern CMFCApplication1App theApp;

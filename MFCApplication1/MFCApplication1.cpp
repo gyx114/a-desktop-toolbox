@@ -6,6 +6,8 @@
 #include "MFCApplication1.h"
 #include "MFCApplication1Dlg.h"
 #include <afxole.h>
+#include <gdiplus.h>
+#pragma comment(lib, "gdiplus.lib")
 #ifdef _DEBUG
 #include <crtdbg.h>
 #endif
@@ -54,6 +56,9 @@ BOOL CMFCApplication1App::InitInstance()
 
 	CWinApp::InitInstance();
 
+    // 初始化 GDI+
+    Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+    Gdiplus::GdiplusStartup(&m_gdiplusToken, &gdiplusStartupInput, nullptr);
 
     AfxEnableControlContainer();
 
@@ -170,4 +175,10 @@ BOOL CMFCApplication1App::InitInstance()
 	// 由于对话框已关闭，所以将返回 FALSE 以便退出应用程序，
 	//  而不是启动应用程序的消息泵。
 	return FALSE;
+}
+
+int CMFCApplication1App::ExitInstance()
+{
+    Gdiplus::GdiplusShutdown(m_gdiplusToken);
+    return CWinApp::ExitInstance();
 }

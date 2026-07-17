@@ -22,6 +22,12 @@ public:
     // 停止连点器
     void Stop();
 
+    // 暂停键盘监听（不改变 m_bEnabled 状态，用于 OCR 截图等场景）
+    void Pause();
+
+    // 恢复键盘监听（仅在 m_bEnabled 为 true 时有效）
+    void Resume();
+
     // 动态调整点击间隔（毫秒），无需停止连点器
     void SetInterval(int intervalMs);
 
@@ -53,6 +59,7 @@ private:
     std::atomic<bool> m_bEnabled{false};
     std::atomic<bool> m_bClicking{false};
     std::atomic<bool> m_bMonitorRunning{false};
+    std::atomic<bool> m_bPaused{false};
     std::atomic<int> m_intervalMs{100};
     std::atomic<char> m_keyStart{'A'};
     std::atomic<char> m_keyStop{'B'};

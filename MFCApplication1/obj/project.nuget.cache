@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "l6wZnc5WYjw=",
+  "success": true,
+  "projectFilePath": "D:\\my_projects\\MFCApplication1\\MFCApplication1\\MFCApplication1.vcxproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\guany\\.nuget\\packages\\microsoft.windows.cppwinrt\\2.0.240405.15\\microsoft.windows.cppwinrt.2.0.240405.15.nupkg.sha512"
+  ],
+  "logs": []
+}

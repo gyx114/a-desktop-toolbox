@@ -1,0 +1,139 @@
+{
+  "version": 3,
+  "targets": {
+    "native,Version=v0.0": {
+      "Microsoft.Windows.CppWinRT/2.0.240405.15": {
+        "type": "package",
+        "build": {
+          "build/native/Microsoft.Windows.CppWinRT.props": {},
+          "build/native/Microsoft.Windows.CppWinRT.targets": {}
+        }
+      }
+    },
+    "native,Version=v0.0/win": {
+      "Microsoft.Windows.CppWinRT/2.0.240405.15": {
+        "type": "package",
+        "build": {
+          "build/native/Microsoft.Windows.CppWinRT.props": {},
+          "build/native/Microsoft.Windows.CppWinRT.targets": {}
+        }
+      }
+    },
+    "native,Version=v0.0/win-arm64": {
+      "Microsoft.Windows.CppWinRT/2.0.240405.15": {
+        "type": "package",
+        "build": {
+          "build/native/Microsoft.Windows.CppWinRT.props": {},
+          "build/native/Microsoft.Windows.CppWinRT.targets": {}
+        }
+      }
+    },
+    "native,Version=v0.0/win-x64": {
+      "Microsoft.Windows.CppWinRT/2.0.240405.15": {
+        "type": "package",
+        "build": {
+          "build/native/Microsoft.Windows.CppWinRT.props": {},
+          "build/native/Microsoft.Windows.CppWinRT.targets": {}
+        }
+      }
+    },
+    "native,Version=v0.0/win-x86": {
+      "Microsoft.Windows.CppWinRT/2.0.240405.15": {
+        "type": "package",
+        "build": {
+          "build/native/Microsoft.Windows.CppWinRT.props": {},
+          "build/native/Microsoft.Windows.CppWinRT.targets": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Microsoft.Windows.CppWinRT/2.0.240405.15": {
+      "sha512": "3ny3Z7ONWMzn+lQZn6UVjM6w4c4HHfBFtk7JqsbDTwK/lGOvM8ZIil5/ok9D9qF59qdhMe6UWUWzP/6CiUXw0Q==",
+      "type": "package",
+      "path": "microsoft.windows.cppwinrt/2.0.240405.15",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE",
+        "bin/cppwinrt.exe",
+        "build/native/CppWinrtRules.Project.xml",
+        "build/native/Microsoft.Windows.CppWinRT.props",
+        "build/native/Microsoft.Windows.CppWinRT.targets",
+        "build/native/lib/arm/cppwinrt_fast_forwarder.lib",
+        "build/native/lib/arm64/cppwinrt_fast_forwarder.lib",
+        "build/native/lib/win32/cppwinrt_fast_forwarder.lib",
+        "build/native/lib/x64/cppwinrt_fast_forwarder.lib",
+        "microsoft.windows.cppwinrt.2.0.240405.15.nupkg.sha512",
+        "microsoft.windows.cppwinrt.nuspec",
+        "readme.txt"
+      ]
+    }
+  },
+  "projectFileDependencyGroups": {
+    "native,Version=v0.0": [
+      "Microsoft.Windows.CppWinRT >= 2.0.240405.15"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\guany\\.nuget\\packages\\": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "D:\\my_projects\\MFCApplication1\\MFCApplication1\\MFCApplication1.vcxproj",
+      "projectName": "MFCApplication1",
+      "projectPath": "D:\\my_projects\\MFCApplication1\\MFCApplication1\\MFCApplication1.vcxproj",
+      "packagesPath": "C:\\Users\\guany\\.nuget\\packages\\",
+      "outputPath": "D:\\my_projects\\MFCApplication1\\MFCApplication1\\obj\\",
+      "projectStyle": "PackageReference",
+      "skipContentFileWrite": true,
+      "UsingMicrosoftNETSdk": false,
+      "configFilePaths": [
+        "C:\\Users\\guany\\AppData\\Roaming\\NuGet\\NuGet.Config"
+      ],
+      "originalTargetFrameworks": [
+        "native"
+      ],
+      "sources": {
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "native": {
+          "framework": "native",
+          "projectReferences": {}
+        }
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      }
+    },
+    "frameworks": {
+      "native": {
+        "framework": "native",
+        "dependencies": {
+          "Microsoft.Windows.CppWinRT": {
+            "target": "Package",
+            "version": "[2.0.240405.15, )"
+          }
+        }
+      }
+    },
+    "runtimes": {
+      "win": {
+        "#import": []
+      },
+      "win-arm64": {
+        "#import": []
+      },
+      "win-x64": {
+        "#import": []
+      },
+      "win-x86": {
+        "#import": []
+      }
+    }
+  }
+}

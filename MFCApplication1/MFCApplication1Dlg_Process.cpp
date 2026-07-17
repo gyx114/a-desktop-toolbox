@@ -8,7 +8,7 @@
 #include <Psapi.h>
 
 // Forward declarations for static helper functions
-static UINT WINAPI EnumProcessesThread(LPVOID pParam);
+static UINT EnumProcessesThread(LPVOID pParam);
 static BOOL CALLBACK EnumWindowsCloseCallback(HWND hWnd, LPARAM lParam);
 
 // Double-click handler for list3: copy selected item back to clipboard
@@ -165,7 +165,7 @@ void CMFCApplication1Dlg::OnLocateProcess()
     }
 }
 
-static UINT WINAPI EnumProcessesThread(LPVOID pParam)
+static UINT EnumProcessesThread(LPVOID pParam)
 {
     auto dlg = reinterpret_cast<CMFCApplication1Dlg*>(pParam);
     std::vector<CMFCApplication1Dlg::ProcInfo>* results = new std::vector<CMFCApplication1Dlg::ProcInfo>();
