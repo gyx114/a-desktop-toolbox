@@ -107,7 +107,9 @@ void CAutoClickerSpeedDlg::UpdateStatus()
         if (m_lastStatus != 2)
         {
             m_lastStatus = 2;
-            pStatus->SetWindowText(_T("正在点击"));
+            CString strMsg;
+            strMsg.Format(_T("正在点击 (按 %c 停止)"), m_pClicker->GetKeyStop());
+            pStatus->SetWindowText(strMsg);
             pStatus->Invalidate();
         }
     }

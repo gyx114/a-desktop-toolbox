@@ -208,6 +208,9 @@
     <ClCompile Include="AutoClickerSpeedDlg.cpp" />
     <ClCompile Include="MFCApplication1.cpp" />
     <ClCompile Include="MFCApplication1Dlg.cpp" />
+    <ClCompile Include="MFCApplication1Dlg_File.cpp" />
+    <ClCompile Include="MFCApplication1Dlg_Process.cpp" />
+    <ClCompile Include="MFCApplication1Dlg_Startup.cpp" />
     <ClCompile Include="MFCApplication1Dlg_Window.cpp" />
     <ClCompile Include="SettingsDlg.cpp" />
     <ClCompile Include="pch.cpp">

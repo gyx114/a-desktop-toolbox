@@ -45,7 +45,7 @@
 #define IDC_BUTTON19                    1037
 #define IDC_SPLIT1                      1038
 #define IDC_BUTTON20                    1039
-#define IDC_STATIC12                    1039
+#define IDC_STATIC12                    1112
 #define IDC_BUTTON21                    1040
 #define IDC_BUTTON22                    1041
 #define IDC_STATIC7                     1042

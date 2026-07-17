@@ -41,10 +41,19 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="MFCApplication1.cpp">
+    <ClCompile Include="MFCApplication1Dlg.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="MFCApplication1Dlg.cpp">
+    <ClCompile Include="MFCApplication1Dlg_File.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="MFCApplication1Dlg_Process.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="MFCApplication1Dlg_Startup.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="MFCApplication1Dlg_Window.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="pch.cpp">

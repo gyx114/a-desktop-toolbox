@@ -95,8 +95,21 @@ void CSettingsDlg::OnOK()
     GetDlgItemText(IDC_EDIT_MOOC_URL, v); AfxGetApp()->WriteProfileString(_T("Sites"), _T("MoocUrl"), v);
     GetDlgItemText(IDC_EDIT_SDUCS_URL, v); AfxGetApp()->WriteProfileString(_T("Sites"), _T("Sducs"), v);
     AfxGetApp()->WriteProfileInt(_T("AutoClicker"), _T("IntervalMs"), GetDlgItemInt(IDC_EDIT_CLICK_INTERVAL));
-    GetDlgItemText(IDC_EDIT_CLICK_KEY_START, v); AfxGetApp()->WriteProfileString(_T("AutoClicker"), _T("KeyStart"), v);
-    GetDlgItemText(IDC_EDIT_CLICK_KEY_STOP, v); AfxGetApp()->WriteProfileString(_T("AutoClicker"), _T("KeyStop"), v);
+
+    // 连点器触发键验证：空字符串默认 A/B，不能相同
+    CString strStart, strStop;
+    GetDlgItemText(IDC_EDIT_CLICK_KEY_START, strStart);
+    GetDlgItemText(IDC_EDIT_CLICK_KEY_STOP, strStop);
+    if (strStart.IsEmpty()) strStart = _T("A");
+    if (strStop.IsEmpty()) strStop = _T("B");
+    if (strStart == strStop)
+    {
+        MessageBox(_T("开始键和停止键不能相同，请重新设置。"), _T("连点器设置"), MB_OK | MB_ICONWARNING);
+        return;
+    }
+    AfxGetApp()->WriteProfileString(_T("AutoClicker"), _T("KeyStart"), strStart);
+    AfxGetApp()->WriteProfileString(_T("AutoClicker"), _T("KeyStop"), strStop);
+
     CDialogEx::OnOK();
 }
 

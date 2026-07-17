@@ -53,8 +53,14 @@ void CAutoClicker::SetInterval(int intervalMs)
 
 void CAutoClicker::SetKeys(char keyStart, char keyStop)
 {
-    m_keyStart = static_cast<char>(toupper(keyStart));
-    m_keyStop = static_cast<char>(toupper(keyStop));
+    char ks = static_cast<char>(toupper(static_cast<unsigned char>(keyStart)));
+    char kp = static_cast<char>(toupper(static_cast<unsigned char>(keyStop)));
+    // 防御：空字符或相同键，保持默认 A/B
+    if (ks == '\0') ks = 'A';
+    if (kp == '\0') kp = 'B';
+    if (ks == kp) return;
+    m_keyStart = ks;
+    m_keyStop = kp;
 }
 
 void CAutoClicker::ClickThreadFunc(std::stop_token stoken, int intervalMs)

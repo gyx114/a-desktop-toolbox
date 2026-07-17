@@ -54,10 +54,10 @@ BEGIN
     "\r\n"
     "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)\r\n"
     "LANGUAGE 4, 2\r\n"
-    "#include ""res\\MFCApplication1.rc2""  // 闂?Microsoft Visual C++ 缂傚倹鐗炵欢顐︽儍閸曨喚銈繝?\n"
-    "#include ""l.CHS\\afxres.rc""      // 闁哄秴娲ら崳顖滅磼閸曨亝顐?\n"
+    "#include ""res\\MFCApplication1.rc2""  // 闂?Microsoft Visual C++ 缂傚倸鍊归悧鐐垫椤愶附鍎嶉柛鏇ㄥ枤閵堫偅绻?\n"
+    "#include ""l.CHS\\afxres.rc""      // 闂佸搫绉村ú銈夊闯椤栨粎纾奸柛鏇ㄤ簼椤?\n"
     "#if !defined(_AFXDLL)\r\n"
-    "#include ""l.CHS\\afxribbon.rc""   // MFC 闁告梻鍠曢崗姗€宕犻崫鍕闁硅矇鍐ㄧ厬闁哄銈囥偒婵?\n"
+    "#include ""l.CHS\\afxribbon.rc""   // MFC 闂佸憡姊婚崰鏇㈠礂濮椻偓瀹曠娀宕崟顒€顏梺纭呯焽閸愩劎鍘梺鍝勵棥閵堝洢鍋掑┑?\n"
     "#endif\r\n"
     "#endif\r\n"
     "\0"
@@ -158,7 +158,7 @@ BEGIN
     GROUPBOX        "关机",IDC_STATIC,233,20,189,48
     COMBOBOX        IDC_COMBO1,248,32,66,19,CBS_DROPDOWN | CBS_SORT | WS_VSCROLL | WS_TABSTOP
     EDITTEXT        IDC_EDIT1,240,49,18,12,ES_AUTOHSCROLL
-    CTEXT           "点击定位窗口按钮后点击目标窗口",IDC_BUTTON20,25,24,108,18,SS_CENTERIMAGE,WS_EX_TRANSPARENT
+    CTEXT           "点击定位窗口按钮后点击目标窗口",IDC_STATIC12,25,24,108,18,SS_CENTERIMAGE,WS_EX_TRANSPARENT
     GROUPBOX        "生成文件副本",IDC_STATIC7,19,145,189,45
     EDITTEXT        IDC_EDIT4,40,157,145,13,ES_AUTOHSCROLL,WS_EX_ACCEPTFILES
     PUSHBUTTON      "生成",IDC_BUTTON3,92,173,30,13
@@ -237,7 +237,7 @@ BEGIN
     GROUPBOX        "文件命名",IDC_STATIC,7,13,396,30
     LTEXT           "默认文件名:",IDC_STATIC,14,26,63,10
     EDITTEXT        IDC_EDIT_DEFAULT_NAME,89,24,304,12,ES_AUTOHSCROLL
-    GROUPBOX        "路径设置",IDC_STATIC,7,47,396,259
+    GROUPBOX        "路径设置",IDC_STATIC,7,47,396,227
     LTEXT           "Bilibili:",IDC_STATIC,14,66,45,10
     EDITTEXT        IDC_EDIT_BILI_PATH,89,64,254,12,ES_AUTOHSCROLL
     PUSHBUTTON      "浏览",IDC_BROWSE_BILI,350,64,44,12
@@ -268,12 +268,12 @@ BEGIN
     LTEXT           "截图保存目录:",IDC_STATIC,14,255,60,10
     EDITTEXT        IDC_EDIT_SCREENSHOT_DIR,89,253,254,12,ES_AUTOHSCROLL
     PUSHBUTTON      "浏览",IDC_BROWSE_SCREENSHOT,350,253,44,12
-    LTEXT           "连点器间隔(ms):",IDC_STATIC,14,283,75,10
-    EDITTEXT        IDC_EDIT_CLICK_INTERVAL,89,281,60,12,ES_AUTOHSCROLL | ES_NUMBER
-    LTEXT           "开始键:",IDC_STATIC,192,283,28,10
-    EDITTEXT        IDC_EDIT_CLICK_KEY_START,226,282,30,12,ES_UPPERCASE | ES_AUTOHSCROLL
-    LTEXT           "停止键:",IDC_STATIC,286,283,30,10
-    EDITTEXT        IDC_EDIT_CLICK_KEY_STOP,321,282,30,12,ES_UPPERCASE | ES_AUTOHSCROLL
+    LTEXT           "连点器间隔(ms):",IDC_STATIC,36,294,75,10
+    EDITTEXT        IDC_EDIT_CLICK_INTERVAL,111,292,60,12,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "开始键:",IDC_STATIC,214,294,28,10
+    EDITTEXT        IDC_EDIT_CLICK_KEY_START,248,293,30,12,ES_UPPERCASE | ES_AUTOHSCROLL
+    LTEXT           "停止键:",IDC_STATIC,308,294,30,10
+    EDITTEXT        IDC_EDIT_CLICK_KEY_STOP,343,293,30,12,ES_UPPERCASE | ES_AUTOHSCROLL
     GROUPBOX        "网址",IDC_STATIC,7,326,396,47
     LTEXT           "MOOC:",IDC_STATIC,14,340,35,10
     EDITTEXT        IDC_EDIT_MOOC_URL,89,338,306,12,ES_AUTOHSCROLL
@@ -281,6 +281,7 @@ BEGIN
     EDITTEXT        IDC_EDIT_SDUCS_URL,89,355,306,12,ES_AUTOHSCROLL
     PUSHBUTTON      "确定",IDOK,272,377,50,14
     PUSHBUTTON      "取消",IDCANCEL,330,377,50,14
+    GROUPBOX        "连点器",IDC_STATIC,7,284,396,27
 END
 
 IDD_CLICK_SPEED_DIALOG DIALOGEX 0, 0, 210, 70
@@ -430,10 +431,10 @@ END
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
 LANGUAGE 4, 2
-#include "res\MFCApplication1.rc2"  // 闂?Microsoft Visual C++ 缂傚倹鐗炵欢顐︽儍閸曨喚銈繝?
-#include "l.CHS\afxres.rc"      // 闁哄秴娲ら崳顖滅磼閸曨亝顐?
+#include "res\MFCApplication1.rc2"  // 闂?Microsoft Visual C++ 缂傚倸鍊归悧鐐垫椤愶附鍎嶉柛鏇ㄥ枤閵堫偅绻?
+#include "l.CHS\afxres.rc"      // 闂佸搫绉村ú銈夊闯椤栨粎纾奸柛鏇ㄤ簼椤?
 #if !defined(_AFXDLL)
-#include "l.CHS\afxribbon.rc"   // MFC 闁告梻鍠曢崗姗€宕犻崫鍕闁硅矇鍐ㄧ厬闁哄銈囥偒婵?
+#include "l.CHS\afxribbon.rc"   // MFC 闂佸憡姊婚崰鏇㈠礂濮椻偓瀹曠娀宕崟顒€顏梺纭呯焽閸愩劎鍘梺鍝勵棥閵堝洢鍋掑┑?
 #endif
 #endif
 
