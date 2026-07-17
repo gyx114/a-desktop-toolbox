@@ -723,12 +723,12 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_COMMAND(32772, &CMFCApplication1Dlg::OnAddStartup)
     ON_COMMAND(32773, &CMFCApplication1Dlg::OnRemoveStartup)
     ON_COMMAND(32774, &CMFCApplication1Dlg::OnLocateProcess)
-    ON_COMMAND(32775, &CMFCApplication1Dlg::OnUntopmostWindow)
-    ON_COMMAND(32776, &CMFCApplication1Dlg::OnCopyStartupPath)
-    ON_COMMAND(32777, &CMFCApplication1Dlg::OnDeleteList6Record)
-    ON_COMMAND(32778, &CMFCApplication1Dlg::OnDeleteList7Record)
-    ON_COMMAND(32779, &CMFCApplication1Dlg::OnTopmostFromHistory)
-    ON_COMMAND(32780, &CMFCApplication1Dlg::OnUntopmostFromHistory)
+    ON_COMMAND(32805, &CMFCApplication1Dlg::OnUntopmostWindow)
+    ON_COMMAND(32806, &CMFCApplication1Dlg::OnCopyStartupPath)
+    ON_COMMAND(32807, &CMFCApplication1Dlg::OnDeleteList6Record)
+    ON_COMMAND(32808, &CMFCApplication1Dlg::OnDeleteList7Record)
+    ON_COMMAND(32809, &CMFCApplication1Dlg::OnTopmostFromHistory)
+    ON_COMMAND(32810, &CMFCApplication1Dlg::OnUntopmostFromHistory)
     ON_BN_CLICKED(IDC_BUTTON1, &CMFCApplication1Dlg::OnBnClickedButton1)
     ON_BN_CLICKED(IDC_BUTTON2, &CMFCApplication1Dlg::OnBnClickedButton2)
     ON_CBN_SELCHANGE(IDC_COMBO1, &CMFCApplication1Dlg::OnCbnSelchangeCombo1)
@@ -1287,6 +1287,7 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
 		if (showWindowTab)
 		{
 			pList6->DeleteAllItems();
+			int row = 0;
 			for (size_t i = 0; i < m_topmostWnds.size(); ++i)
 			{
 				HWND h = m_topmostWnds[i];
@@ -1297,8 +1298,10 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
 
 				CString label;
 				label.Format(_T("置顶[%zu]"), i + 1);
-				int idx = pList6->InsertItem(static_cast<int>(i), label);
+				int idx = pList6->InsertItem(row, label);
 				pList6->SetItemText(idx, 1, CString(title));
+				pList6->SetItemData(idx, static_cast<DWORD_PTR>(i));
+				++row;
 			}
 		}
 	}
@@ -1324,6 +1327,7 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
 				label.Format(_T("%zu"), row + 1);
 				int idx = pList7->InsertItem(row, label);
 				pList7->SetItemText(idx, 1, CString(title));
+				pList7->SetItemData(idx, static_cast<DWORD_PTR>(i));  // 存储真实索引
 				++row;
 			}
 		}
@@ -1406,10 +1410,17 @@ void CMFCApplication1Dlg::OnWindowScreenshot()
 	HBITMAP hBitmap = ::CreateCompatibleBitmap(hdcScreen, width, height);
 	HBITMAP hOldBmp = static_cast<HBITMAP>(::SelectObject(hdcMem, hBitmap));
 
-	// 使用 PrintWindow 截取窗口
-	if (!::PrintWindow(m_hSelectedWnd, hdcMem, PW_CLIENTONLY))
+	// 使用 PrintWindow 截取窗口（多级回退）
+	// PW_RENDERFULLCONTENT(0x2): 对 DWM 合成窗口效果最好，支持 GPU 渲染内容
+	BOOL bPrintOK = ::PrintWindow(m_hSelectedWnd, hdcMem, 0x2);
+	if (!bPrintOK)
 	{
-		// PrintWindow 失败时尝试 BitBlt
+		// 回退1: 不带标志的 PrintWindow
+		bPrintOK = ::PrintWindow(m_hSelectedWnd, hdcMem, 0);
+	}
+	if (!bPrintOK)
+	{
+		// 回退2: BitBlt 从屏幕直接拷贝
 		::SetForegroundWindow(m_hSelectedWnd);
 		::Sleep(100);
 		::BitBlt(hdcMem, 0, 0, width, height, hdcScreen, rc.left, rc.top, SRCCOPY);
@@ -1562,13 +1573,16 @@ void CMFCApplication1Dlg::OnUntopmostWindow()
 	if (!pList6) return;
 
 	int nSel = pList6->GetNextItem(-1, LVNI_SELECTED);
-	if (nSel < 0 || static_cast<size_t>(nSel) >= m_topmostWnds.size()) return;
+	if (nSel < 0) return;
 
-	HWND hWnd = m_topmostWnds[nSel];
+	size_t idx = static_cast<size_t>(pList6->GetItemData(nSel));
+	if (idx >= m_topmostWnds.size()) return;
+
+	HWND hWnd = m_topmostWnds[idx];
 	if (::IsWindow(hWnd))
 		::SetWindowPos(hWnd, HWND_NOTOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
 
-	m_topmostWnds.erase(m_topmostWnds.begin() + nSel);
+	m_topmostWnds.erase(m_topmostWnds.begin() + idx);
 
 	// 如果是工具箱自身，同步取消复选框
 	if (hWnd == m_hWnd)
@@ -1667,9 +1681,12 @@ void CMFCApplication1Dlg::OnClickList6(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 	if (!pList6) { *pResult = 0; return; }
 
 	int nSel = pList6->GetNextItem(-1, LVNI_SELECTED);
-	if (nSel < 0 || static_cast<size_t>(nSel) >= m_topmostWnds.size()) { *pResult = 0; return; }
+	if (nSel < 0) { *pResult = 0; return; }
 
-	HWND hWnd = m_topmostWnds[nSel];
+	size_t idx = static_cast<size_t>(pList6->GetItemData(nSel));
+	if (idx >= m_topmostWnds.size()) { *pResult = 0; return; }
+
+	HWND hWnd = m_topmostWnds[idx];
 	if (hWnd && ::IsWindow(hWnd))
 	{
 		m_hSelectedWnd = hWnd;
@@ -1685,9 +1702,12 @@ void CMFCApplication1Dlg::OnClickList7(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 	if (!pList7) { *pResult = 0; return; }
 
 	int nSel = pList7->GetNextItem(-1, LVNI_SELECTED);
-	if (nSel < 0 || static_cast<size_t>(nSel) >= m_historyWnds.size()) { *pResult = 0; return; }
+	if (nSel < 0) { *pResult = 0; return; }
 
-	HWND hWnd = m_historyWnds[nSel];
+	size_t idx = static_cast<size_t>(pList7->GetItemData(nSel));
+	if (idx >= m_historyWnds.size()) { *pResult = 0; return; }
+
+	HWND hWnd = m_historyWnds[idx];
 	if (hWnd && ::IsWindow(hWnd))
 	{
 		m_hSelectedWnd = hWnd;
@@ -1703,9 +1723,12 @@ void CMFCApplication1Dlg::OnDeleteList6Record()
 	if (!pList6) return;
 
 	int nSel = pList6->GetNextItem(-1, LVNI_SELECTED);
-	if (nSel < 0 || static_cast<size_t>(nSel) >= m_topmostWnds.size()) return;
+	if (nSel < 0) return;
 
-	HWND hWnd = m_topmostWnds[nSel];
+	size_t idx = static_cast<size_t>(pList6->GetItemData(nSel));
+	if (idx >= m_topmostWnds.size()) return;
+
+	HWND hWnd = m_topmostWnds[idx];
 	if (::IsWindow(hWnd))
 		::SetWindowPos(hWnd, HWND_NOTOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
 
@@ -1714,7 +1737,7 @@ void CMFCApplication1Dlg::OnDeleteList6Record()
 		CButton* pCheck = static_cast<CButton*>(GetDlgItem(IDC_CHECK3));
 		if (pCheck) pCheck->SetCheck(BST_UNCHECKED);
 	}
-	m_topmostWnds.erase(m_topmostWnds.begin() + nSel);
+	m_topmostWnds.erase(m_topmostWnds.begin() + idx);
 
 	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
 	if (pTab) UpdateTabVisibility(pTab->GetCurSel());
@@ -1726,9 +1749,12 @@ void CMFCApplication1Dlg::OnDeleteList7Record()
 	if (!pList7) return;
 
 	int nSel = pList7->GetNextItem(-1, LVNI_SELECTED);
-	if (nSel < 0 || static_cast<size_t>(nSel) >= m_historyWnds.size()) return;
+	if (nSel < 0) return;
 
-	m_historyWnds.erase(m_historyWnds.begin() + nSel);
+	size_t idx = static_cast<size_t>(pList7->GetItemData(nSel));
+	if (idx >= m_historyWnds.size()) return;
+
+	m_historyWnds.erase(m_historyWnds.begin() + idx);
 
 	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
 	if (pTab) UpdateTabVisibility(pTab->GetCurSel());
@@ -1740,9 +1766,12 @@ void CMFCApplication1Dlg::OnTopmostFromHistory()
 	if (!pList7) return;
 
 	int nSel = pList7->GetNextItem(-1, LVNI_SELECTED);
-	if (nSel < 0 || static_cast<size_t>(nSel) >= m_historyWnds.size()) return;
+	if (nSel < 0) return;
 
-	HWND hWnd = m_historyWnds[nSel];
+	size_t idx = static_cast<size_t>(pList7->GetItemData(nSel));
+	if (idx >= m_historyWnds.size()) return;
+
+	HWND hWnd = m_historyWnds[idx];
 	if (!::IsWindow(hWnd)) return;
 
 	if (!::SetWindowPos(hWnd, HWND_TOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE))
@@ -1771,9 +1800,12 @@ void CMFCApplication1Dlg::OnUntopmostFromHistory()
 	if (!pList7) return;
 
 	int nSel = pList7->GetNextItem(-1, LVNI_SELECTED);
-	if (nSel < 0 || static_cast<size_t>(nSel) >= m_historyWnds.size()) return;
+	if (nSel < 0) return;
 
-	HWND hWnd = m_historyWnds[nSel];
+	size_t idx = static_cast<size_t>(pList7->GetItemData(nSel));
+	if (idx >= m_historyWnds.size()) return;
+
+	HWND hWnd = m_historyWnds[idx];
 	if (::IsWindow(hWnd))
 		::SetWindowPos(hWnd, HWND_NOTOPMOST, 0,0,0,0, SWP_NOMOVE|SWP_NOSIZE);
 
@@ -2485,7 +2517,7 @@ void CMFCApplication1Dlg::OnContextMenu(CWnd* pWnd, CPoint point)
         if (nSel != -1)
         {
             menu.AppendMenu(MF_STRING, 32773, _T("删除启动项"));
-            menu.AppendMenu(MF_STRING, 32776, _T("复制路径"));
+            menu.AppendMenu(MF_STRING, 32806, _T("复制路径"));
         }
 
         menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
@@ -2521,8 +2553,8 @@ void CMFCApplication1Dlg::OnContextMenu(CWnd* pWnd, CPoint point)
         {
             CMenu menu;
             menu.CreatePopupMenu();
-            menu.AppendMenu(MF_STRING, 32775, _T("取消置顶"));
-            menu.AppendMenu(MF_STRING, 32777, _T("删除"));
+            menu.AppendMenu(MF_STRING, 32805, _T("取消置顶"));
+            menu.AppendMenu(MF_STRING, 32807, _T("删除"));
             menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
         }
         return;
@@ -2533,20 +2565,24 @@ void CMFCApplication1Dlg::OnContextMenu(CWnd* pWnd, CPoint point)
     if (pList7 && hClicked == pList7->GetSafeHwnd())
     {
         int nSel = pList7->GetNextItem(-1, LVNI_SELECTED);
-        if (nSel != -1 && static_cast<size_t>(nSel) < m_historyWnds.size())
+        if (nSel != -1)
         {
-            HWND hWnd = m_historyWnds[nSel];
-            bool bAlreadyTopmost = ::IsWindow(hWnd) &&
-                std::find(m_topmostWnds.begin(), m_topmostWnds.end(), hWnd) != m_topmostWnds.end();
+            size_t idx = static_cast<size_t>(pList7->GetItemData(nSel));
+            if (idx < m_historyWnds.size())
+            {
+                HWND hWnd = m_historyWnds[idx];
+                bool bAlreadyTopmost = ::IsWindow(hWnd) &&
+                    std::find(m_topmostWnds.begin(), m_topmostWnds.end(), hWnd) != m_topmostWnds.end();
 
-            CMenu menu;
-            menu.CreatePopupMenu();
-            if (bAlreadyTopmost)
-                menu.AppendMenu(MF_STRING, 32780, _T("取消置顶"));
-            else
-                menu.AppendMenu(MF_STRING, 32779, _T("置顶"));
-            menu.AppendMenu(MF_STRING, 32778, _T("删除"));
-            menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
+                CMenu menu;
+                menu.CreatePopupMenu();
+                if (bAlreadyTopmost)
+                    menu.AppendMenu(MF_STRING, 32810, _T("取消置顶"));
+                else
+                    menu.AppendMenu(MF_STRING, 32809, _T("置顶"));
+                menu.AppendMenu(MF_STRING, 32808, _T("删除"));
+                menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
+            }
         }
         return;
     }
