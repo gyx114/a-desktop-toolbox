@@ -590,6 +590,79 @@ BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
+// CAutoClickerSpeedDlg - 连点器速度调节置顶窗口
+
+class CAutoClickerSpeedDlg : public CDialogEx
+{
+public:
+    CAutoClickerSpeedDlg(CAutoClicker* pClicker, CWnd* pParent = nullptr)
+        : CDialogEx(IDD_CLICK_SPEED_DIALOG, pParent), m_pClicker(pClicker) {}
+
+    void SetInterval(int ms)
+    {
+        m_interval = ms;
+        if (GetSafeHwnd())
+        {
+            SetDlgItemInt(IDC_EDIT_CLICK_SPEED, ms);
+            CSliderCtrl* pSlider = static_cast<CSliderCtrl*>(GetDlgItem(IDC_SLIDER_CLICK_SPEED));
+            if (pSlider) pSlider->SetPos(ms);
+        }
+    }
+
+    [[nodiscard]] int GetInterval() const { return m_interval; }
+
+protected:
+    virtual BOOL OnInitDialog()
+    {
+        CDialogEx::OnInitDialog();
+        CSliderCtrl* pSlider = static_cast<CSliderCtrl*>(GetDlgItem(IDC_SLIDER_CLICK_SPEED));
+        if (pSlider)
+        {
+            pSlider->SetRange(10, 1000);
+            pSlider->SetPos(m_interval);
+            pSlider->SetTicFreq(100);
+        }
+        SetDlgItemInt(IDC_EDIT_CLICK_SPEED, m_interval);
+        return TRUE;
+    }
+
+    virtual void OnOK() { /* 不关闭，仅应用 */ }
+
+    afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
+    {
+        CSliderCtrl* pSlider = static_cast<CSliderCtrl*>(GetDlgItem(IDC_SLIDER_CLICK_SPEED));
+        if (pSlider && pScrollBar && pSlider->m_hWnd == pScrollBar->m_hWnd)
+        {
+            m_interval = pSlider->GetPos();
+            SetDlgItemInt(IDC_EDIT_CLICK_SPEED, m_interval);
+            if (m_pClicker) m_pClicker->SetInterval(m_interval);
+        }
+    }
+
+    afx_msg void OnEnChangeClickSpeed()
+    {
+        int val = GetDlgItemInt(IDC_EDIT_CLICK_SPEED);
+        if (val >= 10 && val <= 1000)
+        {
+            m_interval = val;
+            CSliderCtrl* pSlider = static_cast<CSliderCtrl*>(GetDlgItem(IDC_SLIDER_CLICK_SPEED));
+            if (pSlider) pSlider->SetPos(val);
+            if (m_pClicker) m_pClicker->SetInterval(val);
+        }
+    }
+
+    DECLARE_MESSAGE_MAP()
+private:
+    CAutoClicker* m_pClicker;
+    int m_interval{100};
+};
+
+BEGIN_MESSAGE_MAP(CAutoClickerSpeedDlg, CDialogEx)
+    ON_WM_HSCROLL()
+    ON_EN_CHANGE(IDC_EDIT_CLICK_SPEED, &CAutoClickerSpeedDlg::OnEnChangeClickSpeed)
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
 // CSettingsDlg dialog - configuration
 
 class CSettingsDlg : public CDialogEx
@@ -650,6 +723,10 @@ BOOL CSettingsDlg::OnInitDialog()
         strDefaultScreenshot = szDesktop;
     SetDlgItemText(IDC_EDIT_SCREENSHOT_DIR,
         AfxGetApp()->GetProfileString(_T("Paths"), _T("ScreenshotDir"), strDefaultScreenshot));
+
+    // 连点器间隔，默认100ms
+    SetDlgItemInt(IDC_EDIT_CLICK_INTERVAL,
+        AfxGetApp()->GetProfileInt(_T("AutoClicker"), _T("IntervalMs"), 100));
     return TRUE;
 }
 
@@ -669,6 +746,7 @@ void CSettingsDlg::OnOK()
     GetDlgItemText(IDC_EDIT_SCREENSHOT_DIR, v); AfxGetApp()->WriteProfileString(_T("Paths"), _T("ScreenshotDir"), v);
     GetDlgItemText(IDC_EDIT_MOOC_URL, v); AfxGetApp()->WriteProfileString(_T("Sites"), _T("MoocUrl"), v);
     GetDlgItemText(IDC_EDIT_SDUCS_URL, v); AfxGetApp()->WriteProfileString(_T("Sites"), _T("Sducs"), v);
+    AfxGetApp()->WriteProfileInt(_T("AutoClicker"), _T("IntervalMs"), GetDlgItemInt(IDC_EDIT_CLICK_INTERVAL));
     CDialogEx::OnOK();
 }
 
@@ -1622,8 +1700,10 @@ void CMFCApplication1Dlg::OnHelpShortcuts()
 		_T("快捷键列表:\n\n")
 		_T("Ctrl+Alt+Space   - 显示/隐藏工具箱\n")
 		_T("Alt+1~6          - 切换标签页\n")
-		_T("Ctrl+Alt+T       - 定位窗口\n")
-		_T("F3               - 连点器开关\n\n")
+		_T("F5               - 刷新当前列表\n")
+		_T("F6               - 启动连点器\n")
+		_T("F7               - 停止连点器\n")
+		_T("Ctrl+Alt+D       - 定位窗口\n\n")
 		_T("更多功能请查看视图/工具/窗口菜单。"),
 		_T("快捷键列表"), MB_OK | MB_ICONINFORMATION);
 }
@@ -1917,6 +1997,14 @@ void CMFCApplication1Dlg::OnDestroy()
     // Ensure we unregister clipboard listener if we registered it in OnInitDialog.
     ::RemoveClipboardFormatListener(m_hWnd);
 
+    // 销毁连点器速度调节窗口
+    if (m_pSpeedDlg)
+    {
+        m_pSpeedDlg->DestroyWindow();
+        delete m_pSpeedDlg;
+        m_pSpeedDlg = nullptr;
+    }
+
     // Ensure autoclicker threads are stopped (C++20: using CAutoClicker class)
     m_autoClicker.Stop();
 
@@ -2091,36 +2179,94 @@ HCURSOR CMFCApplication1Dlg::OnQueryDragIcon()
 
 BOOL CMFCApplication1Dlg::PreTranslateMessage(MSG* pMsg)
 {
-    // 拦截键盘按下事件，且按下的是 F5
-    if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_F5)
+    // ===== 全局快捷键 =====
+
+    if (pMsg->message == WM_KEYDOWN)
     {
-        CTabCtrl* pTab = (CTabCtrl*)GetDlgItem(IDC_TAB1);
-        // 判断当前是否停留在第一个选项卡 (进程管理)
-        if (pTab)
+        // F5: 刷新当前tab列表
+        if (pMsg->wParam == VK_F5)
         {
-            int nSel = pTab->GetCurSel();
-            if (nSel == 0)
+            CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+            if (pTab)
             {
-                RefreshProcessList();
-                return TRUE; // 返回 TRUE 将事件处理掉，不往下传
+                int nSel = pTab->GetCurSel();
+                if (nSel == 0) { RefreshProcessList(); return TRUE; }
+                if (nSel == 1) { RefreshStartupList(); return TRUE; }
             }
-            else if (nSel == 1)
+        }
+
+        // F6: 启动连点器
+        if (pMsg->wParam == VK_F6)
+        {
+            CButton* pCheck = static_cast<CButton*>(GetDlgItem(IDC_CHECK4));
+            if (pCheck)
             {
-                RefreshStartupList();
+                pCheck->SetCheck(BST_CHECKED);
+                int interval = AfxGetApp()->GetProfileInt(_T("AutoClicker"), _T("IntervalMs"), 100);
+                m_autoClicker.Start(interval, m_hWnd);
+
+                // 显示速度调节窗口
+                if (!m_pSpeedDlg)
+                {
+                    auto* pDlg = new CAutoClickerSpeedDlg(&m_autoClicker);
+                    pDlg->SetInterval(interval);
+                    pDlg->Create(IDD_CLICK_SPEED_DIALOG, this);
+                    pDlg->ShowWindow(SW_SHOW);
+                    m_pSpeedDlg = pDlg;
+                }
+            }
+            return TRUE;
+        }
+
+        // F7: 停止连点器
+        if (pMsg->wParam == VK_F7)
+        {
+            CButton* pCheck = static_cast<CButton*>(GetDlgItem(IDC_CHECK4));
+            if (pCheck) pCheck->SetCheck(BST_UNCHECKED);
+            m_autoClicker.Stop();
+
+            // 销毁速度调节窗口
+            if (m_pSpeedDlg)
+            {
+                m_pSpeedDlg->DestroyWindow();
+                delete m_pSpeedDlg;
+                m_pSpeedDlg = nullptr;
+            }
+            return TRUE;
+        }
+
+        // Ctrl+Alt+D: 窗口定位
+        if (pMsg->wParam == 'D' && (GetKeyState(VK_CONTROL) & 0x8000) && (GetKeyState(VK_MENU) & 0x8000))
+        {
+            OnWindowLocate();
+            return TRUE;
+        }
+
+        // Enter: 当焦点在编辑框时触发运行
+        if (pMsg->wParam == VK_RETURN)
+        {
+            CWnd* pEdit = GetDlgItem(IDC_EDIT6);
+            if (pEdit && pEdit->GetSafeHwnd() == ::GetFocus())
+            {
+                OnBnClickedButton17();
                 return TRUE;
             }
         }
     }
 
-    // 如果编辑框 IDC_EDIT6 拥有焦点，按回车等同于点击运行按钮
-    if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_RETURN)
+    // Alt+1~6: 切换标签页
+    if (pMsg->message == WM_SYSKEYDOWN)
     {
-        CWnd* pEdit = this->GetDlgItem(IDC_EDIT6);
-        if (pEdit && pEdit->GetSafeHwnd() == ::GetFocus())
+        if (pMsg->wParam >= '1' && pMsg->wParam <= '6')
         {
-            // 调用按钮处理函数
-            OnBnClickedButton17();
-            return TRUE; // 吃掉回车，不让默认按钮处理
+            int nTab = static_cast<int>(pMsg->wParam - '1');
+            CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
+            if (pTab)
+            {
+                pTab->SetCurSel(nTab);
+                UpdateTabVisibility(nTab);
+            }
+            return TRUE;
         }
     }
 
@@ -3620,11 +3766,30 @@ void CMFCApplication1Dlg::OnBnClickedCheck4()
 
     if (pCheck->GetCheck() == BST_CHECKED)
     {
-        m_autoClicker.Start(100, m_hWnd);
+        int interval = AfxGetApp()->GetProfileInt(_T("AutoClicker"), _T("IntervalMs"), 100);
+        m_autoClicker.Start(interval, m_hWnd);
+
+        // 显示速度调节窗口
+        if (!m_pSpeedDlg)
+        {
+            auto* pDlg = new CAutoClickerSpeedDlg(&m_autoClicker);
+            pDlg->SetInterval(interval);
+            pDlg->Create(IDD_CLICK_SPEED_DIALOG, this);
+            pDlg->ShowWindow(SW_SHOW);
+            m_pSpeedDlg = pDlg;
+        }
     }
     else
     {
         m_autoClicker.Stop();
+
+        // 销毁速度调节窗口
+        if (m_pSpeedDlg)
+        {
+            m_pSpeedDlg->DestroyWindow();
+            delete m_pSpeedDlg;
+            m_pSpeedDlg = nullptr;
+        }
     }
 }
 
@@ -3634,6 +3799,15 @@ afx_msg LRESULT CMFCApplication1Dlg::OnAutoClickStopped(WPARAM wParam, LPARAM lP
     // ensure checkbox is unchecked and show message
     CButton* pCheck = (CButton*)GetDlgItem(IDC_CHECK4);
     if (pCheck) pCheck->SetCheck(BST_UNCHECKED);
+
+    // 销毁速度调节窗口
+    if (m_pSpeedDlg)
+    {
+        m_pSpeedDlg->DestroyWindow();
+        delete m_pSpeedDlg;
+        m_pSpeedDlg = nullptr;
+    }
+
     MessageBox(_T("连点停止"), _T("提示"), MB_OK | MB_ICONINFORMATION);
     return 0;
 }

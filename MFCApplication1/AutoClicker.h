@@ -22,6 +22,9 @@ public:
     // 停止连点器
     void Stop();
 
+    // 动态调整点击间隔（毫秒），无需停止连点器
+    void SetInterval(int intervalMs);
+
     // 是否正在运行
     [[nodiscard]] bool IsRunning() const { return m_bEnabled.load(); }
     [[nodiscard]] bool IsClicking() const { return m_bClicking.load(); }

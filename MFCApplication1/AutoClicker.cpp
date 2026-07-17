@@ -35,6 +35,22 @@ void CAutoClicker::Stop()
     m_clickStopSource = std::stop_source{};
 }
 
+void CAutoClicker::SetInterval(int intervalMs)
+{
+    if (intervalMs < 10) intervalMs = 10;
+    if (intervalMs > 10000) intervalMs = 10000;
+    m_intervalMs = intervalMs;
+
+    // 如果正在点击，重启点击线程以应用新间隔
+    if (m_bClicking.load())
+    {
+        m_clickStopSource.request_stop();
+        if (m_clickThread.joinable()) m_clickThread.join();
+        m_clickStopSource = std::stop_source{};
+        m_clickThread = std::jthread(ClickThreadFunc, m_clickStopSource.get_token(), intervalMs);
+    }
+}
+
 void CAutoClicker::ClickThreadFunc(std::stop_token stoken, int intervalMs)
 {
     INPUT inputs[2]{};

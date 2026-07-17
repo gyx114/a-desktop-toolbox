@@ -212,6 +212,9 @@ public:
 	CAutoClicker m_autoClicker;
 	static constexpr UINT WM_AUTOCLICK_STOPPED = CAutoClicker::WM_STOPPED;
 
+	// 连点器速度调节窗口（置顶）
+	CDialogEx* m_pSpeedDlg{nullptr};
+
 	// Prevent automatic lock/screen-off checkbox state (IDC_CHECK5)
 	bool m_bPreventLockScreen{false};
 

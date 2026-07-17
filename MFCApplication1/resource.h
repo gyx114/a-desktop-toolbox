@@ -98,6 +98,11 @@
 #define IDC_BUTTON16                    1102
 #define IDC_EDIT_SCREENSHOT_DIR         1103
 #define IDC_BROWSE_SCREENSHOT           1104
+#define IDD_CLICK_SPEED_DIALOG          135
+#define IDC_SLIDER_CLICK_SPEED          1105
+#define IDC_EDIT_CLICK_SPEED            1106
+#define IDC_EDIT_CLICK_INTERVAL         1107
+#define IDC_STATIC_CLICK_SPEED          1108
 #define ID_FILE_SETTINGS                32775
 #define ID_FILE_EXIT                    32776
 #define ID_HELP_ABOUT                   32777
