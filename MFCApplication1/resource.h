@@ -152,6 +152,13 @@
 #define IDC_STATIC_TAB1_REPLACE_TO     1153
 #define IDC_STATIC_TAB1_START_NUM      1154
 #define IDC_STATIC_TAB1_TIP            1155
+#define IDC_BTN_FILE_UNMARK_ALL        1156
+#define IDC_CHECK_DELETE_INVERT        1157
+#define IDC_CHECK_NUMBER_AFTER_EXT     1158
+#define IDC_BTN_FILE_RESET_ALL         1161
+#define IDD_INPUT_DLG                  141
+#define IDC_INPUT_PROMPT               1159
+#define IDC_INPUT_EDIT                 1160
 #define IDD_FOLDER_PROCESS_DLG         140
 #define IDD_REGEX_GUIDE_DLG            139
 #define ID_FILE_SETTINGS                32775

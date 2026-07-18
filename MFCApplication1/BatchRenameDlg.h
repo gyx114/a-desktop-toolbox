@@ -66,6 +66,9 @@ private:
     afx_msg void OnFileListRightClick(NMHDR* pNMHDR, LRESULT* pResult);
     afx_msg void OnFileMarkDelete();
     afx_msg void OnFileUnmarkDelete();
+    afx_msg void OnFileUnmarkAll();
+    afx_msg void OnFileResetAll();
+    afx_msg void OnFileChangeExt();
     std::vector<RenameEntry> m_entries;
     bool m_bPreviewDone{false};
     int m_nActiveTab{0};

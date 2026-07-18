@@ -12,6 +12,47 @@ namespace fs = std::filesystem;
 // 右键菜单命令ID
 #define IDM_FILE_MARK_DELETE    32820
 #define IDM_FILE_UNMARK_DELETE  32821
+#define IDM_FILE_CHANGE_EXT     32822
+
+// 简单的输入对话框类
+class CInputDialog : public CDialogEx
+{
+public:
+    CInputDialog(LPCTSTR prompt, LPCTSTR title, LPCTSTR defaultVal)
+        : CDialogEx(IDD_INPUT_DLG), m_prompt(prompt), m_title(title), m_default(defaultVal) {}
+
+    CString GetInput() const { return m_input; }
+
+protected:
+    virtual BOOL OnInitDialog() override
+    {
+        CDialogEx::OnInitDialog();
+        SetWindowText(m_title);
+        SetDlgItemText(IDC_INPUT_PROMPT, m_prompt);
+        SetDlgItemText(IDC_INPUT_EDIT, m_default);
+        GetDlgItem(IDC_INPUT_EDIT)->SetFocus();
+        return FALSE;
+    }
+    virtual void DoDataExchange(CDataExchange* pDX) override
+    {
+        CDialogEx::DoDataExchange(pDX);
+        DDX_Text(pDX, IDC_INPUT_EDIT, m_input);
+    }
+
+    void OnOK() override
+    {
+        UpdateData(TRUE);
+        CDialogEx::OnOK();
+    }
+
+    DECLARE_MESSAGE_MAP()
+
+    CString m_prompt, m_title, m_default, m_input;
+    enum { IDD = IDD_INPUT_DLG };
+};
+
+BEGIN_MESSAGE_MAP(CInputDialog, CDialogEx)
+END_MESSAGE_MAP()
 
 CBatchRenameDlg::CBatchRenameDlg(CWnd* pParent, const CString& initialFolder)
     : CDialogEx(IDD_BATCH_RENAME_DLG, pParent)
@@ -45,6 +86,9 @@ BEGIN_MESSAGE_MAP(CBatchRenameDlg, CDialogEx)
     ON_NOTIFY(NM_RCLICK, IDC_LIST_RENAME, &CBatchRenameDlg::OnFileListRightClick)
     ON_COMMAND(IDM_FILE_MARK_DELETE, &CBatchRenameDlg::OnFileMarkDelete)
     ON_COMMAND(IDM_FILE_UNMARK_DELETE, &CBatchRenameDlg::OnFileUnmarkDelete)
+    ON_COMMAND(IDM_FILE_CHANGE_EXT, &CBatchRenameDlg::OnFileChangeExt)
+    ON_BN_CLICKED(IDC_BTN_FILE_UNMARK_ALL, &CBatchRenameDlg::OnFileUnmarkAll)
+    ON_BN_CLICKED(IDC_BTN_FILE_RESET_ALL, &CBatchRenameDlg::OnFileResetAll)
     ON_WM_DROPFILES()
 END_MESSAGE_MAP()
 
@@ -71,7 +115,7 @@ BOOL CBatchRenameDlg::OnInitDialog()
         pFileList->GetClientRect(&rcList);
         int totalWidth = rcList.Width() - ::GetSystemMetrics(SM_CXVSCROLL) - 4;
         pFileList->InsertColumn(0, _T("原文件名"), LVCFMT_LEFT, totalWidth * 2 / 5);
-        pFileList->InsertColumn(1, _T("新文件名/状态"), LVCFMT_LEFT, totalWidth - totalWidth * 2 / 5);
+        pFileList->InsertColumn(1, _T("新文件名/状态"), LVCFMT_LEFT, totalWidth * 3 / 5 - totalWidth / 12);
     }
 
     // 初始化文件夹列表
@@ -130,7 +174,9 @@ void CBatchRenameDlg::ShowTab(int nTab)
         IDC_CHECK_RENAME_REGEX, IDC_BTN_RENAME_REGEX_HELP,
         IDC_CHECK_RENAME_NUMBER, IDC_EDIT_RENAME_START_NUM,
         IDC_CHECK_DELETE_MATCH, IDC_EDIT_DELETE_PATTERN,
+        IDC_CHECK_DELETE_INVERT, IDC_CHECK_NUMBER_AFTER_EXT,
         IDC_BTN_RENAME_PREVIEW, IDC_BTN_RENAME_EXECUTE,
+        IDC_BTN_FILE_UNMARK_ALL, IDC_BTN_FILE_RESET_ALL,
         IDC_STATIC_TAB1_PREFIX, IDC_STATIC_TAB1_SUFFIX,
         IDC_STATIC_TAB1_REPLACE_FROM, IDC_STATIC_TAB1_REPLACE_TO,
         IDC_STATIC_TAB1_START_NUM, IDC_STATIC_TAB1_TIP
@@ -152,6 +198,7 @@ void CBatchRenameDlg::ShowTab(int nTab)
     // 更新按钮状态
     if (nTab == 1)
     {
+        GetDlgItem(IDC_BTN_RENAME_PREVIEW)->EnableWindow(!m_entries.empty());
         GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(m_bPreviewDone);
     }
     else
@@ -521,6 +568,8 @@ void CBatchRenameDlg::ApplyRules()
     BOOL bNumbering = static_cast<CButton*>(GetDlgItem(IDC_CHECK_RENAME_NUMBER))->GetCheck() == BST_CHECKED;
     BOOL bRegex = static_cast<CButton*>(GetDlgItem(IDC_CHECK_RENAME_REGEX))->GetCheck() == BST_CHECKED;
     BOOL bDeleteMatch = static_cast<CButton*>(GetDlgItem(IDC_CHECK_DELETE_MATCH))->GetCheck() == BST_CHECKED;
+    BOOL bDeleteInvert = static_cast<CButton*>(GetDlgItem(IDC_CHECK_DELETE_INVERT))->GetCheck() == BST_CHECKED;
+    BOOL bNumberAfterExt = static_cast<CButton*>(GetDlgItem(IDC_CHECK_NUMBER_AFTER_EXT))->GetCheck() == BST_CHECKED;
     int startNum = GetDlgItemInt(IDC_EDIT_RENAME_START_NUM, nullptr, FALSE);
 
     CString deletePattern;
@@ -536,7 +585,10 @@ void CBatchRenameDlg::ApplyRules()
             {
                 std::wstring wName = static_cast<LPCWSTR>(m_entries[i].oldName);
                 std::wregex re(static_cast<LPCWSTR>(deletePattern));
-                if (std::regex_search(wName, re))
+                bool bMatched = std::regex_search(wName, re);
+                // 反选：匹配时不删除，不匹配时删除
+                bool bShouldDelete = bDeleteInvert ? !bMatched : bMatched;
+                if (bShouldDelete)
                 {
                     m_entries[i].bMarkedDelete = true;
                     m_entries[i].newName = _T("被删除");
@@ -589,9 +641,23 @@ void CBatchRenameDlg::ApplyRules()
 
         CString numStr;
         if (bNumbering)
+        {
             numStr.Format(_T("_%d"), startNum + static_cast<int>(i));
-
-        m_entries[i].newName = prefix + stem + numStr + suffix + ext;
+            if (bNumberAfterExt)
+            {
+                // 序号在后缀后：prefix + stem + suffix + _num + ext
+                m_entries[i].newName = prefix + stem + suffix + numStr + ext;
+            }
+            else
+            {
+                // 序号在后缀前（默认）：prefix + stem + _num + suffix + ext
+                m_entries[i].newName = prefix + stem + numStr + suffix + ext;
+            }
+        }
+        else
+        {
+            m_entries[i].newName = prefix + stem + suffix + ext;
+        }
     }
 }
 
@@ -728,6 +794,8 @@ void CBatchRenameDlg::OnFileListRightClick(NMHDR* /*pNMHDR*/, LRESULT* pResult)
     {
         menu.AppendMenu(MF_STRING, IDM_FILE_MARK_DELETE, _T("标记删除"));
         menu.AppendMenu(MF_STRING, IDM_FILE_UNMARK_DELETE, _T("取消标记"));
+        menu.AppendMenu(MF_SEPARATOR);
+        menu.AppendMenu(MF_STRING, IDM_FILE_CHANGE_EXT, _T("修改后缀"));
     }
     menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, this);
     *pResult = 0;
@@ -773,4 +841,118 @@ void CBatchRenameDlg::OnFileUnmarkDelete()
             }
         }
     }
+}
+
+void CBatchRenameDlg::OnFileUnmarkAll()
+{
+    CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_RENAME));
+    if (!pList) return;
+
+    for (size_t i = 0; i < m_entries.size(); i++)
+    {
+        m_entries[i].bMarkedDelete = false;
+    }
+
+    // 自动执行预览
+    ApplyRules();
+    RefreshFileList();
+    m_bPreviewDone = true;
+    GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(TRUE);
+}
+
+void CBatchRenameDlg::OnFileResetAll()
+{
+    if (MessageBox(_T("确定要清除所有改动吗？\n将重置前缀、后缀、替换、序号、删除标记。"),
+        _T("确认"), MB_YESNO | MB_ICONQUESTION) != IDYES)
+        return;
+
+    // 清除所有编辑框
+    SetDlgItemText(IDC_EDIT_RENAME_PREFIX, _T(""));
+    SetDlgItemText(IDC_EDIT_RENAME_SUFFIX, _T(""));
+    SetDlgItemText(IDC_EDIT_RENAME_REPLACE_FROM, _T(""));
+    SetDlgItemText(IDC_EDIT_RENAME_REPLACE_TO, _T(""));
+    SetDlgItemText(IDC_EDIT_DELETE_PATTERN, _T(""));
+
+    // 取消所有复选框
+    static_cast<CButton*>(GetDlgItem(IDC_CHECK_RENAME_NUMBER))->SetCheck(BST_UNCHECKED);
+    static_cast<CButton*>(GetDlgItem(IDC_CHECK_RENAME_REGEX))->SetCheck(BST_UNCHECKED);
+    static_cast<CButton*>(GetDlgItem(IDC_CHECK_DELETE_MATCH))->SetCheck(BST_UNCHECKED);
+    static_cast<CButton*>(GetDlgItem(IDC_CHECK_DELETE_INVERT))->SetCheck(BST_UNCHECKED);
+    static_cast<CButton*>(GetDlgItem(IDC_CHECK_NUMBER_AFTER_EXT))->SetCheck(BST_UNCHECKED);
+
+    // 清除所有删除标记
+    for (size_t i = 0; i < m_entries.size(); i++)
+    {
+        m_entries[i].bMarkedDelete = false;
+    }
+
+    // 自动执行预览
+    ApplyRules();
+    RefreshFileList();
+    m_bPreviewDone = true;
+    GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(TRUE);
+}
+
+void CBatchRenameDlg::OnFileChangeExt()
+{
+    CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_RENAME));
+    if (!pList) return;
+
+    // 获取选中项的当前后缀
+    CString defaultExt = _T("txt");
+    for (int i = 0; i < pList->GetItemCount(); i++)
+    {
+        if (pList->GetItemState(i, LVIS_SELECTED) & LVIS_SELECTED)
+        {
+            if (i < static_cast<int>(m_entries.size()))
+            {
+                int dot = m_entries[i].oldName.ReverseFind(_T('.'));
+                if (dot != -1)
+                {
+                    defaultExt = m_entries[i].oldName.Mid(dot + 1);
+                    break;
+                }
+            }
+        }
+    }
+
+    // 弹出输入对话框
+    CString newExt;
+    CInputDialog dlg(_T("请输入新后缀（不含点号）:"), _T("修改后缀"), defaultExt);
+    if (dlg.DoModal() != IDOK) return;
+
+    newExt = dlg.GetInput();
+    newExt.Trim();
+    if (newExt.IsEmpty()) return;
+
+    // 检查非法字符
+    CString invalid = _T("\\/:*?\"<>|.");
+    for (int i = 0; i < invalid.GetLength(); i++)
+    {
+        if (newExt.Find(invalid[i]) != -1)
+        {
+            MessageBox(_T("后缀包含非法字符。"), _T("错误"), MB_OK | MB_ICONERROR);
+            return;
+        }
+    }
+
+    // 为所有选中项修改后缀
+    int nCount = pList->GetItemCount();
+    for (int i = 0; i < nCount; i++)
+    {
+        if (pList->GetItemState(i, LVIS_SELECTED) & LVIS_SELECTED)
+        {
+            if (i < static_cast<int>(m_entries.size()) && !m_entries[i].bMarkedDelete)
+            {
+                CString name = m_entries[i].oldName;
+                int dot = name.ReverseFind(_T('.'));
+                CString stem = (dot > 0) ? name.Left(dot) : name;
+                m_entries[i].newName = stem + _T(".") + newExt;
+                pList->SetItemText(i, 1, m_entries[i].newName);
+            }
+        }
+    }
+
+    m_bPreviewDone = true;
+    GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(TRUE);
 }

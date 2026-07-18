@@ -54,10 +54,10 @@ BEGIN
     "\r\n"
     "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)\r\n"
     "LANGUAGE 4, 2\r\n"
-    "#include ""res\\MFCApplication1.rc2""  // 闂?Microsoft Visual C++ 缂傚倸鍊搁崐鎼佸磹閹间礁纾归柟闂寸绾惧湱鎲搁悧鍫濈瑲闁稿顑夐弻锝夊箛椤掑倷绮靛銈嗗姌婵倝濡甸崟顖氱疀闁割偅娲橀宥夋⒑缁嬪潡顎楃紒澶婄秺瀵鈽夐姀鐘插祮闂侀潧顭堥崕鏌ユ倶閹剧粯鈷戦梻鍫熺〒婢ч亶鏌涚€ｎ亝鍣介柟?\n"
-    "#include ""l.CHS\\afxres.rc""      // 闂傚倸鍊搁崐椋庣矆娓氣偓楠炴牠顢曢妶鍥╃厠闂佸搫顦伴崵姘洪鍕幯冾熆鐠虹尨韬俊顐㈠槻椤啴濡堕崱娆忣潷缂備緡鍠栧ù閿嬬珶閺囩喓闄勯柛娑橈功閸橀亶姊洪崫鍕偍闁告柨顑囬懞閬嶅礂缁楄桨绨?\n"
+    "#include ""res\\MFCApplication1.rc2""  // 闂?Microsoft Visual C++ 缂傚倸鍊搁崐鎼佸磹閹间礁纾归柟闂寸绾惧綊鏌熼梻瀵割槮缁炬儳婀遍幉鎼佹偋閸繄鐟查梺绋款儏椤戝寮婚敐澶婄疀妞ゆ帒鍊风划闈涱渻閵堝棗濮屽┑顔哄€濇俊鐢稿礋椤栨氨鐤€闂佸壊鍋呭ú姗€顢撳澶嬧拺缂佸娼￠妤冪磼婢跺﹦绉虹€殿喛顕ч埥澶愬閻樻彃绁梻渚€娼ч…鍫ュ磿閺屻儲鍊堕柟鍓х帛閳锋垿姊婚崼鐔恒€掑褔浜堕弻娑氣偓锝庝簼閸ｄ粙鏌?\n"
+    "#include ""l.CHS\\afxres.rc""      // 闂傚倸鍊搁崐鎼佸磹妞嬪海鐭嗗〒姘ｅ亾妤犵偞鐗犻、鏇㈠Χ閸モ晝鍘犻梻浣告惈椤︿即宕靛顑炴椽顢旈崟骞喚鐔嗛悹铏瑰皑闊剚淇婇銏犳Щ妞ゎ亜鍟存俊鍫曞幢濞嗗浚娼风紓鍌欑贰閸犳牕霉闁垮鐝堕柡鍥╁枔闂勫嫰鏌涘☉姗堝姛闁告﹢浜跺娲传閸曨剙鍋嶉梺鍛婃煥椤戝洭鎳為柆宥呯缂佹妗ㄧ花?\n"
     "#if !defined(_AFXDLL)\r\n"
-    "#include ""l.CHS\\afxribbon.rc""   // MFC 闂傚倸鍊搁崐椋庣矆娓氣偓楠炲鍨鹃幇浣圭稁婵犵數濮甸懝鍓х玻濡ゅ懏鐓涢柛銉ｅ劚閻忊晝绱掗埀顒勫磼濞戞瑥寮垮┑锛勫仩椤曆勭妤ｅ啯鍊甸悷娆忓缁€鍫濃攽閻愨晛浜鹃柣搴ゎ潐濞诧箓宕戞繝鍌滄殾闁绘梻鈷堥弫鍡涙煃瑜滈崜鐔笺€侀弮鍫晬闁绘劗琛ラ幏铏圭磼缂併垹骞栭柟铏姍閹偞绂掔€ｎ偆鍘遍梺瑙勫閺呮稒淇婇崸妤佺厱婵妫楁晶瀛樻叏婵犲啯銇濈€规洦鍋婂畷鐔煎垂椤愵剛绀€闂傚倷绶氬褔鎮ч崱妞曟椽濮€閵堝懐锛涢梺鍦劋閸ㄧ喖寮?\n"
+    "#include ""l.CHS\\afxribbon.rc""   // MFC 闂傚倸鍊搁崐鎼佸磹妞嬪海鐭嗗〒姘ｅ亾妤犵偛顦甸崹楣冨箛娴ｅ湱绋佸┑鐘垫暩婵敻鎳濋崜褏鐜绘俊銈呮噺閻撴盯鏌涢妷锝呭姎闁诲繆鏅濈槐鎺楀焵椤掑嫬纾兼繛鎴炵懃瀵灝鈹戦敍鍕哗妞ゆ泦鍕洸濡わ絽鍟崐鐢告偡濞嗗繐顏紒鈧崼婵冩斀闁绘劏鏅涙禍楣冩煟鎼淬値娼愭繛璇х畵瀹曟垶绻濋崒婊勬闂佺粯姊婚埛鍫ュ极閸℃稒鐓冪憸婊堝礈閻旂鈧線寮崼顐ｆ櫖闂佺粯鍔楃悰銉╁箯閾忓湱纾肩紓浣靛灩楠炴牠鏌熼搹顐㈠闁诡喚鍋炵粋鎺斺偓锝庡亞閸橀亶姊虹憴鍕棎闁哄懏绋掓穱濠囧锤濡や胶鍘卞┑顔筋殔濡鏅剁€涙ɑ鍙忓┑鐘插暞閵囨繄鈧娲﹂崑濠傜暦閻旂厧鍨傛い鎰靛墰缁€鈧梻鍌氬€风欢姘焽瑜旈幃褔宕卞鏇熸そ婵偓闁靛牆鎳愰敍娑㈡⒑閸︻厼鍔嬮柛銊у枛瀵?\n"
     "#endif\r\n"
     "#endif\r\n"
     "\0"
@@ -123,7 +123,7 @@ BEGIN
     BEGIN
         MENUITEM "二维码生成(&Q)",                   ID_TOOLS_QRCODE
         MENUITEM "截图OCR(&O)",                   ID_TOOLS_SCREENSHOT_OCR
-        MENUITEM "文件夹处理(&R)",              ID_TOOLS_BATCH_RENAME
+        MENUITEM "文件夹处理(&R)",                   ID_TOOLS_BATCH_RENAME
     END
     POPUP "帮助(&H)"
     BEGIN
@@ -340,7 +340,7 @@ BEGIN
     EDITTEXT        IDC_EDIT_RENAME_FOLDER,48,8,345,14,ES_AUTOHSCROLL | ES_READONLY
     PUSHBUTTON      "浏览...",IDC_BTN_RENAME_BROWSE,398,7,35,14
     PUSHBUTTON      "清空",IDC_BTN_RENAME_CLEAR,438,7,35,14
-    CONTROL         "",IDC_TAB_FOLDER,"SysTabControl32",TCS_TABS,10,28,460,365
+    CONTROL         "",IDC_TAB_FOLDER,"SysTabControl32",0x0,10,28,460,365
     CONTROL         "",IDC_LIST_FOLDERS,"SysListView32",LVS_REPORT | WS_BORDER | WS_TABSTOP,18,54,444,185
     CONTROL         "",IDC_LIST_RENAME,"SysListView32",LVS_REPORT | WS_BORDER | WS_TABSTOP,18,54,444,176
     PUSHBUTTON      "重命名",IDC_BTN_FOLDER_RENAME,18,246,50,22
@@ -361,15 +361,30 @@ BEGIN
     LTEXT           "为:",IDC_STATIC_TAB1_REPLACE_TO,125,260,15,10
     EDITTEXT        IDC_EDIT_RENAME_REPLACE_TO,152,258,70,14,ES_AUTOHSCROLL
     CONTROL         "使用正则",IDC_CHECK_RENAME_REGEX,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,230,259,50,10
-    PUSHBUTTON      "?",IDC_BTN_RENAME_REGEX_HELP,285,257,18,12
+    PUSHBUTTON      "正则表达式手册",IDC_BTN_RENAME_REGEX_HELP,285,255,62,18
     CONTROL         "添加序号",IDC_CHECK_RENAME_NUMBER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,18,284,50,10
     LTEXT           "起始:",IDC_STATIC_TAB1_START_NUM,72,285,20,10
     EDITTEXT        IDC_EDIT_RENAME_START_NUM,95,283,40,14,ES_AUTOHSCROLL | ES_NUMBER
-    CONTROL         "匹配删除",IDC_CHECK_DELETE_MATCH,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,230,284,55,10
-    EDITTEXT        IDC_EDIT_DELETE_PATTERN,290,283,100,14,ES_AUTOHSCROLL
-    PUSHBUTTON      "预览",IDC_BTN_RENAME_PREVIEW,18,310,55,25
-    PUSHBUTTON      "执行",IDC_BTN_RENAME_EXECUTE,85,310,55,25
-    LTEXT           "提示: 扩展名不会被修改, 右键文件列表可标记删除",IDC_STATIC_TAB1_TIP,18,340,280,10
+    CONTROL         "序号在后缀后",IDC_CHECK_NUMBER_AFTER_EXT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,145,284,70,10
+    CONTROL         "匹配删除",IDC_CHECK_DELETE_MATCH,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,18,307,55,10
+    EDITTEXT        IDC_EDIT_DELETE_PATTERN,84,309,159,17,ES_AUTOHSCROLL
+    CONTROL         "反选",IDC_CHECK_DELETE_INVERT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,18,319,35,10
+    PUSHBUTTON      "预览",IDC_BTN_RENAME_PREVIEW,18,336,55,25
+    PUSHBUTTON      "执行",IDC_BTN_RENAME_EXECUTE,85,336,55,25
+    PUSHBUTTON      "清除删除标记",IDC_BTN_FILE_UNMARK_ALL,149,336,60,25
+    PUSHBUTTON      "清除所有改动",IDC_BTN_FILE_RESET_ALL,218,336,60,25
+    LTEXT           "提示: 扩展名不会被修改, 右键文件列表可标记删除，支持选中多个文件",IDC_STATIC_TAB1_TIP,18,369,280,10
+END
+
+IDD_INPUT_DLG DIALOGEX 0, 0, 280, 90
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "输入"
+FONT 9, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    LTEXT           "",IDC_INPUT_PROMPT,10,10,260,20
+    EDITTEXT        IDC_INPUT_EDIT,10,35,260,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "确定",IDOK,100,60,60,20
+    PUSHBUTTON      "取消",IDCANCEL,170,60,60,20
 END
 
 IDD_REGEX_GUIDE_DLG DIALOGEX 0, 0, 380, 320
@@ -468,6 +483,10 @@ BEGIN
         BOTTOMMARGIN, 347
     END
 
+    IDD_INPUT_DLG, DIALOG
+    BEGIN
+    END
+
     IDD_REGEX_GUIDE_DLG, DIALOG
     BEGIN
     END
@@ -501,6 +520,11 @@ BEGIN
 END
 
 IDD_REGEX_GUIDE_DLG AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_INPUT_DLG AFX_DIALOG_LAYOUT
 BEGIN
     0
 END
@@ -553,10 +577,10 @@ END
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
 LANGUAGE 4, 2
-#include "res\MFCApplication1.rc2"  // 闂?Microsoft Visual C++ 缂傚倸鍊搁崐鎼佸磹閹间礁纾归柟闂寸绾惧湱鎲搁悧鍫濈瑲闁稿顑夐弻锝夊箛椤掑倷绮靛銈嗗姌婵倝濡甸崟顖氱疀闁割偅娲橀宥夋⒑缁嬪潡顎楃紒澶婄秺瀵鈽夐姀鐘插祮闂侀潧顭堥崕鏌ユ倶閹剧粯鈷戦梻鍫熺〒婢ч亶鏌涚€ｎ亝鍣介柟?
-#include "l.CHS\afxres.rc"      // 闂傚倸鍊搁崐椋庣矆娓氣偓楠炴牠顢曢妶鍥╃厠闂佸搫顦伴崵姘洪鍕幯冾熆鐠虹尨韬俊顐㈠槻椤啴濡堕崱娆忣潷缂備緡鍠栧ù閿嬬珶閺囩喓闄勯柛娑橈功閸橀亶姊洪崫鍕偍闁告柨顑囬懞閬嶅礂缁楄桨绨?
+#include "res\MFCApplication1.rc2"  // 闂?Microsoft Visual C++ 缂傚倸鍊搁崐鎼佸磹閹间礁纾归柟闂寸绾惧綊鏌熼梻瀵割槮缁炬儳婀遍幉鎼佹偋閸繄鐟查梺绋款儏椤戝寮婚敐澶婄疀妞ゆ帒鍊风划闈涱渻閵堝棗濮屽┑顔哄€濇俊鐢稿礋椤栨氨鐤€闂佸壊鍋呭ú姗€顢撳澶嬧拺缂佸娼￠妤冪磼婢跺﹦绉虹€殿喛顕ч埥澶愬閻樻彃绁梻渚€娼ч…鍫ュ磿閺屻儲鍊堕柟鍓х帛閳锋垿姊婚崼鐔恒€掑褔浜堕弻娑氣偓锝庝簼閸ｄ粙鏌?
+#include "l.CHS\afxres.rc"      // 闂傚倸鍊搁崐鎼佸磹妞嬪海鐭嗗〒姘ｅ亾妤犵偞鐗犻、鏇㈠Χ閸モ晝鍘犻梻浣告惈椤︿即宕靛顑炴椽顢旈崟骞喚鐔嗛悹铏瑰皑闊剚淇婇銏犳Щ妞ゎ亜鍟存俊鍫曞幢濞嗗浚娼风紓鍌欑贰閸犳牕霉闁垮鐝堕柡鍥╁枔闂勫嫰鏌涘☉姗堝姛闁告﹢浜跺娲传閸曨剙鍋嶉梺鍛婃煥椤戝洭鎳為柆宥呯缂佹妗ㄧ花?
 #if !defined(_AFXDLL)
-#include "l.CHS\afxribbon.rc"   // MFC 闂傚倸鍊搁崐椋庣矆娓氣偓楠炲鍨鹃幇浣圭稁婵犵數濮甸懝鍓х玻濡ゅ懏鐓涢柛銉ｅ劚閻忊晝绱掗埀顒勫磼濞戞瑥寮垮┑锛勫仩椤曆勭妤ｅ啯鍊甸悷娆忓缁€鍫濃攽閻愨晛浜鹃柣搴ゎ潐濞诧箓宕戞繝鍌滄殾闁绘梻鈷堥弫鍡涙煃瑜滈崜鐔笺€侀弮鍫晬闁绘劗琛ラ幏铏圭磼缂併垹骞栭柟铏姍閹偞绂掔€ｎ偆鍘遍梺瑙勫閺呮稒淇婇崸妤佺厱婵妫楁晶瀛樻叏婵犲啯銇濈€规洦鍋婂畷鐔煎垂椤愵剛绀€闂傚倷绶氬褔鎮ч崱妞曟椽濮€閵堝懐锛涢梺鍦劋閸ㄧ喖寮?
+#include "l.CHS\afxribbon.rc"   // MFC 闂傚倸鍊搁崐鎼佸磹妞嬪海鐭嗗〒姘ｅ亾妤犵偛顦甸崹楣冨箛娴ｅ湱绋佸┑鐘垫暩婵敻鎳濋崜褏鐜绘俊銈呮噺閻撴盯鏌涢妷锝呭姎闁诲繆鏅濈槐鎺楀焵椤掑嫬纾兼繛鎴炵懃瀵灝鈹戦敍鍕哗妞ゆ泦鍕洸濡わ絽鍟崐鐢告偡濞嗗繐顏紒鈧崼婵冩斀闁绘劏鏅涙禍楣冩煟鎼淬値娼愭繛璇х畵瀹曟垶绻濋崒婊勬闂佺粯姊婚埛鍫ュ极閸℃稒鐓冪憸婊堝礈閻旂鈧線寮崼顐ｆ櫖闂佺粯鍔楃悰銉╁箯閾忓湱纾肩紓浣靛灩楠炴牠鏌熼搹顐㈠闁诡喚鍋炵粋鎺斺偓锝庡亞閸橀亶姊虹憴鍕棎闁哄懏绋掓穱濠囧锤濡や胶鍘卞┑顔筋殔濡鏅剁€涙ɑ鍙忓┑鐘插暞閵囨繄鈧娲﹂崑濠傜暦閻旂厧鍨傛い鎰靛墰缁€鈧梻鍌氬€风欢姘焽瑜旈幃褔宕卞鏇熸そ婵偓闁靛牆鎳愰敍娑㈡⒑閸︻厼鍔嬮柛銊у枛瀵?
 #endif
 #endif
 
