@@ -110,7 +110,17 @@ void CSettingsDlg::OnOK()
     AfxGetApp()->WriteProfileString(_T("AutoClicker"), _T("KeyStart"), strStart);
     AfxGetApp()->WriteProfileString(_T("AutoClicker"), _T("KeyStop"), strStop);
 
-    CDialogEx::OnOK();
+    DestroyWindow();
+}
+
+void CSettingsDlg::OnCancel()
+{
+    DestroyWindow();
+}
+
+void CSettingsDlg::PostNcDestroy()
+{
+    delete this;
 }
 
 void CSettingsDlg::BrowseFile(UINT id, LPCTSTR title)

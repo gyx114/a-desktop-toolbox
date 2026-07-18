@@ -984,8 +984,9 @@ afx_msg LRESULT CMFCApplication1Dlg::OnSpeedDlgClosed(WPARAM wParam, LPARAM lPar
 
 void CMFCApplication1Dlg::OnFileSettings()
 {
-    CSettingsDlg dlg(this);
-    dlg.DoModal();
+    auto* pDlg = new CSettingsDlg(this);
+    pDlg->Create(IDD_SETTINGS_DIALOG, this);
+    pDlg->ShowWindow(SW_SHOW);
 }
 
 void CMFCApplication1Dlg::OnFileExit()
@@ -1001,26 +1002,30 @@ void CMFCApplication1Dlg::OnHelpAbout()
 
 void CMFCApplication1Dlg::OnHelpRegexGuide()
 {
-    CRegexGuideDlg dlg(this);
-    dlg.DoModal();
+    auto* pDlg = new CRegexGuideDlg(this);
+    pDlg->Create(IDD_REGEX_GUIDE_DLG, this);
+    pDlg->ShowWindow(SW_SHOW);
 }
 
 void CMFCApplication1Dlg::OnToolsQRCode()
 {
-    CQRCodeGenDlg dlg(this);
-    dlg.DoModal();
+    auto* pDlg = new CQRCodeGenDlg(this);
+    pDlg->Create(IDD_QRCODE_DLG, this);
+    pDlg->ShowWindow(SW_SHOW);
 }
 
 void CMFCApplication1Dlg::OnToolsScreenshotOCR()
 {
-    CScreenshotOCRDlg dlg(this, &m_autoClicker);
-    dlg.DoModal();
+    auto* pDlg = new CScreenshotOCRDlg(this, &m_autoClicker);
+    pDlg->Create(IDD_SCREENSHOT_OCR_DLG, this);
+    pDlg->ShowWindow(SW_SHOW);
 }
 
 void CMFCApplication1Dlg::OnToolsBatchRename()
 {
-    CBatchRenameDlg dlg(this);
-    dlg.DoModal();
+    auto* pDlg = new CBatchRenameDlg(this);
+    pDlg->Create(IDD_BATCH_RENAME_DLG, this);
+    pDlg->ShowWindow(SW_SHOW);
 }
 
 

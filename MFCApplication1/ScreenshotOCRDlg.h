@@ -22,6 +22,7 @@ protected:
     virtual BOOL OnInitDialog() override;
     virtual void OnOK() override;
     virtual void OnCancel() override;
+    virtual void PostNcDestroy() override;
 
     afx_msg void OnBnClickedBtnOcr();
     afx_msg void OnBnClickedBtnTranslate();

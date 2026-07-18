@@ -394,7 +394,12 @@ void CScreenshotOCRDlg::OnCancel()
     }
     if (m_hScreenshot) DeleteObject(m_hScreenshot);
     m_hScreenshot = nullptr;
-    CDialogEx::OnCancel();
+    DestroyWindow();
+}
+
+void CScreenshotOCRDlg::PostNcDestroy()
+{
+    delete this;
 }
 
 // ========== 后台 OCR 线程 ==========

@@ -6,6 +6,8 @@ public:
     CSettingsDlg(CWnd* pParent = nullptr);
     virtual BOOL OnInitDialog();
     virtual void OnOK();
+    virtual void OnCancel() override;
+    virtual void PostNcDestroy() override;
     void OnBrowseBili();
     void OnBrowseWeChat();
     void OnBrowseQQ();

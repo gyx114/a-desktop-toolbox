@@ -159,3 +159,15 @@ HBITMAP CQRCodeGenDlg::CreateQRBitmap(const qrcodegen::QrCode& qr, int moduleSiz
 
     return hBitmap;
 }
+
+void CQRCodeGenDlg::OnCancel()
+{
+    if (m_hBitmap) DeleteObject(m_hBitmap);
+    m_hBitmap = nullptr;
+    DestroyWindow();
+}
+
+void CQRCodeGenDlg::PostNcDestroy()
+{
+    delete this;
+}

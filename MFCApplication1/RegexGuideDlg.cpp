@@ -73,3 +73,13 @@ BOOL CRegexGuideDlg::OnInitDialog()
     SetDlgItemText(IDC_STATIC, guide);
     return TRUE;
 }
+
+void CRegexGuideDlg::OnCancel()
+{
+    DestroyWindow();
+}
+
+void CRegexGuideDlg::PostNcDestroy()
+{
+    delete this;
+}

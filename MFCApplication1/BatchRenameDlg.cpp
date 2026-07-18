@@ -1423,3 +1423,13 @@ void CBatchRenameDlg::OnFileRestoreExt()
     m_bPreviewDone = true;
     GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(TRUE);
 }
+
+void CBatchRenameDlg::OnCancel()
+{
+    DestroyWindow();
+}
+
+void CBatchRenameDlg::PostNcDestroy()
+{
+    delete this;
+}
