@@ -128,7 +128,21 @@ void CMFCApplication1Dlg::OnClose()
     // 根据 m_bMinimizeOnClose 决定关闭时是最小化到托盘还是直接退出
     if (m_bMinimizeOnClose)
     {
-        ShowWindow(SW_MINIMIZE);
+        // 与 Ctrl+Alt+Space 快捷键一致：添加托盘图标 → 隐藏主窗口
+        if (!m_bTrayVisible)
+        {
+            ZeroMemory(&m_nid, sizeof(m_nid));
+            m_nid.cbSize = sizeof(m_nid);
+            m_nid.hWnd = m_hWnd;
+            m_nid.uID = 1001;
+            m_nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+            m_nid.uCallbackMessage = WM_TRAYICON;
+            m_nid.hIcon = m_hIcon;
+            _tcscpy_s(m_nid.szTip, _countof(m_nid.szTip), _T("MFCApplication1"));
+            Shell_NotifyIcon(NIM_ADD, &m_nid);
+            m_bTrayVisible = true;
+        }
+        ShowWindow(SW_HIDE);
     }
     else
     {

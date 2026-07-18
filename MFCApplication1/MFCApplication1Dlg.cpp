@@ -984,8 +984,8 @@ afx_msg LRESULT CMFCApplication1Dlg::OnSpeedDlgClosed(WPARAM wParam, LPARAM lPar
 
 void CMFCApplication1Dlg::OnFileSettings()
 {
-    auto* pDlg = new CSettingsDlg(this);
-    pDlg->Create(IDD_SETTINGS_DIALOG, this);
+    auto* pDlg = new CSettingsDlg(nullptr);
+    pDlg->Create(IDD_SETTINGS_DIALOG, nullptr);
     pDlg->ShowWindow(SW_SHOW);
 }
 
@@ -1002,29 +1002,29 @@ void CMFCApplication1Dlg::OnHelpAbout()
 
 void CMFCApplication1Dlg::OnHelpRegexGuide()
 {
-    auto* pDlg = new CRegexGuideDlg(this);
-    pDlg->Create(IDD_REGEX_GUIDE_DLG, this);
+    auto* pDlg = new CRegexGuideDlg(nullptr);
+    pDlg->Create(IDD_REGEX_GUIDE_DLG, nullptr);
     pDlg->ShowWindow(SW_SHOW);
 }
 
 void CMFCApplication1Dlg::OnToolsQRCode()
 {
-    auto* pDlg = new CQRCodeGenDlg(this);
-    pDlg->Create(IDD_QRCODE_DLG, this);
+    auto* pDlg = new CQRCodeGenDlg(nullptr);
+    pDlg->Create(IDD_QRCODE_DLG, nullptr);
     pDlg->ShowWindow(SW_SHOW);
 }
 
 void CMFCApplication1Dlg::OnToolsScreenshotOCR()
 {
-    auto* pDlg = new CScreenshotOCRDlg(this, &m_autoClicker);
-    pDlg->Create(IDD_SCREENSHOT_OCR_DLG, this);
+    auto* pDlg = new CScreenshotOCRDlg(nullptr, &m_autoClicker);
+    pDlg->Create(IDD_SCREENSHOT_OCR_DLG, nullptr);
     pDlg->ShowWindow(SW_SHOW);
 }
 
 void CMFCApplication1Dlg::OnToolsBatchRename()
 {
-    auto* pDlg = new CBatchRenameDlg(this);
-    pDlg->Create(IDD_BATCH_RENAME_DLG, this);
+    auto* pDlg = new CBatchRenameDlg(nullptr);
+    pDlg->Create(IDD_BATCH_RENAME_DLG, nullptr);
     pDlg->ShowWindow(SW_SHOW);
 }
 

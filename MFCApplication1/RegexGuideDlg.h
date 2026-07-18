@@ -13,6 +13,7 @@ protected:
     virtual BOOL OnInitDialog() override;
     virtual void OnCancel() override;
     virtual void PostNcDestroy() override;
+    afx_msg void OnClose();
 
     DECLARE_MESSAGE_MAP()
 };

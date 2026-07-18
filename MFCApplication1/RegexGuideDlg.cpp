@@ -13,6 +13,7 @@ void CRegexGuideDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 BEGIN_MESSAGE_MAP(CRegexGuideDlg, CDialogEx)
+    ON_WM_CLOSE()
 END_MESSAGE_MAP()
 
 BOOL CRegexGuideDlg::OnInitDialog()
@@ -75,6 +76,11 @@ BOOL CRegexGuideDlg::OnInitDialog()
 }
 
 void CRegexGuideDlg::OnCancel()
+{
+    PostMessage(WM_CLOSE);
+}
+
+void CRegexGuideDlg::OnClose()
 {
     DestroyWindow();
 }

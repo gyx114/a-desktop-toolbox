@@ -27,6 +27,7 @@ BEGIN_MESSAGE_MAP(CSettingsDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BROWSE_STUDY, &CSettingsDlg::OnBrowseStudy)
     ON_BN_CLICKED(IDC_BROWSE_DOWNLOAD, &CSettingsDlg::OnBrowseDownload)
     ON_BN_CLICKED(IDC_BROWSE_SCREENSHOT, &CSettingsDlg::OnBrowseScreenshot)
+    ON_WM_CLOSE()
 END_MESSAGE_MAP()
 
 BOOL CSettingsDlg::OnInitDialog()
@@ -114,6 +115,11 @@ void CSettingsDlg::OnOK()
 }
 
 void CSettingsDlg::OnCancel()
+{
+    PostMessage(WM_CLOSE);
+}
+
+void CSettingsDlg::OnClose()
 {
     DestroyWindow();
 }

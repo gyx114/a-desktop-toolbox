@@ -349,6 +349,8 @@ BEGIN_MESSAGE_MAP(CScreenshotOCRDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BTN_OCR_COPY, &CScreenshotOCRDlg::OnBnClickedBtnCopy)
     ON_MESSAGE(WM_OCR_COMPLETE, &CScreenshotOCRDlg::OnOcrComplete)
     ON_MESSAGE(WM_TRANSLATE_COMPLETE, &CScreenshotOCRDlg::OnTranslateComplete)
+    ON_WM_CLOSE()
+    ON_WM_DESTROY()
 END_MESSAGE_MAP()
 
 void CScreenshotOCRDlg::DoDataExchange(CDataExchange* pDX)
@@ -394,6 +396,11 @@ void CScreenshotOCRDlg::OnCancel()
     }
     if (m_hScreenshot) DeleteObject(m_hScreenshot);
     m_hScreenshot = nullptr;
+    PostMessage(WM_CLOSE);
+}
+
+void CScreenshotOCRDlg::OnClose()
+{
     DestroyWindow();
 }
 

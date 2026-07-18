@@ -21,6 +21,7 @@ BEGIN_MESSAGE_MAP(CQRCodeGenDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BTN_QR_GENERATE, &CQRCodeGenDlg::OnBnClickedGenerate)
     ON_BN_CLICKED(IDC_BTN_QR_COPY, &CQRCodeGenDlg::OnBnClickedCopy)
     ON_BN_CLICKED(IDC_BTN_QR_SAVE, &CQRCodeGenDlg::OnBnClickedSave)
+    ON_WM_CLOSE()
 END_MESSAGE_MAP()
 
 BOOL CQRCodeGenDlg::OnInitDialog()
@@ -164,6 +165,11 @@ void CQRCodeGenDlg::OnCancel()
 {
     if (m_hBitmap) DeleteObject(m_hBitmap);
     m_hBitmap = nullptr;
+    PostMessage(WM_CLOSE);
+}
+
+void CQRCodeGenDlg::OnClose()
+{
     DestroyWindow();
 }
 

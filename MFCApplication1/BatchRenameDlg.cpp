@@ -114,6 +114,7 @@ BEGIN_MESSAGE_MAP(CBatchRenameDlg, CDialogEx)
     ON_BN_CLICKED(IDC_CHECK_DELETE_INVERT, &CBatchRenameDlg::OnCheckDeleteInvert)
     ON_BN_CLICKED(IDC_BTN_IGNORE_CLEAR, &CBatchRenameDlg::OnBnClickedIgnoreClear)
     ON_WM_DROPFILES()
+    ON_WM_CLOSE()
 END_MESSAGE_MAP()
 
 // ========== 初始化 ==========
@@ -1425,6 +1426,11 @@ void CBatchRenameDlg::OnFileRestoreExt()
 }
 
 void CBatchRenameDlg::OnCancel()
+{
+    PostMessage(WM_CLOSE);
+}
+
+void CBatchRenameDlg::OnClose()
 {
     DestroyWindow();
 }

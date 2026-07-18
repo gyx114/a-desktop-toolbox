@@ -21,8 +21,9 @@ void CMFCApplication1Dlg::OnDropFiles(HDROP hDropInfo)
     {
         // 拖入的是文件夹，打开文件夹处理窗口
         DragFinish(hDropInfo);
-        CBatchRenameDlg dlg(this, szFilePath);
-        dlg.DoModal();
+        auto* pDlg = new CBatchRenameDlg(nullptr, szFilePath);
+        pDlg->Create(IDD_BATCH_RENAME_DLG, nullptr);
+        pDlg->ShowWindow(SW_SHOW);
         return;
     }
 

@@ -8,6 +8,7 @@ public:
     virtual void OnOK();
     virtual void OnCancel() override;
     virtual void PostNcDestroy() override;
+    afx_msg void OnClose();
     void OnBrowseBili();
     void OnBrowseWeChat();
     void OnBrowseQQ();

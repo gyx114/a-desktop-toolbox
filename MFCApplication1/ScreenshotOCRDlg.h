@@ -23,6 +23,7 @@ protected:
     virtual void OnOK() override;
     virtual void OnCancel() override;
     virtual void PostNcDestroy() override;
+    afx_msg void OnClose();
 
     afx_msg void OnBnClickedBtnOcr();
     afx_msg void OnBnClickedBtnTranslate();
