@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "framework.h"
 #include "MFCApplication1Dlg.h"
+#include "BatchRenameDlg.h"
 #include "resource.h"
 #include "Utils.h"
 
@@ -8,43 +9,58 @@
 void CMFCApplication1Dlg::OnDropFiles(HDROP hDropInfo)
 {
     TCHAR szFilePath[MAX_PATH] = {0};
-    if (DragQueryFile(hDropInfo, 0, szFilePath, MAX_PATH) > 0)
+    if (DragQueryFile(hDropInfo, 0, szFilePath, MAX_PATH) == 0)
     {
-        m_strDroppedFilePath = szFilePath;
-        // display path
-        CWnd* pStatic = GetDlgItem(IDC_STATIC_PATH);
-        if (pStatic)
-            pStatic->SetWindowText(m_strDroppedFilePath);
-        else
-            ;
-        // restore edit IDC_EDIT4 to default content whenever a new file is dropped
-        SetDlgItemText(IDC_EDIT4, AfxGetApp()->GetProfileString(_T("Template"), _T("DefaultReportName"), _T("")));
+        DragFinish(hDropInfo);
+        return;
+    }
 
-        // Automatically switch to tab 5 (index 4) when a file is dropped
-        CTabCtrl* pTab = (CTabCtrl*)GetDlgItem(IDC_TAB1);
-        if (pTab)
+    // 检查是否为文件夹
+    DWORD attrs = ::GetFileAttributes(szFilePath);
+    if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY))
+    {
+        // 拖入的是文件夹，打开文件夹处理窗口
+        DragFinish(hDropInfo);
+        CBatchRenameDlg dlg(this, szFilePath);
+        dlg.DoModal();
+        return;
+    }
+
+    // 拖入的是文件，继续原有tab5逻辑
+    m_strDroppedFilePath = szFilePath;
+    // display path
+    CWnd* pStatic = GetDlgItem(IDC_STATIC_PATH);
+    if (pStatic)
+        pStatic->SetWindowText(m_strDroppedFilePath);
+    else
+        ;
+    // restore edit IDC_EDIT4 to default content whenever a new file is dropped
+    SetDlgItemText(IDC_EDIT4, AfxGetApp()->GetProfileString(_T("Template"), _T("DefaultReportName"), _T("")));
+
+    // Automatically switch to tab 5 (index 4) when a file is dropped
+    CTabCtrl* pTab = (CTabCtrl*)GetDlgItem(IDC_TAB1);
+    if (pTab)
+    {
+        pTab->SetCurSel(4);
+        LRESULT res = 0;
+        // call handler to update control visibility
+        OnTcnSelchangeTab1(NULL, &res);
+        // populate rename edits: IDC_EDIT7 (basename without ext), IDC_EDIT8 (extension without dot)
+        int nSlash = m_strDroppedFilePath.ReverseFind(_T('\\'));
+        int nDot = m_strDroppedFilePath.ReverseFind(_T('.'));
+        CString base, ext;
+        if (nDot != -1 && nDot > nSlash)
         {
-            pTab->SetCurSel(4);
-            LRESULT res = 0;
-            // call handler to update control visibility
-            OnTcnSelchangeTab1(NULL, &res);
-            // populate rename edits: IDC_EDIT7 (basename without ext), IDC_EDIT8 (extension without dot)
-            int nSlash = m_strDroppedFilePath.ReverseFind(_T('\\'));
-            int nDot = m_strDroppedFilePath.ReverseFind(_T('.'));
-            CString base, ext;
-            if (nDot != -1 && nDot > nSlash)
-            {
-                base = m_strDroppedFilePath.Mid(nSlash + 1, nDot - nSlash - 1);
-                ext = m_strDroppedFilePath.Mid(nDot + 1); // without dot
-            }
-            else
-            {
-                base = m_strDroppedFilePath.Mid(nSlash + 1);
-                ext = _T("");
-            }
-            SetDlgItemText(IDC_EDIT7, base);
-            SetDlgItemText(IDC_EDIT8, ext);
+            base = m_strDroppedFilePath.Mid(nSlash + 1, nDot - nSlash - 1);
+            ext = m_strDroppedFilePath.Mid(nDot + 1); // without dot
         }
+        else
+        {
+            base = m_strDroppedFilePath.Mid(nSlash + 1);
+            ext = _T("");
+        }
+        SetDlgItemText(IDC_EDIT7, base);
+        SetDlgItemText(IDC_EDIT8, ext);
     }
 
     DragFinish(hDropInfo);
