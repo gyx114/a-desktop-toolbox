@@ -1,565 +1,764 @@
 #include "pch.h"
 #include "framework.h"
 #include "ScreenshotOCRDlg.h"
-#include "AutoClicker.h"
-#include "OcrEngine.h"
 #include "resource.h"
+#include "OcrEngine.h"
+#include "MFCApplication1.h"
+
 #include <gdiplus.h>
-#include <winhttp.h>
+#include <thread>
 #include <string>
+#include <fstream>
+#include <algorithm>
+#include <winhttp.h>
 
 #pragma comment(lib, "gdiplus.lib")
 #pragma comment(lib, "winhttp.lib")
 
-// ========== 截图区域选择覆盖窗口（纯 Win32 窗口过程） ==========
+using namespace Gdiplus;
 
-struct RegionSelectState {
-    CScreenshotOCRDlg* pOwner;
-    POINT ptStart;
-    POINT ptEnd;
-    BOOL  bCapturing;
-    HBITMAP hScreenBmp;   // 全屏快照，用于绘制背景
-    int    screenW;
-    int    screenH;
-};
-
-// 绘制覆盖窗口：半透明遮罩 + 选择矩形
-static void DrawRegionOverlay(HDC hdc, RegionSelectState* pState)
+static int GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 {
-    if (!pState || !pState->hScreenBmp) return;
-
-    int w = pState->screenW;
-    int h = pState->screenH;
-
-    // 双缓冲绘制
-    HDC hdcMem = ::CreateCompatibleDC(hdc);
-    HBITMAP hBmp = ::CreateCompatibleBitmap(hdc, w, h);
-    HBITMAP hOld = (HBITMAP)::SelectObject(hdcMem, hBmp);
-
-    // 1. 画屏幕快照
-    HDC hdcScreen = ::CreateCompatibleDC(hdc);
-    HBITMAP hOldScreen = (HBITMAP)::SelectObject(hdcScreen, pState->hScreenBmp);
-    ::BitBlt(hdcMem, 0, 0, w, h, hdcScreen, 0, 0, SRCCOPY);
-    ::SelectObject(hdcScreen, hOldScreen);
-    ::DeleteDC(hdcScreen);
-
-    // 2. 画半透明黑色遮罩
-    HDC hdcOverlay = ::CreateCompatibleDC(hdc);
-    HBITMAP hBmpOverlay = ::CreateCompatibleBitmap(hdc, w, h);
-    HBITMAP hOldOverlay = (HBITMAP)::SelectObject(hdcOverlay, hBmpOverlay);
-
-    RECT rcFull = {0, 0, w, h};
-    HBRUSH hBlack = ::CreateSolidBrush(RGB(0, 0, 0));
-    ::FillRect(hdcOverlay, &rcFull, hBlack);
-    ::DeleteObject(hBlack);
-
-    BLENDFUNCTION bf = {AC_SRC_OVER, 0, 120, 0}; // 约 47% 不透明度
-    ::AlphaBlend(hdcMem, 0, 0, w, h, hdcOverlay, 0, 0, w, h, bf);
-
-    ::SelectObject(hdcOverlay, hOldOverlay);
-    ::DeleteObject(hBmpOverlay);
-    ::DeleteDC(hdcOverlay);
-
-    // 3. 如果正在拖拽选择，画选择矩形
-    if (pState->bCapturing)
+    UINT num = 0, size = 0;
+    ImageCodecInfo* pImageCodecInfo = nullptr;
+    GetImageEncodersSize(&num, &size);
+    if (size == 0) return -1;
+    pImageCodecInfo = static_cast<ImageCodecInfo*>(malloc(size));
+    if (!pImageCodecInfo) return -1;
+    GetImageEncoders(num, size, pImageCodecInfo);
+    for (UINT j = 0; j < num; ++j)
     {
-        int x1 = (std::min)(pState->ptStart.x, pState->ptEnd.x);
-        int y1 = (std::min)(pState->ptStart.y, pState->ptEnd.y);
-        int x2 = (std::max)(pState->ptStart.x, pState->ptEnd.x);
-        int y2 = (std::max)(pState->ptStart.y, pState->ptEnd.y);
-
-        if (x2 > x1 && y2 > y1)
+        if (wcscmp(pImageCodecInfo[j].MimeType, format) == 0)
         {
-            // 在选择区域内恢复原始屏幕图像
-            HDC hdcClear = ::CreateCompatibleDC(hdc);
-            HBITMAP hOldClear = (HBITMAP)::SelectObject(hdcClear, pState->hScreenBmp);
-            ::BitBlt(hdcMem, x1, y1, x2 - x1, y2 - y1, hdcClear, x1, y1, SRCCOPY);
-            ::SelectObject(hdcClear, hOldClear);
-            ::DeleteDC(hdcClear);
-
-            // 画蓝色边框
-            HPEN hPen = ::CreatePen(PS_SOLID, 2, RGB(0, 120, 255));
-            HPEN hOldPen = (HPEN)::SelectObject(hdcMem, hPen);
-            HBRUSH hNullBrush = (HBRUSH)::GetStockObject(NULL_BRUSH);
-            HBRUSH hOldBrush = (HBRUSH)::SelectObject(hdcMem, hNullBrush);
-            ::Rectangle(hdcMem, x1, y1, x2, y2);
-            ::SelectObject(hdcMem, hOldPen);
-            ::SelectObject(hdcMem, hOldBrush);
-            ::DeleteObject(hPen);
+            *pClsid = pImageCodecInfo[j].Clsid;
+            free(pImageCodecInfo);
+            return j;
         }
     }
-
-    // 4. 输出到屏幕
-    ::BitBlt(hdc, 0, 0, w, h, hdcMem, 0, 0, SRCCOPY);
-
-    ::SelectObject(hdcMem, hOld);
-    ::DeleteObject(hBmp);
-    ::DeleteDC(hdcMem);
+    free(pImageCodecInfo);
+    return -1;
 }
 
-static LRESULT CALLBACK RegionSelectWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+// ========== 框选覆盖层的窗口过程 ==========
+struct RegionCaptureData
 {
-    RegionSelectState* pState = (RegionSelectState*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+    HBITMAP hFullScreen;   // 全屏截图（只读）
+    HBITMAP hBackBuffer;   // 离屏缓冲（在此合成，再一次性 BitBlt 到屏幕）
+    HBITMAP hOverlayBmp;   // 32位DIB遮罩（预创建，复用）
+    DWORD*  pOverlayBits;  // 遮罩像素缓冲
+    POINT   ptStart;       // 拖拽起点
+    POINT   ptEnd;         // 拖拽终点
+    bool    bDragging;
+    bool    bDone;
+    RECT    rcResult;      // 选中的区域
+    int     screenW, screenH;
+};
+
+static void ResetOverlayPixels(RegionCaptureData* pData)
+{
+    // 整个遮罩填充半透明黑色 (BGRA: A=0x78)
+    DWORD* p = pData->pOverlayBits;
+    int total = pData->screenW * pData->screenH;
+    for (int i = 0; i < total; i++)
+        p[i] = 0x78000000;
+}
+
+static LRESULT CALLBACK RegionOverlayProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    RegionCaptureData* pData = reinterpret_cast<RegionCaptureData*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 
     switch (uMsg)
     {
-    case WM_CREATE:
-    {
-        // 创建全屏 DC 快照作为背景
-        HDC hdcScreen = ::GetDC(NULL);
-        int w = ::GetSystemMetrics(SM_CXSCREEN);
-        int h = ::GetSystemMetrics(SM_CYSCREEN);
-
-        HDC hdcMem = ::CreateCompatibleDC(hdcScreen);
-        HBITMAP hBmp = ::CreateCompatibleBitmap(hdcScreen, w, h);
-        HBITMAP hOld = (HBITMAP)::SelectObject(hdcMem, hBmp);
-        ::BitBlt(hdcMem, 0, 0, w, h, hdcScreen, 0, 0, SRCCOPY);
-        ::SelectObject(hdcMem, hOld);
-        ::DeleteDC(hdcMem);
-        ::ReleaseDC(NULL, hdcScreen);
-
-        pState = new RegionSelectState();
-        pState->pOwner = (CScreenshotOCRDlg*)((CREATESTRUCT*)lParam)->lpCreateParams;
-        pState->ptStart = {0, 0};
-        pState->ptEnd = {0, 0};
-        pState->bCapturing = FALSE;
-        pState->hScreenBmp = hBmp;
-        pState->screenW = w;
-        pState->screenH = h;
-        SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)pState);
-
-        ::SetCapture(hwnd);
-        return 0;
-    }
-
     case WM_PAINT:
     {
         PAINTSTRUCT ps;
-        HDC hdc = ::BeginPaint(hwnd, &ps);
-        DrawRegionOverlay(hdc, pState);
-        ::EndPaint(hwnd, &ps);
+        HDC hdc = BeginPaint(hwnd, &ps);
+        if (pData && pData->hFullScreen && pData->hBackBuffer)
+        {
+            int sw = pData->screenW, sh = pData->screenH;
+
+            // 1. 离屏缓冲：先画全屏截图
+            HDC hdcBuf = CreateCompatibleDC(hdc);
+            HBITMAP hOldBuf = static_cast<HBITMAP>(SelectObject(hdcBuf, pData->hBackBuffer));
+
+            HDC hdcSrc = CreateCompatibleDC(hdc);
+            HBITMAP hOldSrc = static_cast<HBITMAP>(SelectObject(hdcSrc, pData->hFullScreen));
+            BitBlt(hdcBuf, 0, 0, sw, sh, hdcSrc, 0, 0, SRCCOPY);
+            SelectObject(hdcSrc, hOldSrc);
+            DeleteDC(hdcSrc);
+
+            if (pData->bDragging && pData->hOverlayBmp && pData->pOverlayBits)
+            {
+                int left = std::min(pData->ptStart.x, pData->ptEnd.x);
+                int top = std::min(pData->ptStart.y, pData->ptEnd.y);
+                int right = std::max(pData->ptStart.x, pData->ptEnd.x);
+                int bottom = std::max(pData->ptStart.y, pData->ptEnd.y);
+
+                if (left < 0) left = 0;
+                if (top < 0) top = 0;
+                if (right > sw) right = sw;
+                if (bottom > sh) bottom = sh;
+
+                // 2. 离屏缓冲：挖空选区 + AlphaBlend 遮罩
+                for (int y = top; y < bottom; y++)
+                    memset(&pData->pOverlayBits[y * sw + left], 0,
+                        (right - left) * sizeof(DWORD));
+
+                HDC hdcOverlay = CreateCompatibleDC(hdc);
+                HBITMAP hOldOverlay = static_cast<HBITMAP>(SelectObject(hdcOverlay, pData->hOverlayBmp));
+                BLENDFUNCTION bf = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
+                AlphaBlend(hdcBuf, 0, 0, sw, sh, hdcOverlay, 0, 0, sw, sh, bf);
+                SelectObject(hdcOverlay, hOldOverlay);
+                DeleteDC(hdcOverlay);
+
+                // 恢复遮罩像素
+                for (int y = top; y < bottom; y++)
+                {
+                    DWORD* row = &pData->pOverlayBits[y * sw + left];
+                    for (int x = 0; x < right - left; x++)
+                        row[x] = 0x78000000;
+                }
+
+                // 3. 离屏缓冲：画蓝色选框
+                HPEN hPen = CreatePen(PS_SOLID, 2, RGB(0, 120, 215));
+                HPEN hOldPen = static_cast<HPEN>(SelectObject(hdcBuf, hPen));
+                HBRUSH hNullBrush = static_cast<HBRUSH>(GetStockObject(NULL_BRUSH));
+                HBRUSH hOldBrush = static_cast<HBRUSH>(SelectObject(hdcBuf, hNullBrush));
+                Rectangle(hdcBuf, left, top, right, bottom);
+                SelectObject(hdcBuf, hOldPen);
+                SelectObject(hdcBuf, hOldBrush);
+                DeleteObject(hPen);
+            }
+
+            // 4. 一次性输出到屏幕（消除闪烁）
+            BitBlt(hdc, 0, 0, sw, sh, hdcBuf, 0, 0, SRCCOPY);
+
+            SelectObject(hdcBuf, hOldBuf);
+            DeleteDC(hdcBuf);
+        }
+        EndPaint(hwnd, &ps);
         return 0;
     }
 
     case WM_ERASEBKGND:
-        // 不擦除背景，由 WM_PAINT 完全控制绘制
-        return 1;
-
-    case WM_DESTROY:
-        if (pState)
-        {
-            if (pState->hScreenBmp)
-                ::DeleteObject(pState->hScreenBmp);
-            delete pState;
-            SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
-        }
-        return 0;
+        return 1;  // 不擦除背景
 
     case WM_LBUTTONDOWN:
-        if (pState)
+        if (pData)
         {
-            pState->ptStart.x = LOWORD(lParam);
-            pState->ptStart.y = HIWORD(lParam);
-            pState->ptEnd = pState->ptStart;
-            pState->bCapturing = TRUE;
+            pData->ptStart.x = GET_X_LPARAM(lParam);
+            pData->ptStart.y = GET_Y_LPARAM(lParam);
+            pData->ptEnd = pData->ptStart;
+            pData->bDragging = true;
+            ::SetCapture(hwnd);
+            InvalidateRect(hwnd, nullptr, FALSE);
         }
         return 0;
 
     case WM_MOUSEMOVE:
-        if (pState && pState->bCapturing)
+        if (pData && pData->bDragging)
         {
-            pState->ptEnd.x = LOWORD(lParam);
-            pState->ptEnd.y = HIWORD(lParam);
-            ::InvalidateRect(hwnd, NULL, FALSE);
+            pData->ptEnd.x = GET_X_LPARAM(lParam);
+            pData->ptEnd.y = GET_Y_LPARAM(lParam);
+            InvalidateRect(hwnd, nullptr, FALSE);
         }
         return 0;
 
     case WM_LBUTTONUP:
-        if (pState && pState->bCapturing)
+        if (pData && pData->bDragging)
         {
-            pState->bCapturing = FALSE;
             ::ReleaseCapture();
+            pData->bDragging = false;
 
-            pState->ptEnd.x = LOWORD(lParam);
-            pState->ptEnd.y = HIWORD(lParam);
+            int left = std::min(pData->ptStart.x, pData->ptEnd.x);
+            int top = std::min(pData->ptStart.y, pData->ptEnd.y);
+            int right = std::max(pData->ptStart.x, pData->ptEnd.x);
+            int bottom = std::max(pData->ptStart.y, pData->ptEnd.y);
 
-            int x1 = (std::min)(pState->ptStart.x, pState->ptEnd.x);
-            int y1 = (std::min)(pState->ptStart.y, pState->ptEnd.y);
-            int x2 = (std::max)(pState->ptStart.x, pState->ptEnd.x);
-            int y2 = (std::max)(pState->ptStart.y, pState->ptEnd.y);
+            int w = right - left;
+            int h = bottom - top;
 
-            if (x2 - x1 < 10 || y2 - y1 < 10)
+            if (w > 5 && h > 5)
             {
-                // 区域太小，取消
-                if (pState->pOwner && ::IsWindow(pState->pOwner->m_hWnd))
-                {
-                    pState->pOwner->PostMessage(WM_APP + 10, 0, 0);
-                    pState->pOwner->ShowWindow(SW_SHOW);
-                }
+                pData->rcResult = { left, top, right, bottom };
+                pData->bDone = true;
                 ::DestroyWindow(hwnd);
-                return 0;
             }
-
-            // 从屏幕快照中截取选中区域
-            HDC hdcScreen = ::GetDC(NULL);
-            HDC hdcMem = ::CreateCompatibleDC(hdcScreen);
-            int w = x2 - x1;
-            int h = y2 - y1;
-            HBITMAP hBitmap = ::CreateCompatibleBitmap(hdcScreen, w, h);
-            HBITMAP hOldBmp = (HBITMAP)::SelectObject(hdcMem, hBitmap);
-            ::BitBlt(hdcMem, 0, 0, w, h, hdcScreen, x1, y1, SRCCOPY);
-            ::SelectObject(hdcMem, hOldBmp);
-            ::DeleteDC(hdcMem);
-            ::ReleaseDC(NULL, hdcScreen);
-
-            // 通知 OCR 对话框
-            if (pState->pOwner && ::IsWindow(pState->pOwner->m_hWnd))
+            else
             {
-                pState->pOwner->PostMessage(WM_APP + 10, (WPARAM)hBitmap, 0);
-                pState->pOwner->ShowWindow(SW_SHOW);
+                InvalidateRect(hwnd, nullptr, FALSE);
             }
-
-            ::DestroyWindow(hwnd);
         }
         return 0;
 
     case WM_KEYDOWN:
         if (wParam == VK_ESCAPE)
         {
-            if (pState && pState->pOwner && ::IsWindow(pState->pOwner->m_hWnd))
-            {
-                pState->pOwner->PostMessage(WM_APP + 10, 0, 0);
-                pState->pOwner->ShowWindow(SW_SHOW);
-            }
+            if (pData) pData->bDone = true;
             ::DestroyWindow(hwnd);
         }
         return 0;
 
-    case WM_RBUTTONDOWN:
-        // 右键取消
-        if (pState && pState->pOwner && ::IsWindow(pState->pOwner->m_hWnd))
-        {
-            pState->pOwner->PostMessage(WM_APP + 10, 0, 0);
-            pState->pOwner->ShowWindow(SW_SHOW);
-        }
-        ::DestroyWindow(hwnd);
+    case WM_DESTROY:
+        // 不调用 PostQuitMessage，否则会退出整个程序
+        // data.bDone 标志已经能退出本地消息循环
         return 0;
-
-    default:
-        break;
     }
+
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-// ========== OCR 主对话框 ==========
+// ========== 框选截图 ==========
+HBITMAP CScreenshotOCRDlg::CaptureRegion()
+{
+    // 1. 全屏截图
+    int screenW = ::GetSystemMetrics(SM_CXSCREEN);
+    int screenH = ::GetSystemMetrics(SM_CYSCREEN);
+    HDC hdcScreen = ::GetDC(nullptr);
+    HDC hdcMem = CreateCompatibleDC(hdcScreen);
+    HBITMAP hFullScreen = CreateCompatibleBitmap(hdcScreen, screenW, screenH);
+    HBITMAP hOld = static_cast<HBITMAP>(SelectObject(hdcMem, hFullScreen));
+    BitBlt(hdcMem, 0, 0, screenW, screenH, hdcScreen, 0, 0, SRCCOPY);
+    SelectObject(hdcMem, hOld);
+    DeleteDC(hdcMem);
 
-CScreenshotOCRDlg::CScreenshotOCRDlg(CWnd* pParent, CAutoClicker* pAutoClicker) : CDialogEx(IDD_SCREENSHOT_OCR_DLG, pParent)
-    , m_pAutoClicker(pAutoClicker)
+    // 2. 预创建 32 位 DIB 遮罩和离屏缓冲（双缓冲消除闪烁）
+    BITMAPINFO bmi = {};
+    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth = screenW;
+    bmi.bmiHeader.biHeight = -screenH;
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+
+    DWORD* pOverlayBits = nullptr;
+    HBITMAP hOverlayBmp = CreateDIBSection(hdcScreen, &bmi, DIB_RGB_COLORS,
+        reinterpret_cast<void**>(&pOverlayBits), nullptr, 0);
+    HBITMAP hBackBuffer = CreateCompatibleBitmap(hdcScreen, screenW, screenH);
+    ::ReleaseDC(nullptr, hdcScreen);
+
+    if (pOverlayBits)
+    {
+        DWORD* p = pOverlayBits;
+        int total = screenW * screenH;
+        for (int i = 0; i < total; i++)
+            p[i] = 0x78000000;
+    }
+
+    // 3. 隐藏对话框
+    ShowWindow(SW_HIDE);
+    Sleep(200);
+
+    // 4. 注册覆盖层窗口类
+    WNDCLASS wc = {};
+    wc.lpfnWndProc = RegionOverlayProc;
+    wc.hInstance = AfxGetInstanceHandle();
+    wc.lpszClassName = _T("OCRRegionOverlay");
+    wc.hCursor = ::LoadCursor(nullptr, IDC_CROSS);
+    wc.hbrBackground = static_cast<HBRUSH>(GetStockObject(NULL_BRUSH));
+    wc.style = CS_HREDRAW | CS_VREDRAW;
+
+    WNDCLASS existing = {};
+    if (!GetClassInfo(wc.hInstance, wc.lpszClassName, &existing))
+        RegisterClass(&wc);
+
+    // 5. 创建全屏覆盖层
+    RegionCaptureData data = {};
+    data.hFullScreen = hFullScreen;
+    data.hBackBuffer = hBackBuffer;
+    data.hOverlayBmp = hOverlayBmp;
+    data.pOverlayBits = pOverlayBits;
+    data.screenW = screenW;
+    data.screenH = screenH;
+
+    HWND hOverlay = CreateWindowEx(
+        WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+        wc.lpszClassName, _T(""), WS_POPUP,
+        0, 0, screenW, screenH,
+        nullptr, nullptr, AfxGetInstanceHandle(), nullptr);
+
+    if (!hOverlay)
+    {
+        if (hBackBuffer) DeleteObject(hBackBuffer);
+        if (hOverlayBmp) DeleteObject(hOverlayBmp);
+        DeleteObject(hFullScreen);
+        ShowWindow(SW_SHOW);
+        return nullptr;
+    }
+
+    ::SetWindowLongPtr(hOverlay, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(&data));
+    ::ShowWindow(hOverlay, SW_SHOW);
+    ::SetForegroundWindow(hOverlay);
+
+    // 6. 消息循环等待用户完成框选
+    MSG msg;
+    while (!data.bDone && GetMessage(&msg, nullptr, 0, 0))
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+
+    // 7. 清理（窗口已销毁）
+    if (hBackBuffer) DeleteObject(hBackBuffer);
+    if (hOverlayBmp) DeleteObject(hOverlayBmp);
+
+    // 8. 提取选中区域
+    HBITMAP hResult = nullptr;
+    if (data.bDone && data.rcResult.right > data.rcResult.left)
+    {
+        int w = data.rcResult.right - data.rcResult.left;
+        int h = data.rcResult.bottom - data.rcResult.top;
+
+        HDC hdcScreen2 = ::GetDC(nullptr);
+        HDC hdcSrc = CreateCompatibleDC(hdcScreen2);
+        HDC hdcDst = CreateCompatibleDC(hdcScreen2);
+        hResult = CreateCompatibleBitmap(hdcScreen2, w, h);
+        SelectObject(hdcSrc, hFullScreen);
+        SelectObject(hdcDst, hResult);
+        BitBlt(hdcDst, 0, 0, w, h, hdcSrc,
+            data.rcResult.left, data.rcResult.top, SRCCOPY);
+        DeleteDC(hdcSrc);
+        DeleteDC(hdcDst);
+        ::ReleaseDC(nullptr, hdcScreen2);
+    }
+
+    DeleteObject(hFullScreen);
+
+    // 9. 恢复对话框
+    ShowWindow(SW_SHOW);
+    ::SetForegroundWindow(m_hWnd);
+
+    return hResult;
+}
+
+IMPLEMENT_DYNAMIC(CScreenshotOCRDlg, CDialogEx)
+
+CScreenshotOCRDlg::CScreenshotOCRDlg(CWnd* pParent, CAutoClicker* /*pAutoClicker*/)
+    : CDialogEx(IDD_SCREENSHOT_OCR_DLG, pParent)
 {
 }
+
+CScreenshotOCRDlg::~CScreenshotOCRDlg()
+{
+}
+
+BEGIN_MESSAGE_MAP(CScreenshotOCRDlg, CDialogEx)
+    ON_BN_CLICKED(IDC_BTN_OCR_CAPTURE, &CScreenshotOCRDlg::OnBnClickedBtnOcr)
+    ON_BN_CLICKED(IDC_BTN_OCR_TRANSLATE, &CScreenshotOCRDlg::OnBnClickedBtnTranslate)
+    ON_BN_CLICKED(IDC_BTN_OCR_COPY, &CScreenshotOCRDlg::OnBnClickedBtnCopy)
+    ON_MESSAGE(WM_OCR_COMPLETE, &CScreenshotOCRDlg::OnOcrComplete)
+    ON_MESSAGE(WM_TRANSLATE_COMPLETE, &CScreenshotOCRDlg::OnTranslateComplete)
+END_MESSAGE_MAP()
 
 void CScreenshotOCRDlg::DoDataExchange(CDataExchange* pDX)
 {
     CDialogEx::DoDataExchange(pDX);
 }
 
-BEGIN_MESSAGE_MAP(CScreenshotOCRDlg, CDialogEx)
-    ON_BN_CLICKED(IDC_BTN_OCR_CAPTURE, &CScreenshotOCRDlg::OnBnClickedCapture)
-    ON_BN_CLICKED(IDC_BTN_OCR_COPY, &CScreenshotOCRDlg::OnBnClickedCopyResult)
-    ON_BN_CLICKED(IDC_BTN_OCR_TRANSLATE, &CScreenshotOCRDlg::OnBnClickedTranslate)
-    ON_MESSAGE(WM_APP + 10, &CScreenshotOCRDlg::OnCaptureComplete)
-END_MESSAGE_MAP()
-
 BOOL CScreenshotOCRDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
-    GetDlgItem(IDC_BTN_OCR_COPY)->EnableWindow(FALSE);
-    GetDlgItem(IDC_BTN_OCR_TRANSLATE)->EnableWindow(FALSE);
     return TRUE;
 }
 
-void CScreenshotOCRDlg::OnBnClickedCapture()
+void CScreenshotOCRDlg::OnOK() {}
+void CScreenshotOCRDlg::OnCancel()
 {
-    // 暂停连点器键盘监听，防止 a/b 键污染截图操作
-    if (m_pAutoClicker)
-        m_pAutoClicker->Pause();
-
-    // 隐藏自身，创建截图覆盖窗口
-    ShowWindow(SW_HIDE);
-
-    // 注册窗口类（只注册一次）
-    WNDCLASS wc = {0};
-    wc.lpfnWndProc = RegionSelectWndProc;
-    wc.hInstance = AfxGetInstanceHandle();
-    wc.lpszClassName = _T("OCRRegionSelectClass");
-    wc.hCursor = ::LoadCursor(NULL, IDC_CROSS);
-    wc.hbrBackground = (HBRUSH)GetStockObject(NULL_BRUSH);
-
-    WNDCLASS existing = {0};
-    if (!GetClassInfo(wc.hInstance, wc.lpszClassName, &existing))
+    if (m_bBusy)
     {
-        RegisterClass(&wc);
+        MessageBox(_T("正在进行 OCR 或翻译，请稍候..."), _T("提示"), MB_OK | MB_ICONINFORMATION);
+        return;
+    }
+    if (m_hScreenshot) DeleteObject(m_hScreenshot);
+    m_hScreenshot = nullptr;
+    CDialogEx::OnCancel();
+}
+
+// ========== 图像预处理 ==========
+void CScreenshotOCRDlg::PreprocessBitmap(HBITMAP& hBitmap)
+{
+    if (!hBitmap) return;
+    BITMAP bm;
+    GetObject(hBitmap, sizeof(bm), &bm);
+    int w = bm.bmWidth, h = bm.bmHeight;
+
+    bool bNeedUpscale = (w < 500 && h < 500);
+    int newW = bNeedUpscale ? w * 2 : w;
+    int newH = bNeedUpscale ? h * 2 : h;
+
+    HDC hdc = ::GetDC(nullptr);
+    HDC hdcMem = CreateCompatibleDC(hdc);
+    HDC hdcNew = CreateCompatibleDC(hdc);
+    HBITMAP hNewBmp = CreateCompatibleBitmap(hdc, newW, newH);
+    SelectObject(hdcNew, hNewBmp);
+    SelectObject(hdcMem, hBitmap);
+
+    if (bNeedUpscale)
+    {
+        SetStretchBltMode(hdcNew, HALFTONE);
+        SetBrushOrgEx(hdcNew, 0, 0, nullptr);
+        StretchBlt(hdcNew, 0, 0, newW, newH, hdcMem, 0, 0, w, h, SRCCOPY);
+    }
+    else
+    {
+        BitBlt(hdcNew, 0, 0, w, h, hdcMem, 0, 0, SRCCOPY);
     }
 
-    HWND hOverlay = CreateWindowEx(
-        WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
-        wc.lpszClassName, _T(""),
-        WS_POPUP,
-        0, 0, ::GetSystemMetrics(SM_CXSCREEN), ::GetSystemMetrics(SM_CYSCREEN),
-        m_hWnd, NULL, AfxGetInstanceHandle(), this);
+    DeleteDC(hdcMem);
+    DeleteDC(hdcNew);
+    ::ReleaseDC(nullptr, hdc);
 
-    if (!hOverlay)
+    DeleteObject(hBitmap);
+    hBitmap = hNewBmp;
+}
+
+// ========== 后台 OCR 线程 ==========
+void CScreenshotOCRDlg::OcrThreadProc(HBITMAP hBitmap, HWND hNotifyWnd)
+{
+    BITMAP bm;
+    GetObject(hBitmap, sizeof(bm), &bm);
+    int w = bm.bmWidth, h = bm.bmHeight;
+
+    bool bNeedUpscale = (w < 500 && h < 500);
+    int newW = bNeedUpscale ? w * 2 : w;
+    int newH = bNeedUpscale ? h * 2 : h;
+
+    HDC hdc = ::GetDC(nullptr);
+    HDC hdcMem = CreateCompatibleDC(hdc);
+    HDC hdcNew = CreateCompatibleDC(hdc);
+    HBITMAP hNewBmp = CreateCompatibleBitmap(hdc, newW, newH);
+    SelectObject(hdcNew, hNewBmp);
+    SelectObject(hdcMem, hBitmap);
+
+    if (bNeedUpscale)
     {
-        if (m_pAutoClicker)
-            m_pAutoClicker->Resume();
-        ShowWindow(SW_SHOW);
-        MessageBox(_T("无法进入截图模式。"), _T("错误"), MB_OK | MB_ICONERROR);
+        SetStretchBltMode(hdcNew, HALFTONE);
+        SetBrushOrgEx(hdcNew, 0, 0, nullptr);
+        StretchBlt(hdcNew, 0, 0, newW, newH, hdcMem, 0, 0, w, h, SRCCOPY);
+    }
+    else
+    {
+        BitBlt(hdcNew, 0, 0, w, h, hdcMem, 0, 0, SRCCOPY);
+    }
+
+    DeleteDC(hdcMem);
+    DeleteDC(hdcNew);
+    ::ReleaseDC(nullptr, hdc);
+
+    WCHAR tempPath[MAX_PATH], tempFile[MAX_PATH];
+    GetTempPathW(MAX_PATH, tempPath);
+    GetTempFileNameW(tempPath, L"ocr", 0, tempFile);
+    CString pngPath = tempFile;
+    pngPath.Replace(_T(".tmp"), _T(".png"));
+    DeleteFile(pngPath);
+
+    {
+        GdiplusStartupInput gdiplusStartupInput;
+        ULONG_PTR gdiplusToken;
+        GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr);
+        Bitmap* bmp = Bitmap::FromHBITMAP(hNewBmp, nullptr);
+        if (bmp)
+        {
+            CLSID clsidPng;
+            GetEncoderClsid(L"image/png", &clsidPng);
+            bmp->Save(pngPath, &clsidPng, nullptr);
+            delete bmp;
+        }
+        GdiplusShutdown(gdiplusToken);
+    }
+    DeleteObject(hNewBmp);
+
+    WCHAR result[4096] = {0};
+    bool bSuccess = OcrRecognizeFromFile(pngPath, result, 4096, true);
+    DeleteFile(pngPath);
+
+    size_t len = wcslen(result);
+    WCHAR* pResult = new WCHAR[len + 1];
+    wcscpy_s(pResult, len + 1, result);
+    ::PostMessage(hNotifyWnd, WM_OCR_COMPLETE, bSuccess ? 1 : 0, reinterpret_cast<LPARAM>(pResult));
+}
+
+// ========== 开始截图按钮 ==========
+void CScreenshotOCRDlg::OnBnClickedBtnOcr()
+{
+    if (m_bBusy)
+    {
+        MessageBox(_T("正在处理中，请稍候..."), _T("提示"), MB_OK | MB_ICONINFORMATION);
         return;
     }
 
-    ::ShowWindow(hOverlay, SW_SHOW);
-    ::UpdateWindow(hOverlay);
+    // 框选截图
+    HBITMAP hCapture = CaptureRegion();
+    if (!hCapture)
+    {
+        // 用户取消了
+        return;
+    }
+
+    if (m_hScreenshot) DeleteObject(m_hScreenshot);
+    m_hScreenshot = hCapture;
+
+    BITMAP bm;
+    GetObject(m_hScreenshot, sizeof(bm), &bm);
+    m_screenshotWidth = bm.bmWidth;
+    m_screenshotHeight = bm.bmHeight;
+
+    // 标记忙碌，禁用按钮
+    m_bBusy = true;
+    GetDlgItem(IDC_BTN_OCR_CAPTURE)->EnableWindow(FALSE);
+    GetDlgItem(IDC_BTN_OCR_TRANSLATE)->EnableWindow(FALSE);
+    SetDlgItemText(IDC_EDIT_OCR_RESULT, _T("正在识别中，请稍候..."));
+
+    // 复制位图给后台线程
+    HDC hdc = ::GetDC(nullptr);
+    HDC hdcSrc = CreateCompatibleDC(hdc);
+    HDC hdcDst = CreateCompatibleDC(hdc);
+    HBITMAP hThreadBmp = CreateCompatibleBitmap(hdc, bm.bmWidth, bm.bmHeight);
+    SelectObject(hdcSrc, m_hScreenshot);
+    SelectObject(hdcDst, hThreadBmp);
+    BitBlt(hdcDst, 0, 0, bm.bmWidth, bm.bmHeight, hdcSrc, 0, 0, SRCCOPY);
+    DeleteDC(hdcSrc);
+    DeleteDC(hdcDst);
+    ::ReleaseDC(nullptr, hdc);
+
+    std::thread(OcrThreadProc, hThreadBmp, m_hWnd).detach();
 }
 
-LRESULT CScreenshotOCRDlg::OnCaptureComplete(WPARAM wParam, LPARAM lParam)
+// ========== OCR 完成 ==========
+LRESULT CScreenshotOCRDlg::OnOcrComplete(WPARAM wParam, LPARAM lParam)
 {
-    // 恢复连点器键盘监听
-    if (m_pAutoClicker)
-        m_pAutoClicker->Resume();
+    m_bBusy = false;
+    GetDlgItem(IDC_BTN_OCR_CAPTURE)->EnableWindow(TRUE);
+    GetDlgItem(IDC_BTN_OCR_TRANSLATE)->EnableWindow(TRUE);
 
-    HBITMAP hBitmap = (HBITMAP)wParam;
-
-    if (!hBitmap)
+    WCHAR* pResult = reinterpret_cast<WCHAR*>(lParam);
+    if (pResult)
     {
-        // 用户取消或失败
-        return 0;
+        m_ocrText = pResult;
+        SetDlgItemText(IDC_EDIT_OCR_RESULT, m_ocrText);
+        if (m_hScreenshot) { DeleteObject(m_hScreenshot); m_hScreenshot = nullptr; }
+        delete[] pResult;
     }
-
-    // 清理旧位图
-    if (m_hCapturedBitmap)
-    {
-        ::DeleteObject(m_hCapturedBitmap);
-        m_hCapturedBitmap = nullptr;
-    }
-    m_hCapturedBitmap = hBitmap;
-
-    // 执行 OCR 识别
-    CString text = RecognizeText(hBitmap);
-    SetDlgItemText(IDC_EDIT_OCR_RESULT, text);
-
-    GetDlgItem(IDC_BTN_OCR_COPY)->EnableWindow(!text.IsEmpty());
-    GetDlgItem(IDC_BTN_OCR_TRANSLATE)->EnableWindow(!text.IsEmpty());
-
     return 0;
 }
 
-void CScreenshotOCRDlg::OnBnClickedCopyResult()
+// ========== 后台翻译线程 ==========
+void CScreenshotOCRDlg::TranslateThreadProc(const CString& text, HWND hNotifyWnd)
 {
+    CString result = CallTranslateAPI(text, 10);
+    int len = result.GetLength();
+    WCHAR* pResult = new WCHAR[len + 1];
+    wcscpy_s(pResult, len + 1, result);
+    ::PostMessage(hNotifyWnd, WM_TRANSLATE_COMPLETE, 1, reinterpret_cast<LPARAM>(pResult));
+}
+
+// ========== 翻译 API ==========
+CString CScreenshotOCRDlg::CallTranslateAPI(const CString& text, int timeoutSeconds)
+{
+    std::string encodedText;
+    for (int i = 0; i < text.GetLength(); i++)
+    {
+        WCHAR ch = text[i];
+        if ((ch >= L'A' && ch <= L'Z') || (ch >= L'a' && ch <= L'z') ||
+            (ch >= L'0' && ch <= L'9') || ch == L'-' || ch == L'_' || ch == L'.' || ch == L'~')
+        {
+            encodedText += static_cast<char>(ch);
+        }
+        else if (ch == L' ')
+        {
+            encodedText += '+';
+        }
+        else
+        {
+            std::wstring wch(1, ch);
+            int len = WideCharToMultiByte(CP_UTF8, 0, wch.c_str(), -1, nullptr, 0, nullptr, nullptr);
+            std::string utf8(len, '\0');
+            WideCharToMultiByte(CP_UTF8, 0, wch.c_str(), -1, &utf8[0], len, nullptr, nullptr);
+            for (int j = 0; j < len - 1; j++)
+            {
+                char hex[4];
+                sprintf_s(hex, "%%%02X", static_cast<unsigned char>(utf8[j]));
+                encodedText += hex;
+            }
+        }
+    }
+
+    std::string postData = "q=" + encodedText + "&langpair=zh-CN|en";
+
+    HINTERNET hSession = ::WinHttpOpen(L"MFC OCR Tool/1.0",
+        WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    if (!hSession) return _T("翻译失败：无法初始化网络。");
+
+    DWORD timeout = timeoutSeconds * 1000;
+    ::WinHttpSetOption(hSession, WINHTTP_OPTION_CONNECT_TIMEOUT, &timeout, sizeof(timeout));
+    ::WinHttpSetOption(hSession, WINHTTP_OPTION_SEND_TIMEOUT, &timeout, sizeof(timeout));
+    ::WinHttpSetOption(hSession, WINHTTP_OPTION_RECEIVE_TIMEOUT, &timeout, sizeof(timeout));
+
+    HINTERNET hConnect = ::WinHttpConnect(hSession,
+        L"api.mymemory.translated.net", INTERNET_DEFAULT_HTTPS_PORT, 0);
+    if (!hConnect) { ::WinHttpCloseHandle(hSession); return _T("翻译失败：无法连接服务器。"); }
+
+    HINTERNET hRequest = ::WinHttpOpenRequest(hConnect, L"POST", L"/get",
+        nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+    if (!hRequest) { ::WinHttpCloseHandle(hConnect); ::WinHttpCloseHandle(hSession); return _T("翻译失败：无法创建请求。"); }
+
+    LPCWSTR headers = L"Content-Type: application/x-www-form-urlencoded\r\n";
+    BOOL bResult = ::WinHttpSendRequest(hRequest, headers, static_cast<DWORD>(wcslen(headers)),
+        const_cast<char*>(postData.c_str()), static_cast<DWORD>(postData.size()),
+        static_cast<DWORD>(postData.size()), 0);
+    if (!bResult) { ::WinHttpCloseHandle(hRequest); ::WinHttpCloseHandle(hConnect); ::WinHttpCloseHandle(hSession); return _T("翻译失败：请求超时或网络错误。"); }
+
+    bResult = ::WinHttpReceiveResponse(hRequest, nullptr);
+    if (!bResult) { ::WinHttpCloseHandle(hRequest); ::WinHttpCloseHandle(hConnect); ::WinHttpCloseHandle(hSession); return _T("翻译失败：服务器无响应。"); }
+
+    std::string response;
+    DWORD dwSize = 0;
+    do
+    {
+        dwSize = 0;
+        if (!::WinHttpQueryDataAvailable(hRequest, &dwSize)) break;
+        if (dwSize > 0)
+        {
+            std::string chunk(dwSize + 1, '\0');
+            DWORD dwRead = 0;
+            if (::WinHttpReadData(hRequest, &chunk[0], dwSize, &dwRead))
+            {
+                chunk.resize(dwRead);
+                response += chunk;
+            }
+        }
+    } while (dwSize > 0);
+
+    ::WinHttpCloseHandle(hRequest);
+    ::WinHttpCloseHandle(hConnect);
+    ::WinHttpCloseHandle(hSession);
+
+    if (response.empty()) return _T("翻译失败：服务器返回空响应。");
+
+    std::string marker = "\"translatedText\":\"";
+    size_t pos = response.find(marker);
+    if (pos == std::string::npos)
+    {
+        marker = "\"responseDetails\":\"";
+        pos = response.find(marker);
+        if (pos != std::string::npos)
+        {
+            size_t end = response.find('"', pos + marker.size());
+            if (end != std::string::npos)
+            {
+                std::string err = response.substr(pos + marker.size(), end - pos - marker.size());
+                CString cserr = _T("翻译失败：");
+                int wlen = MultiByteToWideChar(CP_UTF8, 0, err.c_str(), -1, nullptr, 0);
+                if (wlen > 0)
+                {
+                    WCHAR* buf = new WCHAR[wlen];
+                    MultiByteToWideChar(CP_UTF8, 0, err.c_str(), -1, buf, wlen);
+                    cserr += buf;
+                    delete[] buf;
+                }
+                return cserr;
+            }
+        }
+        return _T("翻译失败：无法解析响应。");
+    }
+
+    size_t start = pos + marker.size();
+    size_t end = response.find('"', start);
+    if (end == std::string::npos) return _T("翻译失败：响应格式异常。");
+
+    std::string translated = response.substr(start, end - start);
+    std::string unescaped;
+    for (size_t i = 0; i < translated.size(); i++)
+    {
+        if (translated[i] == '\\' && i + 1 < translated.size())
+        {
+            if (translated[i + 1] == 'n') { unescaped += '\n'; i++; }
+            else if (translated[i + 1] == 't') { unescaped += '\t'; i++; }
+            else if (translated[i + 1] == '"') { unescaped += '"'; i++; }
+            else unescaped += translated[i];
+        }
+        else unescaped += translated[i];
+    }
+
+    CString result;
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, unescaped.c_str(), -1, nullptr, 0);
+    if (wlen > 0)
+    {
+        WCHAR* buf = new WCHAR[wlen];
+        MultiByteToWideChar(CP_UTF8, 0, unescaped.c_str(), -1, buf, wlen);
+        result = buf;
+        delete[] buf;
+    }
+    if (result.IsEmpty()) return _T("翻译失败：结果为空。");
+    return result;
+}
+
+// ========== 翻译按钮 ==========
+void CScreenshotOCRDlg::OnBnClickedBtnTranslate()
+{
+    if (m_bBusy)
+    {
+        MessageBox(_T("正在处理中，请稍候..."), _T("提示"), MB_OK | MB_ICONINFORMATION);
+        return;
+    }
     CString text;
     GetDlgItemText(IDC_EDIT_OCR_RESULT, text);
-    if (text.IsEmpty()) return;
+    text.Trim();
+    if (text.IsEmpty())
+    {
+        MessageBox(_T("请先截图识别文字。"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+        return;
+    }
+    if (text.Find(_T("失败")) >= 0 || text.Find(_T("错误")) >= 0)
+    {
+        MessageBox(_T("OCR 识别未成功，无法翻译。"), _T("提示"), MB_OK | MB_ICONWARNING);
+        return;
+    }
+
+    m_bBusy = true;
+    GetDlgItem(IDC_BTN_OCR_CAPTURE)->EnableWindow(FALSE);
+    GetDlgItem(IDC_BTN_OCR_TRANSLATE)->EnableWindow(FALSE);
+    SetDlgItemText(IDC_EDIT_OCR_TRANSLATED, _T("正在翻译中，请稍候..."));
+    std::thread(TranslateThreadProc, text, m_hWnd).detach();
+}
+
+// ========== 翻译完成 ==========
+LRESULT CScreenshotOCRDlg::OnTranslateComplete(WPARAM /*wParam*/, LPARAM lParam)
+{
+    m_bBusy = false;
+    GetDlgItem(IDC_BTN_OCR_CAPTURE)->EnableWindow(TRUE);
+    GetDlgItem(IDC_BTN_OCR_TRANSLATE)->EnableWindow(TRUE);
+
+    WCHAR* pResult = reinterpret_cast<WCHAR*>(lParam);
+    if (pResult)
+    {
+        m_translatedText = pResult;
+        SetDlgItemText(IDC_EDIT_OCR_TRANSLATED, m_translatedText);
+        delete[] pResult;
+    }
+    return 0;
+}
+
+// ========== 复制按钮 ==========
+void CScreenshotOCRDlg::OnBnClickedBtnCopy()
+{
+    CString text;
+    GetDlgItemText(IDC_EDIT_OCR_TRANSLATED, text);
+    if (text.IsEmpty()) GetDlgItemText(IDC_EDIT_OCR_RESULT, text);
+    if (text.IsEmpty()) { MessageBox(_T("没有可复制的内容。"), _T("提示"), MB_OK | MB_ICONINFORMATION); return; }
 
     if (::OpenClipboard(m_hWnd))
     {
         ::EmptyClipboard();
-        size_t len = (text.GetLength() + 1) * sizeof(TCHAR);
+        int len = (text.GetLength() + 1) * sizeof(WCHAR);
         HGLOBAL hMem = ::GlobalAlloc(GMEM_MOVEABLE, len);
         if (hMem)
         {
-            memcpy(::GlobalLock(hMem), text.GetString(), len);
-            ::GlobalUnlock(hMem);
-#ifdef UNICODE
+            void* pMem = ::GlobalLock(hMem);
+            if (pMem) { memcpy(pMem, static_cast<LPCWSTR>(text), len); ::GlobalUnlock(hMem); }
             ::SetClipboardData(CF_UNICODETEXT, hMem);
-#else
-            ::SetClipboardData(CF_TEXT, hMem);
-#endif
         }
         ::CloseClipboard();
     }
-}
-
-CString CScreenshotOCRDlg::RecognizeText(HBITMAP hBitmap)
-{
-    CString result;
-    if (!hBitmap) return result;
-
-    // 获取临时文件路径
-    TCHAR tempPath[MAX_PATH];
-    TCHAR tempFile[MAX_PATH];
-    ::GetTempPath(MAX_PATH, tempPath);
-    ::GetTempFileName(tempPath, _T("ocr"), 0, tempFile);
-    ::DeleteFile(tempFile);
-
-    CString tempFilePath = tempFile;
-    tempFilePath.Replace(_T(".tmp"), _T(".png"));
-
-    try
-    {
-        // 1. 使用 GDI+ 将 HBITMAP 保存为 PNG
-        {
-            Gdiplus::Bitmap bmp(hBitmap, nullptr);
-            CLSID pngClsid;
-            CLSIDFromString(L"{557CF406-1A04-11D3-9A73-0000F81EF32E}", &pngClsid);
-            USES_CONVERSION;
-            bmp.Save(T2CW(tempFilePath), &pngClsid, nullptr);
-        }
-
-        // 2. 调用隔离的 OCR 引擎（通过 C++/WinRT 访问 Windows.Media.Ocr）
-        wchar_t ocrOutput[8192] = {0};
-        if (OcrRecognizeFromFile(tempFilePath.GetString(), ocrOutput, 8192))
-        {
-            result = ocrOutput;
-        }
-        else
-        {
-            result = ocrOutput;  // 错误信息已在 buffer 中
-        }
-
-        ::DeleteFile(tempFilePath);
-    }
-    catch (...)
-    {
-        result = _T("OCR 识别失败。");
-        ::DeleteFile(tempFilePath);
-    }
-
-    return result;
-}
-
-// URL 编码（简单实现，仅编码非 ASCII 和特殊字符）
-static std::wstring UrlEncode(const std::wstring& str)
-{
-    std::wstring encoded;
-    for (wchar_t ch : str)
-    {
-        if ((ch >= L'A' && ch <= L'Z') || (ch >= L'a' && ch <= L'z') ||
-            (ch >= L'0' && ch <= L'9') || ch == L'-' || ch == L'_' ||
-            ch == L'.' || ch == L'~')
-        {
-            encoded += ch;
-        }
-        else if (ch == L' ')
-        {
-            encoded += L'+';
-        }
-        else
-        {
-            wchar_t hex[8];
-            swprintf_s(hex, L"%%%04X", (unsigned short)ch);
-            encoded += hex;
-        }
-    }
-    return encoded;
-}
-
-void CScreenshotOCRDlg::OnBnClickedTranslate()
-{
-    CString text;
-    GetDlgItemText(IDC_EDIT_OCR_RESULT, text);
-    if (text.IsEmpty()) return;
-
-    // 显示翻译中状态
-    SetDlgItemText(IDC_EDIT_OCR_TRANSLATED, _T("翻译中..."));
-    GetDlgItem(IDC_BTN_OCR_TRANSLATE)->EnableWindow(FALSE);
-
-    CString translated = TranslateText(text);
-
-    SetDlgItemText(IDC_EDIT_OCR_TRANSLATED, translated);
-    GetDlgItem(IDC_BTN_OCR_TRANSLATE)->EnableWindow(TRUE);
-}
-
-CString CScreenshotOCRDlg::TranslateText(const CString& text)
-{
-    CString result;
-    if (text.IsEmpty()) return result;
-
-    HINTERNET hSession = nullptr;
-    HINTERNET hConnect = nullptr;
-    HINTERNET hRequest = nullptr;
-
-    try
-    {
-        // 使用 MyMemory 免费翻译 API（zh|en = 中译英）
-        std::wstring encoded = UrlEncode(static_cast<LPCWSTR>(text));
-        std::wstring url = L"/get?q=" + encoded + L"&langpair=zh|en";
-
-        hSession = ::WinHttpOpen(L"MFCApp/1.0",
-            WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-            WINHTTP_NO_PROXY_NAME,
-            WINHTTP_NO_PROXY_BYPASS, 0);
-        if (!hSession) throw std::runtime_error("WinHttpOpen failed");
-
-        hConnect = ::WinHttpConnect(hSession, L"api.mymemory.translated.net",
-            INTERNET_DEFAULT_HTTPS_PORT, 0);
-        if (!hConnect) throw std::runtime_error("WinHttpConnect failed");
-
-        hRequest = ::WinHttpOpenRequest(hConnect, L"GET", url.c_str(),
-            nullptr, WINHTTP_NO_REFERER,
-            WINHTTP_DEFAULT_ACCEPT_TYPES,
-            WINHTTP_FLAG_SECURE);
-        if (!hRequest) throw std::runtime_error("WinHttpOpenRequest failed");
-
-        if (!::WinHttpSendRequest(hRequest,
-            WINHTTP_NO_ADDITIONAL_HEADERS, 0,
-            WINHTTP_NO_REQUEST_DATA, 0, 0, 0))
-            throw std::runtime_error("WinHttpSendRequest failed");
-
-        if (!::WinHttpReceiveResponse(hRequest, nullptr))
-            throw std::runtime_error("WinHttpReceiveResponse failed");
-
-        // 读取响应
-        std::string response;
-        DWORD dwSize = 0;
-        DWORD dwDownloaded = 0;
-        char buffer[4096];
-
-        do
-        {
-            dwSize = 0;
-            if (!::WinHttpQueryDataAvailable(hRequest, &dwSize))
-                break;
-            if (dwSize == 0) break;
-
-            if (dwSize > sizeof(buffer))
-                dwSize = sizeof(buffer);
-
-            if (!::WinHttpReadData(hRequest, buffer, dwSize, &dwDownloaded))
-                break;
-            response.append(buffer, dwDownloaded);
-        } while (dwSize > 0);
-
-        // 简单 JSON 解析：提取 "translatedText":"..."
-        auto pos = response.find("\"translatedText\":\"");
-        if (pos == std::string::npos)
-        {
-            result = _T("翻译失败：未找到翻译结果");
-        }
-        else
-        {
-            pos += 18; // 跳过 "translatedText":"
-            auto endPos = response.find('\"', pos);
-            if (endPos != std::string::npos)
-            {
-                std::string translated = response.substr(pos, endPos - pos);
-                // 处理 JSON 转义（\\n, \\t, \\\" 等）
-                int nLen = MultiByteToWideChar(CP_UTF8, 0, translated.c_str(), -1, nullptr, 0);
-                if (nLen > 0)
-                {
-                    std::vector<wchar_t> wbuf(nLen);
-                    MultiByteToWideChar(CP_UTF8, 0, translated.c_str(), -1, wbuf.data(), nLen);
-                    result = wbuf.data();
-                }
-            }
-        }
-    }
-    catch (const std::exception& e)
-    {
-        result = _T("翻译失败：网络错误");
-    }
-
-    if (hRequest) ::WinHttpCloseHandle(hRequest);
-    if (hConnect) ::WinHttpCloseHandle(hConnect);
-    if (hSession) ::WinHttpCloseHandle(hSession);
-
-    return result;
 }

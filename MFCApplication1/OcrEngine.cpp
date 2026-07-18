@@ -7,26 +7,71 @@
 #include <winrt/Windows.Graphics.Imaging.h>
 #include <winrt/Windows.Storage.h>
 #include <winrt/Windows.Storage.Streams.h>
+#include <winrt/Windows.Globalization.h>
 
 #include <string>
+#include <vector>
 
 using namespace winrt;
 using namespace winrt::Windows::Media::Ocr;
 using namespace winrt::Windows::Graphics::Imaging;
 using namespace winrt::Windows::Storage;
 using namespace winrt::Windows::Storage::Streams;
+using namespace winrt::Windows::Globalization;
 
-bool OcrRecognizeFromFile(const wchar_t* filePath, wchar_t* output, int outputSize)
+// 尝试创建指定语言的 OCR 引擎
+static OcrEngine TryCreateEngine(const wchar_t* langTag)
+{
+    try
+    {
+        auto lang = Language(langTag);
+        return OcrEngine::TryCreateFromLanguage(lang);
+    }
+    catch (...) { return nullptr; }
+}
+
+// 尝试多种语言创建 OCR 引擎，返回第一个可用的
+static OcrEngine CreateBestEngine(bool preferChinese)
+{
+    // 优先尝试用户系统语言
+    auto engine = OcrEngine::TryCreateFromUserProfileLanguages();
+    if (engine) return engine;
+
+    // 如果用户语言不可用，按优先级尝试
+    if (preferChinese)
+    {
+        // 中文优先
+        const wchar_t* langs[] = { L"zh-Hans", L"zh-Hant", L"zh-CN", L"zh-TW", L"en", L"ja", L"ko" };
+        for (auto lang : langs)
+        {
+            engine = TryCreateEngine(lang);
+            if (engine) return engine;
+        }
+    }
+    else
+    {
+        const wchar_t* langs[] = { L"en", L"zh-Hans", L"zh-CN", L"ja", L"ko" };
+        for (auto lang : langs)
+        {
+            engine = TryCreateEngine(lang);
+            if (engine) return engine;
+        }
+    }
+
+    return nullptr;
+}
+
+bool OcrRecognizeFromFile(const wchar_t* filePath, wchar_t* output, int outputSize, bool preferChinese)
 {
     if (!filePath || !output || outputSize <= 0) return false;
 
     try
     {
-        // 创建 OCR 引擎（使用用户当前系统语言）
-        auto engine = OcrEngine::TryCreateFromUserProfileLanguages();
+        // 创建 OCR 引擎（尝试多种语言）
+        auto engine = CreateBestEngine(preferChinese);
         if (!engine)
         {
-            wcsncpy_s(output, outputSize, L"OCR引擎创建失败，请检查系统语言包。", _TRUNCATE);
+            wcsncpy_s(output, outputSize, L"OCR引擎创建失败，请确保系统已安装语言包。", _TRUNCATE);
             return false;
         }
 
