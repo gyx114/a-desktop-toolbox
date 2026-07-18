@@ -13,6 +13,7 @@ namespace fs = std::filesystem;
 #define IDM_FILE_MARK_DELETE    32820
 #define IDM_FILE_UNMARK_DELETE  32821
 #define IDM_FILE_CHANGE_EXT     32822
+#define IDM_FILE_RESTORE_EXT    32823
 
 // 简单的输入对话框类
 class CInputDialog : public CDialogEx
@@ -87,6 +88,7 @@ BEGIN_MESSAGE_MAP(CBatchRenameDlg, CDialogEx)
     ON_COMMAND(IDM_FILE_MARK_DELETE, &CBatchRenameDlg::OnFileMarkDelete)
     ON_COMMAND(IDM_FILE_UNMARK_DELETE, &CBatchRenameDlg::OnFileUnmarkDelete)
     ON_COMMAND(IDM_FILE_CHANGE_EXT, &CBatchRenameDlg::OnFileChangeExt)
+    ON_COMMAND(IDM_FILE_RESTORE_EXT, &CBatchRenameDlg::OnFileRestoreExt)
     ON_BN_CLICKED(IDC_BTN_FILE_UNMARK_ALL, &CBatchRenameDlg::OnFileUnmarkAll)
     ON_BN_CLICKED(IDC_BTN_FILE_RESET_ALL, &CBatchRenameDlg::OnFileResetAll)
     ON_WM_DROPFILES()
@@ -607,7 +609,16 @@ void CBatchRenameDlg::ApplyRules()
         CString name = m_entries[i].oldName;
         int dotPos = name.ReverseFind(_T('.'));
         CString stem, ext;
-        if (dotPos > 0)
+        if (m_entries[i].bCustomExt)
+        {
+            // 使用用户自定义的后缀
+            if (dotPos > 0)
+                stem = name.Left(dotPos);
+            else
+                stem = name;
+            ext = m_entries[i].customExt;
+        }
+        else if (dotPos > 0)
         {
             stem = name.Left(dotPos);
             ext = name.Mid(dotPos);
@@ -796,6 +807,7 @@ void CBatchRenameDlg::OnFileListRightClick(NMHDR* /*pNMHDR*/, LRESULT* pResult)
         menu.AppendMenu(MF_STRING, IDM_FILE_UNMARK_DELETE, _T("取消标记"));
         menu.AppendMenu(MF_SEPARATOR);
         menu.AppendMenu(MF_STRING, IDM_FILE_CHANGE_EXT, _T("修改后缀"));
+        menu.AppendMenu(MF_STRING, IDM_FILE_RESTORE_EXT, _T("恢复原后缀名"));
     }
     menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, this);
     *pResult = 0;
@@ -851,6 +863,8 @@ void CBatchRenameDlg::OnFileUnmarkAll()
     for (size_t i = 0; i < m_entries.size(); i++)
     {
         m_entries[i].bMarkedDelete = false;
+        m_entries[i].bCustomExt = false;
+        m_entries[i].customExt.Empty();
     }
 
     // 自动执行预览
@@ -884,6 +898,8 @@ void CBatchRenameDlg::OnFileResetAll()
     for (size_t i = 0; i < m_entries.size(); i++)
     {
         m_entries[i].bMarkedDelete = false;
+        m_entries[i].bCustomExt = false;
+        m_entries[i].customExt.Empty();
     }
 
     // 自动执行预览
@@ -947,12 +963,39 @@ void CBatchRenameDlg::OnFileChangeExt()
                 CString name = m_entries[i].oldName;
                 int dot = name.ReverseFind(_T('.'));
                 CString stem = (dot > 0) ? name.Left(dot) : name;
+                m_entries[i].customExt = _T(".") + newExt;
+                m_entries[i].bCustomExt = true;
                 m_entries[i].newName = stem + _T(".") + newExt;
                 pList->SetItemText(i, 1, m_entries[i].newName);
             }
         }
     }
 
+    m_bPreviewDone = true;
+    GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(TRUE);
+}
+
+void CBatchRenameDlg::OnFileRestoreExt()
+{
+    CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_RENAME));
+    if (!pList) return;
+
+    int nCount = pList->GetItemCount();
+    for (int i = 0; i < nCount; i++)
+    {
+        if (pList->GetItemState(i, LVIS_SELECTED) & LVIS_SELECTED)
+        {
+            if (i < static_cast<int>(m_entries.size()))
+            {
+                m_entries[i].bCustomExt = false;
+                m_entries[i].customExt.Empty();
+            }
+        }
+    }
+
+    // 自动预览以恢复原始后缀
+    ApplyRules();
+    RefreshFileList();
     m_bPreviewDone = true;
     GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(TRUE);
 }

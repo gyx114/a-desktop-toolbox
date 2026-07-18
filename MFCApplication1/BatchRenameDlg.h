@@ -9,6 +9,8 @@ struct RenameEntry {
     CString newName;
     std::filesystem::path fullPath;
     bool bMarkedDelete{false};
+    bool bCustomExt{false};
+    CString customExt;
 };
 
 struct FolderEntry {
@@ -69,6 +71,7 @@ private:
     afx_msg void OnFileUnmarkAll();
     afx_msg void OnFileResetAll();
     afx_msg void OnFileChangeExt();
+    afx_msg void OnFileRestoreExt();
     std::vector<RenameEntry> m_entries;
     bool m_bPreviewDone{false};
     int m_nActiveTab{0};
