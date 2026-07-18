@@ -663,8 +663,25 @@ void CBatchRenameDlg::OnFolderListRightClick(NMHDR* /*pNMHDR*/, LRESULT* pResult
     *pResult = 0;
 }
 
-void CBatchRenameDlg::OnFolderListCheckChanged(NMHDR* /*pNMHDR*/, LRESULT* pResult)
+void CBatchRenameDlg::OnFolderListCheckChanged(NMHDR* pNMHDR, LRESULT* pResult)
 {
+    // 将列表选中状态同步到复选框：当用户点击/Shift+点击/拖拽选中时，自动勾选
+    NMLISTVIEW* pNMLV = reinterpret_cast<NMLISTVIEW*>(pNMHDR);
+    if ((pNMLV->uChanged & LVIF_STATE) && pNMLV->iItem >= 0)
+    {
+        BOOL bWasSelected = (pNMLV->uOldState & LVIS_SELECTED) != 0;
+        BOOL bIsSelected = (pNMLV->uNewState & LVIS_SELECTED) != 0;
+        if (bWasSelected != bIsSelected)
+        {
+            CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_FOLDERS));
+            if (pList)
+            {
+                BOOL bChecked = ListView_GetCheckState(pList->m_hWnd, pNMLV->iItem);
+                if (bIsSelected != bChecked)
+                    ListView_SetCheckState(pList->m_hWnd, pNMLV->iItem, bIsSelected);
+            }
+        }
+    }
     UpdateFolderSelectionCount();
     *pResult = 0;
 }
