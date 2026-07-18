@@ -156,6 +156,11 @@
 #define IDC_CHECK_DELETE_INVERT        1157
 #define IDC_CHECK_NUMBER_AFTER_EXT     1158
 #define IDC_BTN_FILE_RESET_ALL         1161
+#define IDC_BTN_CURRENT_RENAME         1162
+#define IDC_BTN_CURRENT_MOVE           1163
+#define IDC_BTN_CURRENT_DELETE         1164
+#define IDC_STATIC_CURRENT_DIR         1165
+#define IDC_STATIC_SUBDIR              1166
 #define IDD_INPUT_DLG                  141
 #define IDC_INPUT_PROMPT               1159
 #define IDC_INPUT_EDIT                 1160

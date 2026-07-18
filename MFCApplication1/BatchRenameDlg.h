@@ -51,11 +51,7 @@ private:
     afx_msg void OnBnClickedFolderDelete();
     afx_msg void OnBnClickedFolderSelectAll();
     afx_msg void OnBnClickedFolderDeselectAll();
-    afx_msg void OnBnClickedFolderDestBrowse();
-    afx_msg void OnBnClickedFolderExecute();
     std::vector<FolderEntry> m_folders;
-    enum class FolderOp { Rename, Move, Delete };
-    FolderOp m_folderOp{FolderOp::Rename};
 
     // Tab 1: 文件批量处理
     void LoadFiles();
@@ -72,6 +68,10 @@ private:
     afx_msg void OnFileResetAll();
     afx_msg void OnFileChangeExt();
     afx_msg void OnFileRestoreExt();
+    afx_msg void OnCheckDeleteInvert();
+    afx_msg void OnBnClickedCurrentRename();
+    afx_msg void OnBnClickedCurrentMove();
+    afx_msg void OnBnClickedCurrentDelete();
     std::vector<RenameEntry> m_entries;
     bool m_bPreviewDone{false};
     int m_nActiveTab{0};

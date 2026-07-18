@@ -54,10 +54,10 @@ BEGIN
     "\r\n"
     "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)\r\n"
     "LANGUAGE 4, 2\r\n"
-    "#include ""res\\MFCApplication1.rc2""  // 闂?Microsoft Visual C++ 缂傚倸鍊搁崐鎼佸磹閹间礁纾归柟闂寸绾惧綊鏌熼梻瀵割槮缁炬儳婀遍幉鎼佹偋閸繄鐟查梺绋款儏椤戝寮婚敐澶婄疀妞ゆ帒鍊风划闈涱渻閵堝棗濮屽┑顔哄€濇俊鐢稿礋椤栨氨鐤€闂佸壊鍋呭ú姗€顢撳澶嬧拺缂佸娼￠妤冪磼婢跺﹦绉虹€殿喛顕ч埥澶愬閻樻彃绁梻渚€娼ч…鍫ュ磿閺屻儲鍊堕柟鍓х帛閳锋垿姊婚崼鐔恒€掑褔浜堕弻娑氣偓锝庝簼閸ｄ粙鏌?\n"
-    "#include ""l.CHS\\afxres.rc""      // 闂傚倸鍊搁崐鎼佸磹妞嬪海鐭嗗〒姘ｅ亾妤犵偞鐗犻、鏇㈠Χ閸モ晝鍘犻梻浣告惈椤︿即宕靛顑炴椽顢旈崟骞喚鐔嗛悹铏瑰皑闊剚淇婇銏犳Щ妞ゎ亜鍟存俊鍫曞幢濞嗗浚娼风紓鍌欑贰閸犳牕霉闁垮鐝堕柡鍥╁枔闂勫嫰鏌涘☉姗堝姛闁告﹢浜跺娲传閸曨剙鍋嶉梺鍛婃煥椤戝洭鎳為柆宥呯缂佹妗ㄧ花?\n"
+    "#include ""res\\MFCApplication1.rc2""  // 闂?Microsoft Visual C++ 缂傚倸鍊搁崐鎼佸磹閹间礁纾归柟闂寸绾惧綊鏌熼梻瀵割槮缁炬儳缍婇弻鐔兼⒒鐎靛壊妲紒鐐劤濠€閬嶅箟閹间焦鍋嬮柛顐ｇ箘閻熸煡姊虹粙娆惧剰妞ゆ垵顦靛濠氭晲婢跺﹦鐤€濡炪倖甯掗崐椋庡垝闂堟侗娓婚柕鍫濇婵苯鈹戦鍝勨偓婵囦繆閻㈢绀嬫い鏍ㄦ皑閻も偓闂備礁澹婇崑鍛哄鈧、鎾愁吋婢跺鎷虹紓浣割儏濞硷繝顢撳Δ鍐＜濠㈣泛锕︾粔铏光偓娈垮枦椤曆囧煡婢舵劕顫呴柣妯诲絻缁侇噣姊绘笟鈧褔鈥﹂崼銉ョ？闁哄被鍎查崐鍫曟煙閸撗呭笡闁抽攱鍨垮濠氬醇閻旀亽鈧帒顭胯娴滃爼寮诲☉姘ｅ亾閿濆簼绨奸柛锝勭矙閺?\n"
+    "#include ""l.CHS\\afxres.rc""      // 闂傚倸鍊搁崐鎼佸磹閹间礁纾瑰瀣捣閻棗銆掑锝呬壕濡ょ姷鍋為悧鐘汇€侀弴銏犖ч柛銉㈡櫇閸樼娀姊绘担鍛婃儓妞わ缚鍗冲畷闈涱潩椤戠偞妞介、鏃堝礋楠烆垰鍠氶悢鍡涙偣閾忕懓鐨戦棅顒夊墯娣囧﹪顢曢姀鐘承╁銈庝簻閸熷瓨淇婇崼鏇炲耿婵炲棗娴氬椋庣磽閸屾瑧璐伴柛鐘崇墪闇夐梺鍨儑閻濆爼鏌￠崶鈺佹灁闂傚嫬瀚伴弻娑樷槈濮楀牆濮涢梺鍛婏耿娴滆泛顫忓ú顏勪紶闁告洦鍓欓崑宥夋⒑閸涘﹥鐓ユい鎴濇喘閹崇偤鏌嗗鍛槯缂備焦顨夊銊ц姳?\n"
     "#if !defined(_AFXDLL)\r\n"
-    "#include ""l.CHS\\afxribbon.rc""   // MFC 闂傚倸鍊搁崐鎼佸磹妞嬪海鐭嗗〒姘ｅ亾妤犵偛顦甸崹楣冨箛娴ｅ湱绋佸┑鐘垫暩婵敻鎳濋崜褏鐜绘俊銈呮噺閻撴盯鏌涢妷锝呭姎闁诲繆鏅濈槐鎺楀焵椤掑嫬纾兼繛鎴炵懃瀵灝鈹戦敍鍕哗妞ゆ泦鍕洸濡わ絽鍟崐鐢告偡濞嗗繐顏紒鈧崼婵冩斀闁绘劏鏅涙禍楣冩煟鎼淬値娼愭繛璇х畵瀹曟垶绻濋崒婊勬闂佺粯姊婚埛鍫ュ极閸℃稒鐓冪憸婊堝礈閻旂鈧線寮崼顐ｆ櫖闂佺粯鍔楃悰銉╁箯閾忓湱纾肩紓浣靛灩楠炴牠鏌熼搹顐㈠闁诡喚鍋炵粋鎺斺偓锝庡亞閸橀亶姊虹憴鍕棎闁哄懏绋掓穱濠囧锤濡や胶鍘卞┑顔筋殔濡鏅剁€涙ɑ鍙忓┑鐘插暞閵囨繄鈧娲﹂崑濠傜暦閻旂厧鍨傛い鎰靛墰缁€鈧梻鍌氬€风欢姘焽瑜旈幃褔宕卞鏇熸そ婵偓闁靛牆鎳愰敍娑㈡⒑閸︻厼鍔嬮柛銊у枛瀵?\n"
+    "#include ""l.CHS\\afxribbon.rc""   // MFC 闂傚倸鍊搁崐鎼佸磹閹间礁纾瑰瀣捣閻棗銆掑锝呬壕濡ょ姷鍋涢ˇ鐢稿垂妤ｅ啫绠涘ù锝呮贡缁嬩礁鈹戦悩鍨毄濠殿喚鏁婚幊婵嬪礈瑜忛悳缁樹繆閵堝懏鍣洪柣鎾寸洴閺屾盯濡烽敐鍛闂佽绻嗛弲婵堟閹烘鐒垫い鎺戝绾惧吋绻涢幋鐐垫噧鐎殿喖鐏濋埞鎴︽晬閸曨偂鍝楀銈嗘肠閸曨収娲告俊銈忕到閸燁垶宕愰悽鍛婂仭婵炲棗绻愰顏嗙磼閳ь剟宕煎┑鍐╂杸闂佺粯鍔忛弲娑欑妤ｅ啯鐓熼幖娣€ゅ鎰箾鐠囇呯暤鐎规洘鍨剁换婵嬪磼濠婂嫭顔曢梻浣虹帛濮婂鍩涢崼銉ユ瀬闁糕剝绋掗悡鍐喐濠婂牆绀堥柣鏃傤儠閳ь兛绶氬顕€宕奸锝嗘珫闂備胶绮崝妤冩偘閵夆晛绠柧蹇撴贡绾捐偐绱撴担闈涚仼妤犵偞鐗犻弻鐔兼惞椤愩垹顫掗梺璇″枤閸嬬偟绮嬮幒鏂哄亾閿濆骸浜為柛姗€浜跺铏规喆閸曨偒妫庨梺鍝勬噺缁嬫帗绌辨繝鍥ч敜婵°倓鑳堕崢鍗炩攽椤旂瓔娈旀俊顐ｎ殕閺呭墎鈧稒蓱閸欏繐鈹戦悩鎻掓殲闁靛洦绻勯埀顒冾潐濞诧箓宕戞繝鍌滄殾闁绘梻鍘ч崹鍌涖亜閹伴潧澧扮紒鈧埀顒勬⒒閸屾艾鈧娆㈠顒夌劷鐟滄棃骞冭瀹曞崬顪冮弴鐔搞仢濠殿喒鍋撻梺闈涚墕閹虫劙鏁嶅☉銏♀拺闁革富鍘奸崝瀣煕閵娧冩灈鐎?\n"
     "#endif\r\n"
     "#endif\r\n"
     "\0"
@@ -331,27 +331,28 @@ BEGIN
     PUSHBUTTON      "复制结果",IDC_BTN_OCR_COPY,13,259,60,20
 END
 
-IDD_BATCH_RENAME_DLG DIALOGEX 0, 0, 480, 430
+IDD_BATCH_RENAME_DLG DIALOGEX 0, 0, 480, 431
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "文件夹处理"
 FONT 9, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    LTEXT           "文件夹:",IDC_STATIC,10,10,35,10
-    EDITTEXT        IDC_EDIT_RENAME_FOLDER,48,8,345,14,ES_AUTOHSCROLL | ES_READONLY
-    PUSHBUTTON      "浏览...",IDC_BTN_RENAME_BROWSE,398,7,35,14
-    PUSHBUTTON      "清空",IDC_BTN_RENAME_CLEAR,438,7,35,14
+    LTEXT           "文件夹:",IDC_STATIC,10,11,35,10
+    EDITTEXT        IDC_EDIT_RENAME_FOLDER,48,9,345,14,ES_AUTOHSCROLL | ES_READONLY
+    PUSHBUTTON      "浏览...",IDC_BTN_RENAME_BROWSE,398,9,35,14
+    PUSHBUTTON      "清空",IDC_BTN_RENAME_CLEAR,438,9,35,14
     CONTROL         "",IDC_TAB_FOLDER,"SysTabControl32",0x0,10,28,460,365
-    CONTROL         "",IDC_LIST_FOLDERS,"SysListView32",LVS_REPORT | WS_BORDER | WS_TABSTOP,18,54,444,185
+    LTEXT           "当前目录:",IDC_STATIC_CURRENT_DIR,18,54,70,10
+    PUSHBUTTON      "重命名目录",IDC_BTN_CURRENT_RENAME,18,66,55,20
+    PUSHBUTTON      "移动目录",IDC_BTN_CURRENT_MOVE,80,66,55,20
+    PUSHBUTTON      "删除目录",IDC_BTN_CURRENT_DELETE,142,66,55,20
+    LTEXT           "子目录操作:",IDC_STATIC_SUBDIR,18,95,70,10
+    CONTROL         "",IDC_LIST_FOLDERS,"SysListView32",LVS_REPORT | WS_BORDER | WS_TABSTOP,18,108,444,130
     CONTROL         "",IDC_LIST_RENAME,"SysListView32",LVS_REPORT | WS_BORDER | WS_TABSTOP,18,54,444,176
     PUSHBUTTON      "重命名",IDC_BTN_FOLDER_RENAME,18,246,50,22
     PUSHBUTTON      "移动",IDC_BTN_FOLDER_MOVE,75,246,50,22
     PUSHBUTTON      "删除",IDC_BTN_FOLDER_DELETE,132,246,50,22
     PUSHBUTTON      "全选",IDC_BTN_FOLDER_SELECTALL,210,246,50,22
     PUSHBUTTON      "取消全选",IDC_BTN_FOLDER_DESELECTALL,267,246,55,22
-    LTEXT           "目标:",IDC_STATIC_TAB0_TARGET,18,276,25,10
-    EDITTEXT        IDC_EDIT_FOLDER_DEST,48,274,320,14,ES_AUTOHSCROLL
-    PUSHBUTTON      "浏览",IDC_BTN_FOLDER_DEST_BROWSE,373,273,35,14
-    PUSHBUTTON      "执行",IDC_BTN_FOLDER_EXECUTE,413,273,50,22
     LTEXT           "前缀:",IDC_STATIC_TAB1_PREFIX,18,238,25,10
     EDITTEXT        IDC_EDIT_RENAME_PREFIX,45,236,70,14,ES_AUTOHSCROLL
     LTEXT           "后缀:",IDC_STATIC_TAB1_SUFFIX,125,238,25,10
@@ -480,7 +481,7 @@ BEGIN
 
     IDD_BATCH_RENAME_DLG, DIALOG
     BEGIN
-        BOTTOMMARGIN, 347
+        BOTTOMMARGIN, 348
     END
 
     IDD_INPUT_DLG, DIALOG

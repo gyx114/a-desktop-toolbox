@@ -82,8 +82,9 @@ BEGIN_MESSAGE_MAP(CBatchRenameDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BTN_FOLDER_DELETE, &CBatchRenameDlg::OnBnClickedFolderDelete)
     ON_BN_CLICKED(IDC_BTN_FOLDER_SELECTALL, &CBatchRenameDlg::OnBnClickedFolderSelectAll)
     ON_BN_CLICKED(IDC_BTN_FOLDER_DESELECTALL, &CBatchRenameDlg::OnBnClickedFolderDeselectAll)
-    ON_BN_CLICKED(IDC_BTN_FOLDER_DEST_BROWSE, &CBatchRenameDlg::OnBnClickedFolderDestBrowse)
-    ON_BN_CLICKED(IDC_BTN_FOLDER_EXECUTE, &CBatchRenameDlg::OnBnClickedFolderExecute)
+    ON_BN_CLICKED(IDC_BTN_CURRENT_RENAME, &CBatchRenameDlg::OnBnClickedCurrentRename)
+    ON_BN_CLICKED(IDC_BTN_CURRENT_MOVE, &CBatchRenameDlg::OnBnClickedCurrentMove)
+    ON_BN_CLICKED(IDC_BTN_CURRENT_DELETE, &CBatchRenameDlg::OnBnClickedCurrentDelete)
     ON_NOTIFY(NM_RCLICK, IDC_LIST_RENAME, &CBatchRenameDlg::OnFileListRightClick)
     ON_COMMAND(IDM_FILE_MARK_DELETE, &CBatchRenameDlg::OnFileMarkDelete)
     ON_COMMAND(IDM_FILE_UNMARK_DELETE, &CBatchRenameDlg::OnFileUnmarkDelete)
@@ -91,6 +92,7 @@ BEGIN_MESSAGE_MAP(CBatchRenameDlg, CDialogEx)
     ON_COMMAND(IDM_FILE_RESTORE_EXT, &CBatchRenameDlg::OnFileRestoreExt)
     ON_BN_CLICKED(IDC_BTN_FILE_UNMARK_ALL, &CBatchRenameDlg::OnFileUnmarkAll)
     ON_BN_CLICKED(IDC_BTN_FILE_RESET_ALL, &CBatchRenameDlg::OnFileResetAll)
+    ON_BN_CLICKED(IDC_CHECK_DELETE_INVERT, &CBatchRenameDlg::OnCheckDeleteInvert)
     ON_WM_DROPFILES()
 END_MESSAGE_MAP()
 
@@ -163,8 +165,8 @@ void CBatchRenameDlg::ShowTab(int nTab)
     static const int folderIDs[] = {
         IDC_LIST_FOLDERS, IDC_BTN_FOLDER_RENAME, IDC_BTN_FOLDER_MOVE,
         IDC_BTN_FOLDER_DELETE, IDC_BTN_FOLDER_SELECTALL, IDC_BTN_FOLDER_DESELECTALL,
-        IDC_EDIT_FOLDER_DEST, IDC_BTN_FOLDER_DEST_BROWSE, IDC_BTN_FOLDER_EXECUTE,
-        IDC_STATIC_TAB0_TARGET
+        IDC_BTN_CURRENT_RENAME, IDC_BTN_CURRENT_MOVE, IDC_BTN_CURRENT_DELETE,
+        IDC_STATIC_CURRENT_DIR, IDC_STATIC_SUBDIR
     };
     constexpr int nFolderIDs = sizeof(folderIDs) / sizeof(folderIDs[0]);
 
@@ -331,32 +333,281 @@ void CBatchRenameDlg::RefreshFolderList()
 
 void CBatchRenameDlg::OnBnClickedFolderRename()
 {
-    m_folderOp = FolderOp::Rename;
-    SetDlgItemText(IDC_EDIT_FOLDER_DEST, _T(""));
-    GetDlgItem(IDC_EDIT_FOLDER_DEST)->SetWindowText(_T(""));
-    SetDlgItemText(IDC_BTN_FOLDER_EXECUTE, _T("重命名"));
-    MessageBox(_T("请在下方输入新的文件夹名称，然后点击【重命名】按钮。\n选中多个时，将按输入的名称依次重命名。"),
-        _T("文件夹重命名"), MB_OK | MB_ICONINFORMATION);
+    CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_FOLDERS));
+    if (!pList) return;
+
+    // 收集选中的文件夹
+    std::vector<int> selected;
+    int nCount = pList->GetItemCount();
+    for (int i = 0; i < nCount; i++)
+    {
+        if (pList->GetItemState(i, LVIS_SELECTED) & LVIS_SELECTED)
+            selected.push_back(i);
+    }
+
+    if (selected.empty())
+    {
+        MessageBox(_T("请先选中要重命名的文件夹。"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+        return;
+    }
+
+    // 弹出输入对话框
+    CString defaultName = m_folders[selected[0]].name;
+    CInputDialog dlg(_T("请输入新的文件夹名称:"), _T("重命名文件夹"), defaultName);
+    if (dlg.DoModal() != IDOK) return;
+
+    CString newName = dlg.GetInput();
+    newName.Trim();
+    if (newName.IsEmpty()) return;
+
+    // 检查非法字符
+    CString invalid = _T("\\/:*?\"<>|");
+    for (int i = 0; i < invalid.GetLength(); i++)
+    {
+        if (newName.Find(invalid[i]) != -1)
+        {
+            MessageBox(_T("文件夹名包含非法字符。"), _T("错误"), MB_OK | MB_ICONERROR);
+            return;
+        }
+    }
+
+    if (selected.size() == 1)
+    {
+        fs::path newPath = m_folders[selected[0]].fullPath.parent_path() / static_cast<LPCWSTR>(newName);
+        std::error_code ec;
+        fs::rename(m_folders[selected[0]].fullPath, newPath, ec);
+        if (ec)
+            MessageBox(_T("重命名失败。"), _T("错误"), MB_OK | MB_ICONERROR);
+        else
+            MessageBox(_T("重命名成功。"), _T("结果"), MB_OK | MB_ICONINFORMATION);
+    }
+    else
+    {
+        int success = 0, fail = 0;
+        for (size_t i = 0; i < selected.size(); i++)
+        {
+            CString numberedName;
+            numberedName.Format(_T("%s_%d"), static_cast<LPCWSTR>(newName), (int)(i + 1));
+            fs::path newPath = m_folders[selected[i]].fullPath.parent_path() / static_cast<LPCWSTR>(numberedName);
+            std::error_code ec;
+            fs::rename(m_folders[selected[i]].fullPath, newPath, ec);
+            if (ec) fail++;
+            else success++;
+        }
+        CString msg;
+        msg.Format(_T("重命名完成：成功 %d 个，失败 %d 个。"), success, fail);
+        MessageBox(msg, _T("结果"), MB_OK | MB_ICONINFORMATION);
+    }
+
+    LoadFolders();
 }
 
 void CBatchRenameDlg::OnBnClickedFolderMove()
 {
-    m_folderOp = FolderOp::Move;
-    SetDlgItemText(IDC_EDIT_FOLDER_DEST, _T(""));
-    SetDlgItemText(IDC_BTN_FOLDER_EXECUTE, _T("移动"));
-    MessageBox(_T("请在下方输入目标路径，然后点击【移动】按钮。"),
-        _T("文件夹移动"), MB_OK | MB_ICONINFORMATION);
+    CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_FOLDERS));
+    if (!pList) return;
+
+    // 收集选中的文件夹
+    std::vector<int> selected;
+    int nCount = pList->GetItemCount();
+    for (int i = 0; i < nCount; i++)
+    {
+        if (pList->GetItemState(i, LVIS_SELECTED) & LVIS_SELECTED)
+            selected.push_back(i);
+    }
+
+    if (selected.empty())
+    {
+        MessageBox(_T("请先选中要移动的文件夹。"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+        return;
+    }
+
+    // 弹出浏览对话框选择目标路径
+    BROWSEINFO bi = {0};
+    bi.hwndOwner = m_hWnd;
+    bi.lpszTitle = _T("选择目标文件夹");
+    bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+    LPITEMIDLIST pidl = ::SHBrowseForFolder(&bi);
+    if (!pidl) return;
+
+    TCHAR destPath[MAX_PATH];
+    if (!::SHGetPathFromIDList(pidl, destPath))
+    {
+        CoTaskMemFree(pidl);
+        return;
+    }
+    CoTaskMemFree(pidl);
+
+    int success = 0, fail = 0;
+    std::error_code ec;
+    for (int idx : selected)
+    {
+        fs::path newPath = fs::path(destPath) / m_folders[idx].fullPath.filename();
+        fs::rename(m_folders[idx].fullPath, newPath, ec);
+        if (ec) fail++;
+        else success++;
+    }
+    CString msg;
+    msg.Format(_T("移动完成：成功 %d 个，失败 %d 个。"), success, fail);
+    MessageBox(msg, _T("结果"), MB_OK | MB_ICONINFORMATION);
+
+    LoadFolders();
 }
 
 void CBatchRenameDlg::OnBnClickedFolderDelete()
 {
-    m_folderOp = FolderOp::Delete;
-    SetDlgItemText(IDC_EDIT_FOLDER_DEST, _T(""));
-    GetDlgItem(IDC_EDIT_FOLDER_DEST)->EnableWindow(FALSE);
-    GetDlgItem(IDC_BTN_FOLDER_DEST_BROWSE)->EnableWindow(FALSE);
-    SetDlgItemText(IDC_BTN_FOLDER_EXECUTE, _T("删除"));
-    MessageBox(_T("选中要删除的文件夹，然后点击【删除】按钮。"),
-        _T("文件夹删除"), MB_OK | MB_ICONINFORMATION);
+    CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_FOLDERS));
+    if (!pList) return;
+
+    // 收集选中的文件夹
+    std::vector<int> selected;
+    int nCount = pList->GetItemCount();
+    for (int i = 0; i < nCount; i++)
+    {
+        if (pList->GetItemState(i, LVIS_SELECTED) & LVIS_SELECTED)
+            selected.push_back(i);
+    }
+
+    if (selected.empty())
+    {
+        MessageBox(_T("请先选中要删除的文件夹。"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+        return;
+    }
+
+    CString msg;
+    msg.Format(_T("确定要删除选中的 %d 个文件夹吗？此操作不可撤销！"), (int)selected.size());
+    if (MessageBox(msg, _T("确认删除"), MB_YESNO | MB_ICONWARNING) != IDYES)
+        return;
+
+    int success = 0, fail = 0;
+    std::error_code ec;
+    for (int idx : selected)
+    {
+        fs::remove_all(m_folders[idx].fullPath, ec);
+        if (ec) fail++;
+        else success++;
+    }
+    msg.Format(_T("删除完成：成功 %d 个，失败 %d 个。"), success, fail);
+    MessageBox(msg, _T("结果"), MB_OK | MB_ICONINFORMATION);
+
+    LoadFolders();
+}
+
+void CBatchRenameDlg::OnBnClickedCurrentRename()
+{
+    if (m_folderPath.IsEmpty())
+    {
+        MessageBox(_T("请先选择文件夹。"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+        return;
+    }
+
+    fs::path curPath(static_cast<LPCWSTR>(m_folderPath));
+    CString curName = curPath.filename().c_str();
+
+    CInputDialog dlg(_T("请输入新的目录名称:"), _T("重命名当前目录"), curName);
+    if (dlg.DoModal() != IDOK) return;
+
+    CString newName = dlg.GetInput();
+    newName.Trim();
+    if (newName.IsEmpty() || newName == curName) return;
+
+    CString invalid = _T("\\/:*?\"<>|");
+    for (int i = 0; i < invalid.GetLength(); i++)
+    {
+        if (newName.Find(invalid[i]) != -1)
+        {
+            MessageBox(_T("目录名包含非法字符。"), _T("错误"), MB_OK | MB_ICONERROR);
+            return;
+        }
+    }
+
+    fs::path newPath = curPath.parent_path() / static_cast<LPCWSTR>(newName);
+    std::error_code ec;
+    fs::rename(curPath, newPath, ec);
+    if (ec)
+    {
+        MessageBox(_T("重命名失败。"), _T("错误"), MB_OK | MB_ICONERROR);
+        return;
+    }
+
+    SetFolderPath(newPath.c_str());
+    MessageBox(_T("重命名成功。"), _T("结果"), MB_OK | MB_ICONINFORMATION);
+}
+
+void CBatchRenameDlg::OnBnClickedCurrentMove()
+{
+    if (m_folderPath.IsEmpty())
+    {
+        MessageBox(_T("请先选择文件夹。"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+        return;
+    }
+
+    BROWSEINFO bi = {0};
+    bi.hwndOwner = m_hWnd;
+    bi.lpszTitle = _T("选择目标文件夹");
+    bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+    LPITEMIDLIST pidl = ::SHBrowseForFolder(&bi);
+    if (!pidl) return;
+
+    TCHAR destPath[MAX_PATH];
+    if (!::SHGetPathFromIDList(pidl, destPath))
+    {
+        CoTaskMemFree(pidl);
+        return;
+    }
+    CoTaskMemFree(pidl);
+
+    fs::path curPath(static_cast<LPCWSTR>(m_folderPath));
+    fs::path newPath = fs::path(destPath) / curPath.filename();
+
+    CString msg;
+    msg.Format(_T("确定将 \"%s\" 移动到 \"%s\" 吗？"), curPath.filename().c_str(), destPath);
+    if (MessageBox(msg, _T("确认移动"), MB_YESNO | MB_ICONQUESTION) != IDYES)
+        return;
+
+    std::error_code ec;
+    fs::rename(curPath, newPath, ec);
+    if (ec)
+    {
+        MessageBox(_T("移动失败。"), _T("错误"), MB_OK | MB_ICONERROR);
+        return;
+    }
+
+    SetFolderPath(newPath.c_str());
+    MessageBox(_T("移动成功。"), _T("结果"), MB_OK | MB_ICONINFORMATION);
+}
+
+void CBatchRenameDlg::OnBnClickedCurrentDelete()
+{
+    if (m_folderPath.IsEmpty())
+    {
+        MessageBox(_T("请先选择文件夹。"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+        return;
+    }
+
+    fs::path curPath(static_cast<LPCWSTR>(m_folderPath));
+    CString msg;
+    msg.Format(_T("确定要删除当前目录 \"%s\" 及其所有内容吗？\n此操作不可撤销！"), curPath.filename().c_str());
+    if (MessageBox(msg, _T("确认删除"), MB_YESNO | MB_ICONWARNING) != IDYES)
+        return;
+
+    std::error_code ec;
+    fs::remove_all(curPath, ec);
+    if (ec)
+    {
+        MessageBox(_T("删除失败。"), _T("错误"), MB_OK | MB_ICONERROR);
+        return;
+    }
+
+    // 清除当前路径
+    m_folderPath.Empty();
+    SetDlgItemText(IDC_EDIT_RENAME_FOLDER, _T(""));
+    m_folders.clear();
+    m_entries.clear();
+    RefreshFolderList();
+    RefreshFileList();
+
+    MessageBox(_T("删除成功。"), _T("结果"), MB_OK | MB_ICONINFORMATION);
 }
 
 void CBatchRenameDlg::OnBnClickedFolderSelectAll()
@@ -373,152 +624,6 @@ void CBatchRenameDlg::OnBnClickedFolderDeselectAll()
     if (!pList) return;
     for (int i = 0; i < pList->GetItemCount(); i++)
         pList->SetItemState(i, 0, LVIS_SELECTED);
-}
-
-void CBatchRenameDlg::OnBnClickedFolderDestBrowse()
-{
-    if (m_folderOp == FolderOp::Move)
-    {
-        BROWSEINFO bi = {0};
-        bi.hwndOwner = m_hWnd;
-        bi.lpszTitle = _T("选择目标文件夹");
-        bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
-        LPITEMIDLIST pidl = ::SHBrowseForFolder(&bi);
-        if (pidl)
-        {
-            TCHAR path[MAX_PATH];
-            if (::SHGetPathFromIDList(pidl, path))
-                SetDlgItemText(IDC_EDIT_FOLDER_DEST, path);
-            CoTaskMemFree(pidl);
-        }
-    }
-}
-
-void CBatchRenameDlg::OnBnClickedFolderExecute()
-{
-    CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_FOLDERS));
-    if (!pList) return;
-
-    // 收集选中的文件夹
-    std::vector<int> selected;
-    int nCount = pList->GetItemCount();
-    for (int i = 0; i < nCount; i++)
-    {
-        if (pList->GetItemState(i, LVIS_SELECTED) & LVIS_SELECTED)
-            selected.push_back(i);
-    }
-
-    if (selected.empty())
-    {
-        MessageBox(_T("请先选中要操作的文件夹。"), _T("提示"), MB_OK | MB_ICONINFORMATION);
-        return;
-    }
-
-    if (m_folderOp == FolderOp::Delete)
-    {
-        CString msg;
-        msg.Format(_T("确定要删除选中的 %d 个文件夹吗？此操作不可撤销！"), (int)selected.size());
-        if (MessageBox(msg, _T("确认删除"), MB_YESNO | MB_ICONWARNING) != IDYES)
-            return;
-
-        int success = 0, fail = 0;
-        std::error_code ec;
-        for (int idx : selected)
-        {
-            fs::remove_all(m_folders[idx].fullPath, ec);
-            if (ec) fail++;
-            else success++;
-        }
-        msg.Format(_T("删除完成：成功 %d 个，失败 %d 个。"), success, fail);
-        MessageBox(msg, _T("结果"), MB_OK | MB_ICONINFORMATION);
-        GetDlgItem(IDC_EDIT_FOLDER_DEST)->EnableWindow(TRUE);
-        GetDlgItem(IDC_BTN_FOLDER_DEST_BROWSE)->EnableWindow(TRUE);
-        LoadFolders();
-        return;
-    }
-
-    CString destText;
-    GetDlgItemText(IDC_EDIT_FOLDER_DEST, destText);
-    destText.Trim();
-    if (destText.IsEmpty())
-    {
-        MessageBox(_T("请输入目标名称或路径。"), _T("提示"), MB_OK | MB_ICONINFORMATION);
-        return;
-    }
-
-    if (m_folderOp == FolderOp::Rename)
-    {
-        // 检查非法字符
-        CString invalid = _T("\\/:*?\"<>|");
-        for (int i = 0; i < invalid.GetLength(); i++)
-        {
-            if (destText.Find(invalid[i]) != -1)
-            {
-                MessageBox(_T("文件夹名包含非法字符。"), _T("错误"), MB_OK | MB_ICONERROR);
-                return;
-            }
-        }
-
-        if (selected.size() == 1)
-        {
-            fs::path newPath = m_folders[selected[0]].fullPath.parent_path() / static_cast<LPCWSTR>(destText);
-            std::error_code ec;
-            fs::rename(m_folders[selected[0]].fullPath, newPath, ec);
-            if (ec)
-                MessageBox(_T("重命名失败。"), _T("错误"), MB_OK | MB_ICONERROR);
-            else
-                MessageBox(_T("重命名成功。"), _T("结果"), MB_OK | MB_ICONINFORMATION);
-        }
-        else
-        {
-            // 多个时依次重命名
-            int success = 0, fail = 0;
-            for (size_t i = 0; i < selected.size(); i++)
-            {
-                CString newName;
-                if (selected.size() > 1)
-                    newName.Format(_T("%s_%d"), static_cast<LPCWSTR>(destText), (int)(i + 1));
-                else
-                    newName = destText;
-
-                fs::path newPath = m_folders[selected[i]].fullPath.parent_path() / static_cast<LPCWSTR>(newName);
-                std::error_code ec;
-                fs::rename(m_folders[selected[i]].fullPath, newPath, ec);
-                if (ec) fail++;
-                else success++;
-            }
-            CString msg;
-            msg.Format(_T("重命名完成：成功 %d 个，失败 %d 个。"), success, fail);
-            MessageBox(msg, _T("结果"), MB_OK | MB_ICONINFORMATION);
-        }
-        LoadFolders();
-    }
-    else if (m_folderOp == FolderOp::Move)
-    {
-        DWORD attrs = ::GetFileAttributes(destText);
-        if (attrs == INVALID_FILE_ATTRIBUTES || !(attrs & FILE_ATTRIBUTE_DIRECTORY))
-        {
-            MessageBox(_T("目标路径不是有效的文件夹。"), _T("错误"), MB_OK | MB_ICONERROR);
-            return;
-        }
-
-        int success = 0, fail = 0;
-        std::error_code ec;
-        for (int idx : selected)
-        {
-            fs::path newPath = fs::path(static_cast<LPCWSTR>(destText)) / m_folders[idx].fullPath.filename();
-            fs::rename(m_folders[idx].fullPath, newPath, ec);
-            if (ec) fail++;
-            else success++;
-        }
-        CString msg;
-        msg.Format(_T("移动完成：成功 %d 个，失败 %d 个。"), success, fail);
-        MessageBox(msg, _T("结果"), MB_OK | MB_ICONINFORMATION);
-        LoadFolders();
-    }
-
-    GetDlgItem(IDC_EDIT_FOLDER_DEST)->EnableWindow(TRUE);
-    GetDlgItem(IDC_BTN_FOLDER_DEST_BROWSE)->EnableWindow(TRUE);
 }
 
 // ========== Tab 1: 文件批量处理 ==========
@@ -855,16 +960,20 @@ void CBatchRenameDlg::OnFileUnmarkDelete()
     }
 }
 
+void CBatchRenameDlg::OnCheckDeleteInvert()
+{
+    BOOL bChecked = static_cast<CButton*>(GetDlgItem(IDC_CHECK_DELETE_INVERT))->GetCheck();
+    if (bChecked == BST_CHECKED)
+    {
+        static_cast<CButton*>(GetDlgItem(IDC_CHECK_DELETE_MATCH))->SetCheck(BST_CHECKED);
+    }
+}
+
 void CBatchRenameDlg::OnFileUnmarkAll()
 {
-    CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_RENAME));
-    if (!pList) return;
-
     for (size_t i = 0; i < m_entries.size(); i++)
     {
         m_entries[i].bMarkedDelete = false;
-        m_entries[i].bCustomExt = false;
-        m_entries[i].customExt.Empty();
     }
 
     // 自动执行预览
@@ -965,12 +1074,13 @@ void CBatchRenameDlg::OnFileChangeExt()
                 CString stem = (dot > 0) ? name.Left(dot) : name;
                 m_entries[i].customExt = _T(".") + newExt;
                 m_entries[i].bCustomExt = true;
-                m_entries[i].newName = stem + _T(".") + newExt;
-                pList->SetItemText(i, 1, m_entries[i].newName);
             }
         }
     }
 
+    // 自动预览以显示完整结果
+    ApplyRules();
+    RefreshFileList();
     m_bPreviewDone = true;
     GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(TRUE);
 }
