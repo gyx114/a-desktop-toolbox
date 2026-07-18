@@ -2,16 +2,18 @@
 #include "afxdialogex.h"
 #include "resource.h"
 #include <vector>
+#include <set>
 #include <filesystem>
 
 struct RenameEntry {
-    CString oldName;
-    CString newName;
-    std::filesystem::path fullPath;
-    bool bMarkedDelete{false};
-    bool bCustomExt{false};
-    CString customExt;
-};
+        CString oldName;
+        CString newName;
+        std::filesystem::path fullPath;
+        bool bMarkedDelete{false};
+        bool bCustomExt{false};
+        CString customExt;
+        bool bIgnored{false};
+    };
 
 struct FolderEntry {
     CString name;
@@ -63,6 +65,7 @@ private:
     // Tab 1: 文件批量处理
     void LoadFiles();
     void ApplyRules();
+    void ApplyIgnoreRules();
     void RefreshFileList();
     afx_msg void OnBnClickedFilePreview();
     afx_msg void OnBnClickedFileExecute();
@@ -80,7 +83,11 @@ private:
     afx_msg void OnBnClickedCurrentRename();
     afx_msg void OnBnClickedCurrentMove();
     afx_msg void OnBnClickedCurrentDelete();
+    afx_msg void OnBnClickedIgnoreClear();
+    afx_msg void OnFileIgnore();
+    afx_msg void OnFileUnignore();
     std::vector<RenameEntry> m_entries;
+    std::set<size_t> m_manualIgnored;
     bool m_bPreviewDone{false};
     int m_nActiveTab{0};
 };
