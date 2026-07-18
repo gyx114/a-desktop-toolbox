@@ -33,27 +33,31 @@ protected:
     DECLARE_MESSAGE_MAP()
 
 private:
-    // 图像预处理：放大 + 增强对比度
-    void PreprocessBitmap(HBITMAP& hBitmap);
-
     // 框选截图：隐藏对话框→全屏截图→拖拽框选→返回选区位图
     HBITMAP CaptureRegion();
 
     // 后台线程：OCR 识别
     static void OcrThreadProc(HBITMAP hBitmap, HWND hNotifyWnd);
 
-    // 后台线程：翻译
-    static void TranslateThreadProc(const CString& text, HWND hNotifyWnd);
+    // 后台线程：翻译（传入语言对）
+    static void TranslateThreadProc(const CString& text, const CString& langPair, HWND hNotifyWnd);
 
-    // 翻译 API 调用（带超时）
-    static CString CallTranslateAPI(const CString& text, int timeoutSeconds = 10);
+    // 翻译 API 调用（带超时和语言对）
+    static CString CallTranslateAPI(const CString& text, const CString& langPair, int timeoutSeconds = 10);
 
-    bool m_bBusy{false};
+    // 获取当前选中的语言对（如 "zh-CN|en"）
+    CString GetSelectedLangPair() const;
 
-    HBITMAP m_hScreenshot{nullptr};
-    int m_screenshotWidth{0};
-    int m_screenshotHeight{0};
+    bool m_bBusy{ false };
+
+    HBITMAP m_hScreenshot{ nullptr };
+    int m_screenshotWidth{ 0 };
+    int m_screenshotHeight{ 0 };
 
     CString m_ocrText;
     CString m_translatedText;
+
+    // 语言对映射：界面显示名 → API 参数
+    static const std::pair<const wchar_t*, const wchar_t*> s_langPairs[];
+    static constexpr int s_langPairCount = 6;
 };

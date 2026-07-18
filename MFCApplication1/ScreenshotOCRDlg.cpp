@@ -17,6 +17,16 @@
 
 using namespace Gdiplus;
 
+// 语言对：界面显示名 → API langpair 参数
+const std::pair<const wchar_t*, const wchar_t*> CScreenshotOCRDlg::s_langPairs[] = {
+    { L"中文 → 英文", L"zh-CN|en" },
+    { L"中文 → 日文", L"zh-CN|ja" },
+    { L"中文 → 韩文", L"zh-CN|ko" },
+    { L"英文 → 中文", L"en|zh-CN" },
+    { L"日文 → 中文", L"ja|zh-CN" },
+    { L"韩文 → 中文", L"ko|zh-CN" },
+};
+
 static int GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 {
     UINT num = 0, size = 0;
@@ -53,15 +63,6 @@ struct RegionCaptureData
     RECT    rcResult;      // 选中的区域
     int     screenW, screenH;
 };
-
-static void ResetOverlayPixels(RegionCaptureData* pData)
-{
-    // 整个遮罩填充半透明黑色 (BGRA: A=0x78)
-    DWORD* p = pData->pOverlayBits;
-    int total = pData->screenW * pData->screenH;
-    for (int i = 0; i < total; i++)
-        p[i] = 0x78000000;
-}
 
 static LRESULT CALLBACK RegionOverlayProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -358,7 +359,29 @@ void CScreenshotOCRDlg::DoDataExchange(CDataExchange* pDX)
 BOOL CScreenshotOCRDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
+
+    // 初始化语言选择下拉框
+    CComboBox* pCombo = static_cast<CComboBox*>(GetDlgItem(IDC_COMBO_OCR_LANG));
+    if (pCombo)
+    {
+        for (int i = 0; i < s_langPairCount; i++)
+            pCombo->AddString(s_langPairs[i].first);
+        pCombo->SetCurSel(0);  // 默认中文→英文
+    }
+
     return TRUE;
+}
+
+CString CScreenshotOCRDlg::GetSelectedLangPair() const
+{
+    CComboBox* pCombo = static_cast<CComboBox*>(GetDlgItem(IDC_COMBO_OCR_LANG));
+    if (pCombo)
+    {
+        int sel = pCombo->GetCurSel();
+        if (sel >= 0 && sel < s_langPairCount)
+            return s_langPairs[sel].second;
+    }
+    return L"zh-CN|en";  // 默认中文→英文
 }
 
 void CScreenshotOCRDlg::OnOK() {}
@@ -372,44 +395,6 @@ void CScreenshotOCRDlg::OnCancel()
     if (m_hScreenshot) DeleteObject(m_hScreenshot);
     m_hScreenshot = nullptr;
     CDialogEx::OnCancel();
-}
-
-// ========== 图像预处理 ==========
-void CScreenshotOCRDlg::PreprocessBitmap(HBITMAP& hBitmap)
-{
-    if (!hBitmap) return;
-    BITMAP bm;
-    GetObject(hBitmap, sizeof(bm), &bm);
-    int w = bm.bmWidth, h = bm.bmHeight;
-
-    bool bNeedUpscale = (w < 500 && h < 500);
-    int newW = bNeedUpscale ? w * 2 : w;
-    int newH = bNeedUpscale ? h * 2 : h;
-
-    HDC hdc = ::GetDC(nullptr);
-    HDC hdcMem = CreateCompatibleDC(hdc);
-    HDC hdcNew = CreateCompatibleDC(hdc);
-    HBITMAP hNewBmp = CreateCompatibleBitmap(hdc, newW, newH);
-    SelectObject(hdcNew, hNewBmp);
-    SelectObject(hdcMem, hBitmap);
-
-    if (bNeedUpscale)
-    {
-        SetStretchBltMode(hdcNew, HALFTONE);
-        SetBrushOrgEx(hdcNew, 0, 0, nullptr);
-        StretchBlt(hdcNew, 0, 0, newW, newH, hdcMem, 0, 0, w, h, SRCCOPY);
-    }
-    else
-    {
-        BitBlt(hdcNew, 0, 0, w, h, hdcMem, 0, 0, SRCCOPY);
-    }
-
-    DeleteDC(hdcMem);
-    DeleteDC(hdcNew);
-    ::ReleaseDC(nullptr, hdc);
-
-    DeleteObject(hBitmap);
-    hBitmap = hNewBmp;
 }
 
 // ========== 后台 OCR 线程 ==========
@@ -543,9 +528,9 @@ LRESULT CScreenshotOCRDlg::OnOcrComplete(WPARAM wParam, LPARAM lParam)
 }
 
 // ========== 后台翻译线程 ==========
-void CScreenshotOCRDlg::TranslateThreadProc(const CString& text, HWND hNotifyWnd)
+void CScreenshotOCRDlg::TranslateThreadProc(const CString& text, const CString& langPair, HWND hNotifyWnd)
 {
-    CString result = CallTranslateAPI(text, 10);
+    CString result = CallTranslateAPI(text, langPair, 10);
     int len = result.GetLength();
     WCHAR* pResult = new WCHAR[len + 1];
     wcscpy_s(pResult, len + 1, result);
@@ -553,7 +538,7 @@ void CScreenshotOCRDlg::TranslateThreadProc(const CString& text, HWND hNotifyWnd
 }
 
 // ========== 翻译 API ==========
-CString CScreenshotOCRDlg::CallTranslateAPI(const CString& text, int timeoutSeconds)
+CString CScreenshotOCRDlg::CallTranslateAPI(const CString& text, const CString& langPair, int timeoutSeconds)
 {
     std::string encodedText;
     for (int i = 0; i < text.GetLength(); i++)
@@ -583,7 +568,20 @@ CString CScreenshotOCRDlg::CallTranslateAPI(const CString& text, int timeoutSeco
         }
     }
 
-    std::string postData = "q=" + encodedText + "&langpair=zh-CN|en";
+    // 编码语言对参数
+    std::string encodedLangPair;
+    int lpLen = WideCharToMultiByte(CP_UTF8, 0, langPair, -1, nullptr, 0, nullptr, nullptr);
+    std::string lpUtf8(lpLen, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, langPair, -1, &lpUtf8[0], lpLen, nullptr, nullptr);
+    for (int j = 0; j < lpLen - 1; j++)
+    {
+        if (lpUtf8[j] == '|')
+            encodedLangPair += "%7C";
+        else
+            encodedLangPair += lpUtf8[j];
+    }
+
+    std::string postData = "q=" + encodedText + "&langpair=" + encodedLangPair;
 
     HINTERNET hSession = ::WinHttpOpen(L"MFC OCR Tool/1.0",
         WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
@@ -675,7 +673,19 @@ CString CScreenshotOCRDlg::CallTranslateAPI(const CString& text, int timeoutSeco
         {
             if (translated[i + 1] == 'n') { unescaped += '\n'; i++; }
             else if (translated[i + 1] == 't') { unescaped += '\t'; i++; }
+            else if (translated[i + 1] == 'r') { unescaped += '\r'; i++; }
             else if (translated[i + 1] == '"') { unescaped += '"'; i++; }
+            else if (translated[i + 1] == '\\') { unescaped += '\\'; i++; }
+            else if (translated[i + 1] == 'u' && i + 5 < translated.size())
+            {
+                // \uXXXX → UTF-8
+                char hex[5] = { translated[i + 2], translated[i + 3], translated[i + 4], translated[i + 5], '\0' };
+                wchar_t wc = static_cast<wchar_t>(strtol(hex, nullptr, 16));
+                char utf8[8] = {};
+                int len = WideCharToMultiByte(CP_UTF8, 0, &wc, 1, utf8, 8, nullptr, nullptr);
+                unescaped.append(utf8, len);
+                i += 5;
+            }
             else unescaped += translated[i];
         }
         else unescaped += translated[i];
@@ -719,8 +729,11 @@ void CScreenshotOCRDlg::OnBnClickedBtnTranslate()
     m_bBusy = true;
     GetDlgItem(IDC_BTN_OCR_CAPTURE)->EnableWindow(FALSE);
     GetDlgItem(IDC_BTN_OCR_TRANSLATE)->EnableWindow(FALSE);
+    GetDlgItem(IDC_COMBO_OCR_LANG)->EnableWindow(FALSE);
     SetDlgItemText(IDC_EDIT_OCR_TRANSLATED, _T("正在翻译中，请稍候..."));
-    std::thread(TranslateThreadProc, text, m_hWnd).detach();
+
+    CString langPair = GetSelectedLangPair();
+    std::thread(TranslateThreadProc, text, langPair, m_hWnd).detach();
 }
 
 // ========== 翻译完成 ==========
@@ -729,6 +742,7 @@ LRESULT CScreenshotOCRDlg::OnTranslateComplete(WPARAM /*wParam*/, LPARAM lParam)
     m_bBusy = false;
     GetDlgItem(IDC_BTN_OCR_CAPTURE)->EnableWindow(TRUE);
     GetDlgItem(IDC_BTN_OCR_TRANSLATE)->EnableWindow(TRUE);
+    GetDlgItem(IDC_COMBO_OCR_LANG)->EnableWindow(TRUE);
 
     WCHAR* pResult = reinterpret_cast<WCHAR*>(lParam);
     if (pResult)

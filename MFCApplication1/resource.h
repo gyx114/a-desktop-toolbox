@@ -175,6 +175,7 @@
 #define IDC_EDIT_IGNORE_PATTERN         1172
 #define IDC_CHECK_IGNORE_REGEX          1173
 #define IDC_BTN_IGNORE_CLEAR            1174
+#define IDC_COMBO_OCR_LANG              1175
 
 #define ID_FILE_SETTINGS                32775
 #define ID_FILE_EXIT                    32776
