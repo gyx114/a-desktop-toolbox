@@ -14,6 +14,9 @@ namespace fs = std::filesystem;
 #define IDM_FILE_UNMARK_DELETE  32821
 #define IDM_FILE_CHANGE_EXT     32822
 #define IDM_FILE_RESTORE_EXT    32823
+#define IDM_FOLDER_RENAME       32824
+#define IDM_FOLDER_MOVE         32825
+#define IDM_FOLDER_DELETE       32826
 
 // 简单的输入对话框类
 class CInputDialog : public CDialogEx
@@ -82,9 +85,16 @@ BEGIN_MESSAGE_MAP(CBatchRenameDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BTN_FOLDER_DELETE, &CBatchRenameDlg::OnBnClickedFolderDelete)
     ON_BN_CLICKED(IDC_BTN_FOLDER_SELECTALL, &CBatchRenameDlg::OnBnClickedFolderSelectAll)
     ON_BN_CLICKED(IDC_BTN_FOLDER_DESELECTALL, &CBatchRenameDlg::OnBnClickedFolderDeselectAll)
+    ON_COMMAND(IDC_BTN_FOLDER_SELECTALL, &CBatchRenameDlg::OnBnClickedFolderSelectAll)
+    ON_COMMAND(IDC_BTN_FOLDER_DESELECTALL, &CBatchRenameDlg::OnBnClickedFolderDeselectAll)
     ON_BN_CLICKED(IDC_BTN_CURRENT_RENAME, &CBatchRenameDlg::OnBnClickedCurrentRename)
     ON_BN_CLICKED(IDC_BTN_CURRENT_MOVE, &CBatchRenameDlg::OnBnClickedCurrentMove)
     ON_BN_CLICKED(IDC_BTN_CURRENT_DELETE, &CBatchRenameDlg::OnBnClickedCurrentDelete)
+    ON_NOTIFY(NM_RCLICK, IDC_LIST_FOLDERS, &CBatchRenameDlg::OnFolderListRightClick)
+    ON_NOTIFY(LVN_ITEMCHANGED, IDC_LIST_FOLDERS, &CBatchRenameDlg::OnFolderListCheckChanged)
+    ON_COMMAND(IDM_FOLDER_RENAME, &CBatchRenameDlg::OnBnClickedFolderRename)
+    ON_COMMAND(IDM_FOLDER_MOVE, &CBatchRenameDlg::OnBnClickedFolderMove)
+    ON_COMMAND(IDM_FOLDER_DELETE, &CBatchRenameDlg::OnBnClickedFolderDelete)
     ON_NOTIFY(NM_RCLICK, IDC_LIST_RENAME, &CBatchRenameDlg::OnFileListRightClick)
     ON_COMMAND(IDM_FILE_MARK_DELETE, &CBatchRenameDlg::OnFileMarkDelete)
     ON_COMMAND(IDM_FILE_UNMARK_DELETE, &CBatchRenameDlg::OnFileUnmarkDelete)
@@ -127,7 +137,7 @@ BOOL CBatchRenameDlg::OnInitDialog()
     if (pFolderList)
     {
         pFolderList->ModifyStyle(0, LVS_REPORT);
-        pFolderList->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+        pFolderList->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_CHECKBOXES);
         CRect rcList;
         pFolderList->GetClientRect(&rcList);
         int totalWidth = rcList.Width() - ::GetSystemMetrics(SM_CXVSCROLL) - 4;
@@ -166,7 +176,7 @@ void CBatchRenameDlg::ShowTab(int nTab)
         IDC_LIST_FOLDERS, IDC_BTN_FOLDER_RENAME, IDC_BTN_FOLDER_MOVE,
         IDC_BTN_FOLDER_DELETE, IDC_BTN_FOLDER_SELECTALL, IDC_BTN_FOLDER_DESELECTALL,
         IDC_BTN_CURRENT_RENAME, IDC_BTN_CURRENT_MOVE, IDC_BTN_CURRENT_DELETE,
-        IDC_STATIC_CURRENT_DIR, IDC_STATIC_SUBDIR
+        IDC_STATIC_CURRENT_DIR, IDC_STATIC_SUBDIR, IDC_STATIC_FOLDER_SELCOUNT
     };
     constexpr int nFolderIDs = sizeof(folderIDs) / sizeof(folderIDs[0]);
 
@@ -329,25 +339,48 @@ void CBatchRenameDlg::RefreshFolderList()
     {
         pList->InsertItem(static_cast<int>(i), m_folders[i].name);
     }
+    UpdateFolderSelectionCount();
 }
 
-void CBatchRenameDlg::OnBnClickedFolderRename()
+std::vector<int> CBatchRenameDlg::GetCheckedFolders()
+{
+    std::vector<int> checked;
+    CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_FOLDERS));
+    if (!pList) return checked;
+
+    int nCount = pList->GetItemCount();
+    for (int i = 0; i < nCount; i++)
+    {
+        if (ListView_GetCheckState(pList->m_hWnd, i))
+            checked.push_back(i);
+    }
+    return checked;
+}
+
+void CBatchRenameDlg::UpdateFolderSelectionCount()
 {
     CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_FOLDERS));
     if (!pList) return;
 
-    // 收集选中的文件夹
-    std::vector<int> selected;
     int nCount = pList->GetItemCount();
+    int nChecked = 0;
     for (int i = 0; i < nCount; i++)
     {
-        if (pList->GetItemState(i, LVIS_SELECTED) & LVIS_SELECTED)
-            selected.push_back(i);
+        if (ListView_GetCheckState(pList->m_hWnd, i))
+            nChecked++;
     }
 
+    CString text;
+    text.Format(_T("已选中: %d/%d"), nChecked, nCount);
+    SetDlgItemText(IDC_STATIC_FOLDER_SELCOUNT, text);
+}
+
+void CBatchRenameDlg::OnBnClickedFolderRename()
+{
+    std::vector<int> selected = GetCheckedFolders();
     if (selected.empty())
     {
-        MessageBox(_T("请先选中要重命名的文件夹。"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+        MessageBox(_T("请先勾选要重命名的文件夹。"), _T("提示"), MB_OK | MB_ICONINFORMATION);
         return;
     }
 
@@ -404,21 +437,10 @@ void CBatchRenameDlg::OnBnClickedFolderRename()
 
 void CBatchRenameDlg::OnBnClickedFolderMove()
 {
-    CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_FOLDERS));
-    if (!pList) return;
-
-    // 收集选中的文件夹
-    std::vector<int> selected;
-    int nCount = pList->GetItemCount();
-    for (int i = 0; i < nCount; i++)
-    {
-        if (pList->GetItemState(i, LVIS_SELECTED) & LVIS_SELECTED)
-            selected.push_back(i);
-    }
-
+    std::vector<int> selected = GetCheckedFolders();
     if (selected.empty())
     {
-        MessageBox(_T("请先选中要移动的文件夹。"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+        MessageBox(_T("请先勾选要移动的文件夹。"), _T("提示"), MB_OK | MB_ICONINFORMATION);
         return;
     }
 
@@ -456,21 +478,10 @@ void CBatchRenameDlg::OnBnClickedFolderMove()
 
 void CBatchRenameDlg::OnBnClickedFolderDelete()
 {
-    CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_FOLDERS));
-    if (!pList) return;
-
-    // 收集选中的文件夹
-    std::vector<int> selected;
-    int nCount = pList->GetItemCount();
-    for (int i = 0; i < nCount; i++)
-    {
-        if (pList->GetItemState(i, LVIS_SELECTED) & LVIS_SELECTED)
-            selected.push_back(i);
-    }
-
+    std::vector<int> selected = GetCheckedFolders();
     if (selected.empty())
     {
-        MessageBox(_T("请先选中要删除的文件夹。"), _T("提示"), MB_OK | MB_ICONINFORMATION);
+        MessageBox(_T("请先勾选要删除的文件夹。"), _T("提示"), MB_OK | MB_ICONINFORMATION);
         return;
     }
 
@@ -615,7 +626,8 @@ void CBatchRenameDlg::OnBnClickedFolderSelectAll()
     CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_FOLDERS));
     if (!pList) return;
     for (int i = 0; i < pList->GetItemCount(); i++)
-        pList->SetItemState(i, LVIS_SELECTED, LVIS_SELECTED);
+        ListView_SetCheckState(pList->m_hWnd, i, TRUE);
+    UpdateFolderSelectionCount();
 }
 
 void CBatchRenameDlg::OnBnClickedFolderDeselectAll()
@@ -623,7 +635,38 @@ void CBatchRenameDlg::OnBnClickedFolderDeselectAll()
     CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_FOLDERS));
     if (!pList) return;
     for (int i = 0; i < pList->GetItemCount(); i++)
-        pList->SetItemState(i, 0, LVIS_SELECTED);
+        ListView_SetCheckState(pList->m_hWnd, i, FALSE);
+    UpdateFolderSelectionCount();
+}
+
+void CBatchRenameDlg::OnFolderListRightClick(NMHDR* /*pNMHDR*/, LRESULT* pResult)
+{
+    CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_FOLDERS));
+    if (!pList) return;
+
+    int nChecked = static_cast<int>(GetCheckedFolders().size());
+    CPoint pt;
+    ::GetCursorPos(&pt);
+
+    CMenu menu;
+    menu.CreatePopupMenu();
+    if (nChecked > 0)
+    {
+        menu.AppendMenu(MF_STRING, IDM_FOLDER_RENAME, _T("重命名"));
+        menu.AppendMenu(MF_STRING, IDM_FOLDER_MOVE, _T("移动"));
+        menu.AppendMenu(MF_STRING, IDM_FOLDER_DELETE, _T("删除"));
+    }
+    menu.AppendMenu(MF_SEPARATOR);
+    menu.AppendMenu(MF_STRING, IDC_BTN_FOLDER_SELECTALL, _T("全选"));
+    menu.AppendMenu(MF_STRING, IDC_BTN_FOLDER_DESELECTALL, _T("取消全选"));
+    menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, this);
+    *pResult = 0;
+}
+
+void CBatchRenameDlg::OnFolderListCheckChanged(NMHDR* /*pNMHDR*/, LRESULT* pResult)
+{
+    UpdateFolderSelectionCount();
+    *pResult = 0;
 }
 
 // ========== Tab 1: 文件批量处理 ==========

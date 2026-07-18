@@ -46,11 +46,15 @@ private:
     // Tab 0: 文件夹操作
     void LoadFolders();
     void RefreshFolderList();
+    void UpdateFolderSelectionCount();
+    std::vector<int> GetCheckedFolders();
     afx_msg void OnBnClickedFolderRename();
     afx_msg void OnBnClickedFolderMove();
     afx_msg void OnBnClickedFolderDelete();
     afx_msg void OnBnClickedFolderSelectAll();
     afx_msg void OnBnClickedFolderDeselectAll();
+    afx_msg void OnFolderListRightClick(NMHDR* pNMHDR, LRESULT* pResult);
+    afx_msg void OnFolderListCheckChanged(NMHDR* pNMHDR, LRESULT* pResult);
     std::vector<FolderEntry> m_folders;
 
     // Tab 1: 文件批量处理
