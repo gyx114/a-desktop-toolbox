@@ -27,6 +27,7 @@ public:
 protected:
     virtual void DoDataExchange(CDataExchange* pDX) override;
     virtual BOOL OnInitDialog() override;
+    virtual BOOL PreTranslateMessage(MSG* pMsg) override;
 
     DECLARE_MESSAGE_MAP()
 
@@ -40,6 +41,7 @@ private:
     CString m_folderPath;
     afx_msg void OnBnClickedBrowse();
     afx_msg void OnBnClickedClear();
+    afx_msg void OnBnClickedRefresh();
     afx_msg void OnDropFiles(HDROP hDrop);
     void SetFolderPath(const CString& path);
 
@@ -55,6 +57,7 @@ private:
     afx_msg void OnBnClickedFolderDeselectAll();
     afx_msg void OnFolderListRightClick(NMHDR* pNMHDR, LRESULT* pResult);
     afx_msg void OnFolderListCheckChanged(NMHDR* pNMHDR, LRESULT* pResult);
+    afx_msg void OnFolderExplore();
     std::vector<FolderEntry> m_folders;
 
     // Tab 1: 文件批量处理
@@ -72,6 +75,7 @@ private:
     afx_msg void OnFileResetAll();
     afx_msg void OnFileChangeExt();
     afx_msg void OnFileRestoreExt();
+    afx_msg void OnFileExplore();
     afx_msg void OnCheckDeleteInvert();
     afx_msg void OnBnClickedCurrentRename();
     afx_msg void OnBnClickedCurrentMove();

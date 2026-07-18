@@ -17,6 +17,8 @@ namespace fs = std::filesystem;
 #define IDM_FOLDER_RENAME       32824
 #define IDM_FOLDER_MOVE         32825
 #define IDM_FOLDER_DELETE       32826
+#define IDM_FOLDER_EXPLORE      32827
+#define IDM_FILE_EXPLORE        32828
 
 // 简单的输入对话框类
 class CInputDialog : public CDialogEx
@@ -74,6 +76,7 @@ BEGIN_MESSAGE_MAP(CBatchRenameDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BTN_RENAME_PREVIEW, &CBatchRenameDlg::OnBnClickedFilePreview)
     ON_BN_CLICKED(IDC_BTN_RENAME_EXECUTE, &CBatchRenameDlg::OnBnClickedFileExecute)
     ON_BN_CLICKED(IDC_BTN_RENAME_CLEAR, &CBatchRenameDlg::OnBnClickedClear)
+    ON_BN_CLICKED(IDC_BTN_RENAME_REFRESH, &CBatchRenameDlg::OnBnClickedRefresh)
     ON_BN_CLICKED(IDC_BTN_RENAME_REGEX_HELP, &CBatchRenameDlg::OnBnClickedRegexHelp)
     ON_EN_CHANGE(IDC_EDIT_RENAME_PREFIX, &CBatchRenameDlg::OnEnChangeRule)
     ON_EN_CHANGE(IDC_EDIT_RENAME_SUFFIX, &CBatchRenameDlg::OnEnChangeRule)
@@ -95,6 +98,8 @@ BEGIN_MESSAGE_MAP(CBatchRenameDlg, CDialogEx)
     ON_COMMAND(IDM_FOLDER_RENAME, &CBatchRenameDlg::OnBnClickedFolderRename)
     ON_COMMAND(IDM_FOLDER_MOVE, &CBatchRenameDlg::OnBnClickedFolderMove)
     ON_COMMAND(IDM_FOLDER_DELETE, &CBatchRenameDlg::OnBnClickedFolderDelete)
+    ON_COMMAND(IDM_FOLDER_EXPLORE, &CBatchRenameDlg::OnFolderExplore)
+    ON_COMMAND(IDM_FILE_EXPLORE, &CBatchRenameDlg::OnFileExplore)
     ON_NOTIFY(NM_RCLICK, IDC_LIST_RENAME, &CBatchRenameDlg::OnFileListRightClick)
     ON_COMMAND(IDM_FILE_MARK_DELETE, &CBatchRenameDlg::OnFileMarkDelete)
     ON_COMMAND(IDM_FILE_UNMARK_DELETE, &CBatchRenameDlg::OnFileUnmarkDelete)
@@ -222,6 +227,16 @@ void CBatchRenameDlg::ShowTab(int nTab)
     }
 }
 
+BOOL CBatchRenameDlg::PreTranslateMessage(MSG* pMsg)
+{
+    if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_F5)
+    {
+        OnBnClickedRefresh();
+        return TRUE;
+    }
+    return CDialogEx::PreTranslateMessage(pMsg);
+}
+
 // ========== 共享功能 ==========
 
 void CBatchRenameDlg::SetFolderPath(const CString& path)
@@ -271,6 +286,13 @@ void CBatchRenameDlg::OnBnClickedClear()
     m_bPreviewDone = false;
     GetDlgItem(IDC_BTN_RENAME_PREVIEW)->EnableWindow(FALSE);
     GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(FALSE);
+}
+
+void CBatchRenameDlg::OnBnClickedRefresh()
+{
+    if (m_folderPath.IsEmpty()) return;
+    LoadFolders();
+    LoadFiles();
 }
 
 void CBatchRenameDlg::OnDropFiles(HDROP hDrop)
@@ -655,6 +677,8 @@ void CBatchRenameDlg::OnFolderListRightClick(NMHDR* /*pNMHDR*/, LRESULT* pResult
         menu.AppendMenu(MF_STRING, IDM_FOLDER_RENAME, _T("重命名"));
         menu.AppendMenu(MF_STRING, IDM_FOLDER_MOVE, _T("移动"));
         menu.AppendMenu(MF_STRING, IDM_FOLDER_DELETE, _T("删除"));
+        menu.AppendMenu(MF_SEPARATOR);
+        menu.AppendMenu(MF_STRING, IDM_FOLDER_EXPLORE, _T("在资源管理器中定位"));
     }
     menu.AppendMenu(MF_SEPARATOR);
     menu.AppendMenu(MF_STRING, IDC_BTN_FOLDER_SELECTALL, _T("全选"));
@@ -684,6 +708,39 @@ void CBatchRenameDlg::OnFolderListCheckChanged(NMHDR* pNMHDR, LRESULT* pResult)
     }
     UpdateFolderSelectionCount();
     *pResult = 0;
+}
+
+void CBatchRenameDlg::OnFolderExplore()
+{
+    std::vector<int> selected = GetCheckedFolders();
+    if (selected.empty()) return;
+
+    CString path = m_folders[selected[0]].fullPath.c_str();
+    CString cmd;
+    cmd.Format(_T("/select,\"%s\""), static_cast<LPCWSTR>(path));
+    ShellExecute(nullptr, _T("open"), _T("explorer"), cmd, nullptr, SW_SHOW);
+}
+
+void CBatchRenameDlg::OnFileExplore()
+{
+    CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_RENAME));
+    if (!pList) return;
+
+    int nCount = pList->GetItemCount();
+    for (int i = 0; i < nCount; i++)
+    {
+        if (pList->GetItemState(i, LVIS_SELECTED) & LVIS_SELECTED)
+        {
+            if (i < static_cast<int>(m_entries.size()))
+            {
+                CString path = m_entries[i].fullPath.c_str();
+                CString cmd;
+                cmd.Format(_T("/select,\"%s\""), static_cast<LPCWSTR>(path));
+                ShellExecute(nullptr, _T("open"), _T("explorer"), cmd, nullptr, SW_SHOW);
+                return;
+            }
+        }
+    }
 }
 
 // ========== Tab 1: 文件批量处理 ==========
@@ -906,12 +963,13 @@ void CBatchRenameDlg::OnBnClickedFileExecute()
     std::error_code ec;
 
     // 先执行删除
+    int actualDeleted = 0;
     for (auto& entry : m_entries)
     {
         if (!entry.bMarkedDelete) continue;
         fs::remove(entry.fullPath, ec);
         if (ec) deleteFail++;
-        else deleteCount++;
+        else actualDeleted++;
     }
 
     // 再执行重命名
@@ -934,7 +992,7 @@ void CBatchRenameDlg::OnBnClickedFileExecute()
 
     CString msg;
     msg.Format(_T("操作完成：删除 %d 个（失败 %d），重命名 %d 个（失败 %d）。"),
-        deleteCount, deleteFail, renameCount, renameFail);
+        actualDeleted, deleteFail, renameCount, renameFail);
     MessageBox(msg, _T("结果"), MB_OK | MB_ICONINFORMATION);
 
     m_bPreviewDone = false;
@@ -973,6 +1031,8 @@ void CBatchRenameDlg::OnFileListRightClick(NMHDR* /*pNMHDR*/, LRESULT* pResult)
         menu.AppendMenu(MF_SEPARATOR);
         menu.AppendMenu(MF_STRING, IDM_FILE_CHANGE_EXT, _T("修改后缀"));
         menu.AppendMenu(MF_STRING, IDM_FILE_RESTORE_EXT, _T("恢复原后缀名"));
+        menu.AppendMenu(MF_SEPARATOR);
+        menu.AppendMenu(MF_STRING, IDM_FILE_EXPLORE, _T("在资源管理器中定位"));
     }
     menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, this);
     *pResult = 0;

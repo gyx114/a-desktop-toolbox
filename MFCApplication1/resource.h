@@ -162,6 +162,7 @@
 #define IDC_STATIC_CURRENT_DIR         1165
 #define IDC_STATIC_SUBDIR              1166
 #define IDC_STATIC_FOLDER_SELCOUNT     1167
+#define IDC_BTN_RENAME_REFRESH         1168
 #define IDD_INPUT_DLG                  141
 #define IDC_INPUT_PROMPT               1159
 #define IDC_INPUT_EDIT                 1160
