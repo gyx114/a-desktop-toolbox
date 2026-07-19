@@ -5,6 +5,7 @@ class CSettingsDlg : public CDialogEx
 public:
     CSettingsDlg(CWnd* pParent = nullptr);
     virtual BOOL OnInitDialog();
+    virtual BOOL PreTranslateMessage(MSG* pMsg) override;
     virtual void OnOK();
     virtual void OnCancel() override;
     virtual void PostNcDestroy() override;

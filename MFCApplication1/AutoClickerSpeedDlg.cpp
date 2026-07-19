@@ -35,6 +35,24 @@ BOOL CAutoClickerSpeedDlg::OnInitDialog()
     return TRUE;
 }
 
+BOOL CAutoClickerSpeedDlg::PreTranslateMessage(MSG* pMsg)
+{
+    if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_RETURN)
+    {
+        CWnd* pFocus = CWnd::FromHandle(::GetFocus());
+        if (pFocus)
+        {
+            TCHAR className[64] = {0};
+            ::GetClassName(pFocus->GetSafeHwnd(), className, 64);
+            if (_tcsstr(className, _T("Edit")) || _tcsstr(className, _T("edit")))
+            {
+                return TRUE;
+            }
+        }
+    }
+    return CDialogEx::PreTranslateMessage(pMsg);
+}
+
 void CAutoClickerSpeedDlg::OnOK() { /* 不关闭，仅应用 */ }
 
 void CAutoClickerSpeedDlg::OnCancel() { OnClose(); }

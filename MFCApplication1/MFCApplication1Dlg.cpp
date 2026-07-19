@@ -530,14 +530,35 @@ BOOL CMFCApplication1Dlg::PreTranslateMessage(MSG* pMsg)
             return TRUE;
         }
 
-        // Enter: 当焦点在编辑框时触发运行
+        // Enter: 当焦点在编辑框时的处理
         if (pMsg->wParam == VK_RETURN)
         {
-            CWnd* pEdit = GetDlgItem(IDC_EDIT6);
-            if (pEdit && pEdit->GetSafeHwnd() == ::GetFocus())
+            CWnd* pFocus = CWnd::FromHandle(::GetFocus());
+            if (pFocus)
             {
-                OnBnClickedButton17();
-                return TRUE;
+                int nID = pFocus->GetDlgCtrlID();
+
+                // 音量调节输入框：触发应用音量
+                if (nID == IDC_EDIT5)
+                {
+                    OnBnClickedButton12();
+                    return TRUE;
+                }
+
+                // 命令输入框：运行命令
+                if (nID == IDC_EDIT6)
+                {
+                    OnBnClickedButton17();
+                    return TRUE;
+                }
+
+                // 其他编辑框：吞掉回车，防止退出程序
+                TCHAR className[64] = {0};
+                ::GetClassName(pFocus->GetSafeHwnd(), className, 64);
+                if (_tcsstr(className, _T("Edit")) || _tcsstr(className, _T("edit")))
+                {
+                    return TRUE;
+                }
             }
         }
     }

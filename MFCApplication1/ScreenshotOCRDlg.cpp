@@ -374,6 +374,24 @@ BOOL CScreenshotOCRDlg::OnInitDialog()
     return TRUE;
 }
 
+BOOL CScreenshotOCRDlg::PreTranslateMessage(MSG* pMsg)
+{
+    if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_RETURN)
+    {
+        CWnd* pFocus = CWnd::FromHandle(::GetFocus());
+        if (pFocus)
+        {
+            TCHAR className[64] = {0};
+            ::GetClassName(pFocus->GetSafeHwnd(), className, 64);
+            if (_tcsstr(className, _T("Edit")) || _tcsstr(className, _T("edit")))
+            {
+                return TRUE;
+            }
+        }
+    }
+    return CDialogEx::PreTranslateMessage(pMsg);
+}
+
 CString CScreenshotOCRDlg::GetSelectedLangPair() const
 {
     CComboBox* pCombo = static_cast<CComboBox*>(GetDlgItem(IDC_COMBO_OCR_LANG));

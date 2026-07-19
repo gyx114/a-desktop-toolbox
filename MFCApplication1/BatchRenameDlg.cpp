@@ -244,6 +244,19 @@ BOOL CBatchRenameDlg::PreTranslateMessage(MSG* pMsg)
         OnBnClickedRefresh();
         return TRUE;
     }
+    if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_RETURN)
+    {
+        CWnd* pFocus = CWnd::FromHandle(::GetFocus());
+        if (pFocus)
+        {
+            TCHAR className[64] = {0};
+            ::GetClassName(pFocus->GetSafeHwnd(), className, 64);
+            if (_tcsstr(className, _T("Edit")) || _tcsstr(className, _T("edit")))
+            {
+                return TRUE;
+            }
+        }
+    }
     return CDialogEx::PreTranslateMessage(pMsg);
 }
 

@@ -175,7 +175,12 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
     CListCtrl* pList4 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST4));
     CListCtrl* pList5 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST5));
 
-    if (pList1) pList1->ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
+    if (pList1) {
+        pList1->ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
+        if (nTab == 0) {
+            pList1->GetHeaderCtrl()->Invalidate();
+        }
+    }
     if (pList2) pList2->ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
     if (pList3) pList3->ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
     if (pList4) pList4->ShowWindow(nTab == 5 ? SW_SHOW : SW_HIDE);
