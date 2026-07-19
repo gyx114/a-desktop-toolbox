@@ -51,7 +51,7 @@ private:
     afx_msg void OnDropFiles(HDROP hDrop);
     void SetFolderPath(const CString& path);
 
-    // Tab 0: 文件夹操作
+    // Tab 0: Folder operations
     void LoadFolders();
     void RefreshFolderList();
     void UpdateFolderSelectionCount();
@@ -66,7 +66,7 @@ private:
     afx_msg void OnFolderExplore();
     std::vector<FolderEntry> m_folders;
 
-    // Tab 1: 文件批量处理
+    // Tab 1: File batch processing
     void LoadFiles();
     void ApplyRules();
     void ApplyIgnoreRules();

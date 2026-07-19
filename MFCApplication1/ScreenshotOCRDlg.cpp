@@ -17,7 +17,7 @@
 
 using namespace Gdiplus;
 
-// 语言对：界面显示名 → API langpair 参数
+// Language pairs: display name to API langpair parameter
 const std::pair<const wchar_t*, const wchar_t*> CScreenshotOCRDlg::s_langPairs[] = {
     { L"中文 → 英文", L"zh-CN|en" },
     { L"中文 → 日文", L"zh-CN|ja" },
@@ -49,18 +49,18 @@ static int GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
     return -1;
 }
 
-// ========== 框选覆盖层的窗口过程 ==========
+// ========== Region selection overlay window procedure ==========
 struct RegionCaptureData
 {
-    HBITMAP hFullScreen;   // 全屏截图（只读）
-    HBITMAP hBackBuffer;   // 离屏缓冲（在此合成，再一次性 BitBlt 到屏幕）
-    HBITMAP hOverlayBmp;   // 32位DIB遮罩（预创建，复用）
-    DWORD*  pOverlayBits;  // 遮罩像素缓冲
-    POINT   ptStart;       // 拖拽起点
-    POINT   ptEnd;         // 拖拽终点
+    HBITMAP hFullScreen;   // Full-screen screenshot (read-only)
+    HBITMAP hBackBuffer;   // Off-screen buffer (compose here, then BitBlt to screen in one go)
+    HBITMAP hOverlayBmp;   // 32-bit DIB overlay mask (pre-created, reused)
+    DWORD*  pOverlayBits;  // Overlay pixel buffer
+    POINT   ptStart;       // Drag start point
+    POINT   ptEnd;         // Drag end point
     bool    bDragging;
     bool    bDone;
-    RECT    rcResult;      // 选中的区域
+    RECT    rcResult;      // Selected region
     int     screenW, screenH;
 };
 
@@ -78,7 +78,7 @@ static LRESULT CALLBACK RegionOverlayProc(HWND hwnd, UINT uMsg, WPARAM wParam, L
         {
             int sw = pData->screenW, sh = pData->screenH;
 
-            // 1. 离屏缓冲：先画全屏截图
+            // 1. Off-screen buffer: draw full-screen screenshot first
             HDC hdcBuf = CreateCompatibleDC(hdc);
             HBITMAP hOldBuf = static_cast<HBITMAP>(SelectObject(hdcBuf, pData->hBackBuffer));
 
@@ -100,7 +100,7 @@ static LRESULT CALLBACK RegionOverlayProc(HWND hwnd, UINT uMsg, WPARAM wParam, L
                 if (right > sw) right = sw;
                 if (bottom > sh) bottom = sh;
 
-                // 2. 离屏缓冲：挖空选区 + AlphaBlend 遮罩
+                // 2. Off-screen buffer: cut out selection + AlphaBlend overlay
                 for (int y = top; y < bottom; y++)
                     memset(&pData->pOverlayBits[y * sw + left], 0,
                         (right - left) * sizeof(DWORD));
@@ -112,7 +112,7 @@ static LRESULT CALLBACK RegionOverlayProc(HWND hwnd, UINT uMsg, WPARAM wParam, L
                 SelectObject(hdcOverlay, hOldOverlay);
                 DeleteDC(hdcOverlay);
 
-                // 恢复遮罩像素
+                // Restore overlay pixels
                 for (int y = top; y < bottom; y++)
                 {
                     DWORD* row = &pData->pOverlayBits[y * sw + left];
@@ -120,7 +120,7 @@ static LRESULT CALLBACK RegionOverlayProc(HWND hwnd, UINT uMsg, WPARAM wParam, L
                         row[x] = 0x78000000;
                 }
 
-                // 3. 离屏缓冲：画蓝色选框
+                // 3. Off-screen buffer: draw blue selection rectangle
                 HPEN hPen = CreatePen(PS_SOLID, 2, RGB(0, 120, 215));
                 HPEN hOldPen = static_cast<HPEN>(SelectObject(hdcBuf, hPen));
                 HBRUSH hNullBrush = static_cast<HBRUSH>(GetStockObject(NULL_BRUSH));
@@ -131,7 +131,7 @@ static LRESULT CALLBACK RegionOverlayProc(HWND hwnd, UINT uMsg, WPARAM wParam, L
                 DeleteObject(hPen);
             }
 
-            // 4. 一次性输出到屏幕（消除闪烁）
+            // 4. Output to screen in one go (eliminate flicker)
             BitBlt(hdc, 0, 0, sw, sh, hdcBuf, 0, 0, SRCCOPY);
 
             SelectObject(hdcBuf, hOldBuf);
@@ -142,7 +142,7 @@ static LRESULT CALLBACK RegionOverlayProc(HWND hwnd, UINT uMsg, WPARAM wParam, L
     }
 
     case WM_ERASEBKGND:
-        return 1;  // 不擦除背景
+        return 1;  // Do not erase background
 
     case WM_LBUTTONDOWN:
         if (pData)
@@ -201,18 +201,18 @@ static LRESULT CALLBACK RegionOverlayProc(HWND hwnd, UINT uMsg, WPARAM wParam, L
         return 0;
 
     case WM_DESTROY:
-        // 不调用 PostQuitMessage，否则会退出整个程序
-        // data.bDone 标志已经能退出本地消息循环
+        // Do not call PostQuitMessage, otherwise it would exit the entire program
+        // data.bDone flag is already sufficient to exit the local message loop
         return 0;
     }
 
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-// ========== 框选截图 ==========
+// ========== Region capture screenshot ==========
 HBITMAP CScreenshotOCRDlg::CaptureRegion()
 {
-    // 1. 全屏截图
+    // 1. Full-screen screenshot
     int screenW = ::GetSystemMetrics(SM_CXSCREEN);
     int screenH = ::GetSystemMetrics(SM_CYSCREEN);
     HDC hdcScreen = ::GetDC(nullptr);
@@ -223,7 +223,7 @@ HBITMAP CScreenshotOCRDlg::CaptureRegion()
     SelectObject(hdcMem, hOld);
     DeleteDC(hdcMem);
 
-    // 2. 预创建 32 位 DIB 遮罩和离屏缓冲（双缓冲消除闪烁）
+    // 2. Pre-create 32-bit DIB overlay and off-screen buffer (double-buffering to eliminate flicker)
     BITMAPINFO bmi = {};
     bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
     bmi.bmiHeader.biWidth = screenW;
@@ -246,11 +246,11 @@ HBITMAP CScreenshotOCRDlg::CaptureRegion()
             p[i] = 0x78000000;
     }
 
-    // 3. 隐藏对话框
+    // 3. Hide dialog
     ShowWindow(SW_HIDE);
     Sleep(200);
 
-    // 4. 注册覆盖层窗口类
+    // 4. Register overlay window class
     WNDCLASS wc = {};
     wc.lpfnWndProc = RegionOverlayProc;
     wc.hInstance = AfxGetInstanceHandle();
@@ -263,7 +263,7 @@ HBITMAP CScreenshotOCRDlg::CaptureRegion()
     if (!GetClassInfo(wc.hInstance, wc.lpszClassName, &existing))
         RegisterClass(&wc);
 
-    // 5. 创建全屏覆盖层
+    // 5. Create full-screen overlay
     RegionCaptureData data = {};
     data.hFullScreen = hFullScreen;
     data.hBackBuffer = hBackBuffer;
@@ -291,7 +291,7 @@ HBITMAP CScreenshotOCRDlg::CaptureRegion()
     ::ShowWindow(hOverlay, SW_SHOW);
     ::SetForegroundWindow(hOverlay);
 
-    // 6. 消息循环等待用户完成框选
+    // 6. Message loop waiting for user to complete region selection
     MSG msg;
     while (!data.bDone && GetMessage(&msg, nullptr, 0, 0))
     {
@@ -299,11 +299,11 @@ HBITMAP CScreenshotOCRDlg::CaptureRegion()
         DispatchMessage(&msg);
     }
 
-    // 7. 清理（窗口已销毁）
+    // 7. Cleanup (window already destroyed)
     if (hBackBuffer) DeleteObject(hBackBuffer);
     if (hOverlayBmp) DeleteObject(hOverlayBmp);
 
-    // 8. 提取选中区域
+    // 8. Extract selected region
     HBITMAP hResult = nullptr;
     if (data.bDone && data.rcResult.right > data.rcResult.left)
     {
@@ -325,7 +325,7 @@ HBITMAP CScreenshotOCRDlg::CaptureRegion()
 
     DeleteObject(hFullScreen);
 
-    // 9. 恢复对话框
+    // 9. Restore dialog
     ShowWindow(SW_SHOW);
     ::SetForegroundWindow(m_hWnd);
 
@@ -362,13 +362,13 @@ BOOL CScreenshotOCRDlg::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
 
-    // 初始化语言选择下拉框
+    // Initialize language selection combo box
     CComboBox* pCombo = static_cast<CComboBox*>(GetDlgItem(IDC_COMBO_OCR_LANG));
     if (pCombo)
     {
         for (int i = 0; i < s_langPairCount; i++)
             pCombo->AddString(s_langPairs[i].first);
-        pCombo->SetCurSel(0);  // 默认中文→英文
+        pCombo->SetCurSel(0);  // Default Chinese to English
     }
 
     return TRUE;
@@ -401,7 +401,7 @@ CString CScreenshotOCRDlg::GetSelectedLangPair() const
         if (sel >= 0 && sel < s_langPairCount)
             return s_langPairs[sel].second;
     }
-    return L"zh-CN|en";  // 默认中文→英文
+    return L"zh-CN|en";  // Default Chinese to English
 }
 
 void CScreenshotOCRDlg::OnOK() {}
@@ -427,7 +427,7 @@ void CScreenshotOCRDlg::PostNcDestroy()
     delete this;
 }
 
-// ========== 后台 OCR 线程 ==========
+// ========== Background OCR thread ==========
 void CScreenshotOCRDlg::OcrThreadProc(HBITMAP hBitmap, HWND hNotifyWnd)
 {
     BITMAP bm;
@@ -493,7 +493,7 @@ void CScreenshotOCRDlg::OcrThreadProc(HBITMAP hBitmap, HWND hNotifyWnd)
     ::PostMessage(hNotifyWnd, WM_OCR_COMPLETE, bSuccess ? 1 : 0, reinterpret_cast<LPARAM>(pResult));
 }
 
-// ========== 开始截图按钮 ==========
+// ========== Start screenshot button ==========
 void CScreenshotOCRDlg::OnBnClickedBtnOcr()
 {
     if (m_bBusy)
@@ -502,11 +502,11 @@ void CScreenshotOCRDlg::OnBnClickedBtnOcr()
         return;
     }
 
-    // 框选截图
+    // Region capture screenshot
     HBITMAP hCapture = CaptureRegion();
     if (!hCapture)
     {
-        // 用户取消了
+        // User cancelled
         return;
     }
 
@@ -518,13 +518,13 @@ void CScreenshotOCRDlg::OnBnClickedBtnOcr()
     m_screenshotWidth = bm.bmWidth;
     m_screenshotHeight = bm.bmHeight;
 
-    // 标记忙碌，禁用按钮
+    // Mark busy, disable buttons
     m_bBusy = true;
     GetDlgItem(IDC_BTN_OCR_CAPTURE)->EnableWindow(FALSE);
     GetDlgItem(IDC_BTN_OCR_TRANSLATE)->EnableWindow(FALSE);
     SetDlgItemText(IDC_EDIT_OCR_RESULT, _T("正在识别中，请稍候..."));
 
-    // 复制位图给后台线程
+    // Copy bitmap for background thread
     HDC hdc = ::GetDC(nullptr);
     HDC hdcSrc = CreateCompatibleDC(hdc);
     HDC hdcDst = CreateCompatibleDC(hdc);
@@ -539,7 +539,7 @@ void CScreenshotOCRDlg::OnBnClickedBtnOcr()
     std::thread(OcrThreadProc, hThreadBmp, m_hWnd).detach();
 }
 
-// ========== OCR 完成 ==========
+// ========== OCR complete ==========
 LRESULT CScreenshotOCRDlg::OnOcrComplete(WPARAM wParam, LPARAM lParam)
 {
     m_bBusy = false;
@@ -557,7 +557,7 @@ LRESULT CScreenshotOCRDlg::OnOcrComplete(WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-// ========== 后台翻译线程 ==========
+// ========== Background translate thread ==========
 void CScreenshotOCRDlg::TranslateThreadProc(const CString& text, const CString& langPair, HWND hNotifyWnd)
 {
     CString result = CallTranslateAPI(text, langPair, 10);
@@ -567,7 +567,7 @@ void CScreenshotOCRDlg::TranslateThreadProc(const CString& text, const CString& 
     ::PostMessage(hNotifyWnd, WM_TRANSLATE_COMPLETE, 1, reinterpret_cast<LPARAM>(pResult));
 }
 
-// ========== 翻译 API ==========
+// ========== Translate API ==========
 CString CScreenshotOCRDlg::CallTranslateAPI(const CString& text, const CString& langPair, int timeoutSeconds)
 {
     std::string encodedText;
@@ -598,7 +598,7 @@ CString CScreenshotOCRDlg::CallTranslateAPI(const CString& text, const CString& 
         }
     }
 
-    // 编码语言对参数
+    // Encode language pair parameter
     std::string encodedLangPair;
     int lpLen = WideCharToMultiByte(CP_UTF8, 0, langPair, -1, nullptr, 0, nullptr, nullptr);
     std::string lpUtf8(lpLen, '\0');
@@ -734,7 +734,7 @@ CString CScreenshotOCRDlg::CallTranslateAPI(const CString& text, const CString& 
     return result;
 }
 
-// ========== 翻译按钮 ==========
+// ========== Translate button ==========
 void CScreenshotOCRDlg::OnBnClickedBtnTranslate()
 {
     if (m_bBusy)
@@ -766,7 +766,7 @@ void CScreenshotOCRDlg::OnBnClickedBtnTranslate()
     std::thread(TranslateThreadProc, text, langPair, m_hWnd).detach();
 }
 
-// ========== 翻译完成 ==========
+// ========== Translate complete ==========
 LRESULT CScreenshotOCRDlg::OnTranslateComplete(WPARAM /*wParam*/, LPARAM lParam)
 {
     m_bBusy = false;
@@ -784,7 +784,7 @@ LRESULT CScreenshotOCRDlg::OnTranslateComplete(WPARAM /*wParam*/, LPARAM lParam)
     return 0;
 }
 
-// ========== 复制按钮 ==========
+// ========== Copy button ==========
 void CScreenshotOCRDlg::OnBnClickedBtnCopy()
 {
     CString text;

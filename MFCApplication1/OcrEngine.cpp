@@ -1,5 +1,5 @@
-// OcrEngine.cpp - 隔离在非 MFC 编译单元中，避免 C++/WinRT 与 MFC 头文件冲突
-// 此文件不使用预编译头
+// OcrEngine.cpp - Isolated in non-MFC compilation unit to avoid C++/WinRT and MFC header conflicts
+// This file does not use precompiled headers
 
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
@@ -19,7 +19,7 @@ using namespace winrt::Windows::Storage;
 using namespace winrt::Windows::Storage::Streams;
 using namespace winrt::Windows::Globalization;
 
-// 尝试创建指定语言的 OCR 引擎
+// Try to create OCR engine for specified language
 static OcrEngine TryCreateEngine(const wchar_t* langTag)
 {
     try
@@ -30,17 +30,17 @@ static OcrEngine TryCreateEngine(const wchar_t* langTag)
     catch (...) { return nullptr; }
 }
 
-// 尝试多种语言创建 OCR 引擎，返回第一个可用的
+// Try multiple languages to create OCR engine, return first available
 static OcrEngine CreateBestEngine(bool preferChinese)
 {
-    // 优先尝试用户系统语言
+    // Prefer user system language
     auto engine = OcrEngine::TryCreateFromUserProfileLanguages();
     if (engine) return engine;
 
-    // 如果用户语言不可用，按优先级尝试
+    // If user language is unavailable, try by priority
     if (preferChinese)
     {
-        // 中文优先
+        // Chinese first
         const wchar_t* langs[] = { L"zh-Hans", L"zh-Hant", L"zh-CN", L"zh-TW", L"en", L"ja", L"ko" };
         for (auto lang : langs)
         {
@@ -67,7 +67,7 @@ bool OcrRecognizeFromFile(const wchar_t* filePath, wchar_t* output, int outputSi
 
     try
     {
-        // 创建 OCR 引擎（尝试多种语言）
+        // Create OCR engine (try multiple languages)
         auto engine = CreateBestEngine(preferChinese);
         if (!engine)
         {
@@ -75,7 +75,7 @@ bool OcrRecognizeFromFile(const wchar_t* filePath, wchar_t* output, int outputSi
             return false;
         }
 
-        // 通过 StorageFile 加载图片
+        // Load image via StorageFile
         auto file = StorageFile::GetFileFromPathAsync(filePath).get();
         auto stream = file.OpenAsync(FileAccessMode::Read).get();
         auto decoder = BitmapDecoder::CreateAsync(stream).get();
@@ -88,13 +88,13 @@ bool OcrRecognizeFromFile(const wchar_t* filePath, wchar_t* output, int outputSi
             return false;
         }
 
-        // 转换为 Gray8 格式（OcrEngine 要求）
+        // Convert to Gray8 format (required by OcrEngine)
         if (swBitmap.BitmapPixelFormat() != BitmapPixelFormat::Gray8)
         {
             swBitmap = SoftwareBitmap::Convert(swBitmap, BitmapPixelFormat::Gray8);
         }
 
-        // 执行 OCR 识别
+        // Execute OCR recognition
         auto ocrResult = engine.RecognizeAsync(swBitmap).get();
 
         std::wstring text;

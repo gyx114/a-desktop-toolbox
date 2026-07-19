@@ -1,59 +1,59 @@
-// AutoClicker.h: 连点器功能封装
+// AutoClicker.h: Auto-clicker functionality encapsulation
 #pragma once
 #include <stop_token>
 #include <thread>
 #include <atomic>
 
-// 连点器类：通过大写 A 键开始连点，大写 B 键停止
-// 使用 std::jthread 和 std::stop_source 实现协作式线程取消
+// Auto-clicker class: press uppercase A to start clicking, uppercase B to stop
+// Uses std::jthread and std::stop_source for cooperative thread cancellation
 class CAutoClicker
 {
 public:
     CAutoClicker() = default;
     ~CAutoClicker();
 
-    // 禁止拷贝
+    // Disallow copy
     CAutoClicker(const CAutoClicker&) = delete;
     CAutoClicker& operator=(const CAutoClicker&) = delete;
 
-    // 启动连点器（intervalMs: 点击间隔毫秒，hwndOwner: 用于通知的主窗口）
+    // Start auto-clicker (intervalMs: click interval in ms, hwndOwner: owner window for notification)
     void Start(int intervalMs, HWND hwndOwner);
 
-    // 停止连点器
+    // Stop auto-clicker
     void Stop();
 
-    // 暂停键盘监听（不改变 m_bEnabled 状态，用于 OCR 截图等场景）
+    // Pause keyboard monitoring (does not change m_bEnabled state; for OCR screenshot etc.)
     void Pause();
 
-    // 恢复键盘监听（仅在 m_bEnabled 为 true 时有效）
+    // Resume keyboard monitoring (only effective when m_bEnabled is true)
     void Resume();
 
-    // 动态调整点击间隔（毫秒），无需停止连点器
+    // Dynamically adjust click interval (ms) without stopping the auto-clicker
     void SetInterval(int intervalMs);
 
-    // 设置触发键（默认 A=开始, B=停止）
+    // Set trigger keys (default: A=start, B=stop)
     void SetKeys(char keyStart, char keyStop);
 
-    // 是否正在运行
+    // Whether currently running
     [[nodiscard]] bool IsRunning() const { return m_bEnabled.load(); }
     [[nodiscard]] bool IsClicking() const { return m_bClicking.load(); }
 
-    // 获取当前触发键
+    // Get current trigger keys
     [[nodiscard]] char GetKeyStart() const { return m_keyStart.load(); }
     [[nodiscard]] char GetKeyStop() const { return m_keyStop.load(); }
 
-    // 自定义消息：连点已停止，wParam 和 lParam 均为 0
+    // Custom message: auto-clicking stopped, wParam and lParam are both 0
     static constexpr UINT WM_STOPPED = WM_APP + 4;
 
 private:
-    // 线程函数
+    // Thread functions
     static void ClickThreadFunc(std::stop_token stoken, int intervalMs);
     void MonitorThreadFunc(std::stop_token stoken);
 
-    // 检测大写按键
+    // Detect uppercase key press
     [[nodiscard]] static bool IsUppercaseKeyPressed(char ch) noexcept;
 
-    // 弹出输入框获取间隔
+    // Prompt for interval via input dialog
     static int PromptForIntervalMs(HWND hwndParent);
 
     std::atomic<bool> m_bEnabled{false};

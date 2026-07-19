@@ -31,7 +31,7 @@ BOOL CAutoClickerSpeedDlg::OnInitDialog()
     }
     SetDlgItemInt(IDC_EDIT_CLICK_SPEED, m_interval);
     UpdateStatus();
-    SetTimer(1, 200, nullptr);  // 每200ms刷新状态
+    SetTimer(1, 200, nullptr);  // Refresh status every 200ms
     return TRUE;
 }
 
@@ -53,17 +53,17 @@ BOOL CAutoClickerSpeedDlg::PreTranslateMessage(MSG* pMsg)
     return CDialogEx::PreTranslateMessage(pMsg);
 }
 
-void CAutoClickerSpeedDlg::OnOK() { /* 不关闭，仅应用 */ }
+void CAutoClickerSpeedDlg::OnOK() { /* Do not close, only apply */ }
 
 void CAutoClickerSpeedDlg::OnCancel() { OnClose(); }
 
 void CAutoClickerSpeedDlg::OnClose()
 {
-    // 停止连点器
+    // Stop auto-clicker
     if (m_pClicker)
         m_pClicker->Stop();
 
-    // 通知主窗口清空指针
+    // Notify main window to clear pointer
     if (GetParent())
         ::PostMessage(GetParent()->m_hWnd, WM_SPEED_DLG_CLOSED, 0, 0);
 
@@ -114,7 +114,7 @@ void CAutoClickerSpeedDlg::UpdateStatus()
             pStatus->SetWindowText(_T("已停止"));
             pStatus->Invalidate();
         }
-        // 自销毁：连点器已停止，关闭窗口
+        // Self-destroy: auto-clicker has stopped, close window
         KillTimer(1);
         if (GetParent())
             ::PostMessage(GetParent()->m_hWnd, WM_SPEED_DLG_CLOSED, 0, 0);
@@ -154,13 +154,13 @@ HBRUSH CAutoClickerSpeedDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
         pDC->SetBkMode(TRANSPARENT);
         switch (m_lastStatus)
         {
-        case ClickStatus::Clicking:  // 点击中 → 绿色
+        case ClickStatus::Clicking:  // Clicking -> green
             pDC->SetTextColor(RGB(0, 170, 0));
             break;
-        case ClickStatus::Waiting:   // 等待触发 → 橙色
+        case ClickStatus::Waiting:   // Waiting for trigger -> orange
             pDC->SetTextColor(RGB(204, 136, 0));
             break;
-        case ClickStatus::Stopped:   // 已停止 → 灰色
+        case ClickStatus::Stopped:   // Stopped -> gray
             pDC->SetTextColor(RGB(136, 136, 136));
             break;
         }

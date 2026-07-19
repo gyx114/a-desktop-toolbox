@@ -72,7 +72,7 @@ void CMFCApplication1Dlg::OnBnClickedButton19()
 
 void CMFCApplication1Dlg::OnTargetSelected(HWND hTarget, POINT pt)
 {
-    // 将子控件提升为其顶层父窗口，避免记录按钮/编辑框等组件
+    // Promote child control to its top-level parent, avoid recording buttons/edit boxes
     hTarget = ::GetAncestor(hTarget, GA_ROOT);
 
     m_hSelectedWnd = hTarget;
@@ -90,7 +90,7 @@ void CMFCApplication1Dlg::OnTargetSelected(HWND hTarget, POINT pt)
             m_historyWnds.push_back(hTarget);
     }
 
-    // switch to the "窗口处理" tab and refresh the list to show this window's info.
+    // switch to the "Window handling" tab and refresh the list to show this window's info.
     CTabCtrl* pTab = (CTabCtrl*)GetDlgItem(IDC_TAB1);
     if (pTab)
     {
@@ -99,7 +99,7 @@ void CMFCApplication1Dlg::OnTargetSelected(HWND hTarget, POINT pt)
         OnTcnSelchangeTab1(NULL, &res);
     }
 
-    // 弹出操作菜单
+    // Show operation menu
     CMenu menu;
     menu.CreatePopupMenu();
     // Provide only topmost and close options
@@ -115,19 +115,19 @@ void CMFCApplication1Dlg::OnTargetSelected(HWND hTarget, POINT pt)
             MessageBox(_T("置顶失败，可能权限不足或窗口不允许。"), _T("提示"), MB_OK | MB_ICONERROR);
         else
         {
-            // 避免重复添加
+            // Avoid duplicate additions
             auto it = std::find(m_topmostWnds.begin(), m_topmostWnds.end(), hTarget);
             if (it == m_topmostWnds.end())
                 m_topmostWnds.push_back(hTarget);
 
-            // 如果置顶的是工具箱自身，同步选中复选框
+            // If topmost is the toolbox itself, sync checkbox
             if (hTarget == m_hWnd)
             {
                 CButton* pCheck = static_cast<CButton*>(GetDlgItem(IDC_CHECK3));
                 if (pCheck) pCheck->SetCheck(BST_CHECKED);
             }
 
-            // 刷新置顶列表显示
+            // Refresh topmost list display
             CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
             if (pTab) UpdateTabVisibility(pTab->GetCurSel());
         }
@@ -171,12 +171,12 @@ void CMFCApplication1Dlg::OnForceKillProcess()
 	if (TerminateProcess(hProc, 1))
 	{
 		MessageBox(_T("进程已强制结束。"), _T("完成"), MB_OK | MB_ICONINFORMATION);
-		// 从置顶列表中移除已结束的窗口
+		// Remove terminated windows from topmost list
 		m_topmostWnds.erase(
 			std::remove_if(m_topmostWnds.begin(), m_topmostWnds.end(),
 				[](HWND h) { return !IsValidWindow(h); }),
 			m_topmostWnds.end());
-		// 刷新显示
+		// Refresh display
 		CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
 		if (pTab) UpdateTabVisibility(pTab->GetCurSel());
 	}
@@ -195,7 +195,7 @@ void CMFCApplication1Dlg::OnWindowScreenshot()
 		return;
 	}
 
-	// 获取窗口尺寸
+	// Get window dimensions
 	RECT rc;
 	::GetWindowRect(m_hSelectedWnd, &rc);
 	int width = rc.right - rc.left;
@@ -206,29 +206,29 @@ void CMFCApplication1Dlg::OnWindowScreenshot()
 		return;
 	}
 
-	// 创建设备上下文
+	// Create device context
 	HDC hdcScreen = ::GetDC(NULL);
 	HDC hdcMem = ::CreateCompatibleDC(hdcScreen);
 	HBITMAP hBitmap = ::CreateCompatibleBitmap(hdcScreen, width, height);
 	HBITMAP hOldBmp = static_cast<HBITMAP>(::SelectObject(hdcMem, hBitmap));
 
-	// 使用 PrintWindow 截取窗口（多级回退）
-	// PW_RENDERFULLCONTENT(0x2): 对 DWM 合成窗口效果最好，支持 GPU 渲染内容
+	// Use PrintWindow to capture window (multi-level fallback)
+	// PW_RENDERFULLCONTENT(0x2): best for DWM composited windows, supports GPU rendered content
 	BOOL bPrintOK = ::PrintWindow(m_hSelectedWnd, hdcMem, 0x2);
 	if (!bPrintOK)
 	{
-		// 回退1: 不带标志的 PrintWindow
+		// Fallback 1: PrintWindow without flags
 		bPrintOK = ::PrintWindow(m_hSelectedWnd, hdcMem, 0);
 	}
 	if (!bPrintOK)
 	{
-		// 回退2: BitBlt 从屏幕直接拷贝
+		// Fallback 2: BitBlt from screen directly
 		::SetForegroundWindow(m_hSelectedWnd);
 		::Sleep(100);
 		::BitBlt(hdcMem, 0, 0, width, height, hdcScreen, rc.left, rc.top, SRCCOPY);
 	}
 
-	// 复制到剪贴板
+	// Copy to clipboard
 	if (::OpenClipboard(m_hWnd))
 	{
 		::EmptyClipboard();
@@ -241,7 +241,7 @@ void CMFCApplication1Dlg::OnWindowScreenshot()
 		::DeleteObject(hBitmap);
 	}
 
-	// 保存到文件
+	// Save to file
 	{
 		CString sDir = AfxGetApp()->GetProfileString(_T("Paths"), _T("ScreenshotDir"), _T(""));
 		if (sDir.IsEmpty())
@@ -251,7 +251,7 @@ void CMFCApplication1Dlg::OnWindowScreenshot()
 				sDir = szDesktop;
 		}
 
-		// 生成带时间戳的文件名
+		// Generate timestamped filename
 		SYSTEMTIME st;
 		GetLocalTime(&st);
 		CString sFilename;
@@ -260,14 +260,14 @@ void CMFCApplication1Dlg::OnWindowScreenshot()
 
 		CString sFullPath = sDir + sFilename;
 
-		// 确保目录存在
+		// Ensure directory exists
 		::SHCreateDirectoryEx(NULL, sDir, NULL);
 
-		// 保存为 PNG（使用 ATL CImage）
+		// Save as PNG (using ATL CImage)
 		CImage img;
 		img.Attach(hBitmap);
 		img.Save(sFullPath);
-		img.Detach();  // 避免 hBitmap 被 CImage 析构时释放
+		img.Detach();  // Prevent hBitmap from being freed by CImage destructor
 
 		CString sMsg;
 		sMsg.Format(_T("截图已保存到:\n%s"), sFullPath);
@@ -281,7 +281,7 @@ void CMFCApplication1Dlg::OnWindowScreenshot()
 
 void CMFCApplication1Dlg::OnWindowLocate()
 {
-	// 切换到窗口处理标签页并触发定位
+	// Switch to window handling tab and trigger locate
 	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
 	if (pTab) { pTab->SetCurSel(3); UpdateTabVisibility(3); }
 	OnBnClickedButton19();
@@ -296,11 +296,11 @@ void CMFCApplication1Dlg::OnWindowUntopmost()
 	}
 	m_topmostWnds.clear();
 
-	// 同步取消工具箱自身置顶复选框
+	// Sync uncheck toolbox topmost checkbox
 	CButton* pCheck3 = static_cast<CButton*>(GetDlgItem(IDC_CHECK3));
 	if (pCheck3) pCheck3->SetCheck(BST_UNCHECKED);
 
-	// 刷新显示
+	// Refresh display
 	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
 	if (pTab) UpdateTabVisibility(pTab->GetCurSel());
 }
@@ -318,7 +318,7 @@ void CMFCApplication1Dlg::OnWindowClose()
 		if (MessageBox(msg, _T("确认关闭"), MB_YESNO | MB_ICONQUESTION) == IDYES)
 		{
 			::SendMessage(m_hSelectedWnd, WM_CLOSE, 0, 0);
-			// 从置顶列表中移除
+			// Remove from topmost list
 			m_topmostWnds.erase(
 				std::remove_if(m_topmostWnds.begin(), m_topmostWnds.end(),
 					[](HWND h) { return !IsValidWindow(h); }),
@@ -351,14 +351,14 @@ void CMFCApplication1Dlg::OnUntopmostWindow()
 
 	m_topmostWnds.erase(m_topmostWnds.begin() + idx);
 
-	// 如果是工具箱自身，同步取消复选框
+	// If it is the toolbox itself, sync uncheck checkbox
 	if (hWnd == m_hWnd)
 	{
 		CButton* pCheck = static_cast<CButton*>(GetDlgItem(IDC_CHECK3));
 		if (pCheck) pCheck->SetCheck(BST_UNCHECKED);
 	}
 
-	// 刷新列表显示
+	// Refresh list display
 	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
 	if (pTab) UpdateTabVisibility(pTab->GetCurSel());
 }
@@ -378,7 +378,7 @@ void CMFCApplication1Dlg::OnCopyStartupPath()
 
 void CMFCApplication1Dlg::OnNMDblclkList2(NMHDR* pNMHDR, LRESULT* pResult)
 {
-	// 双击启动项列表直接复制路径
+	// Double-click startup list to copy path directly
 	OnCopyStartupPath();
 	*pResult = 0;
 }
@@ -595,23 +595,23 @@ void CMFCApplication1Dlg::OnBnClickedCheck3()
 
     if (pCheck->GetCheck() == BST_CHECKED)
     {
-        // 置顶
+        // Topmost
         SetWindowPos(&wndTopMost, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-        // 避免重复添加
+        // Avoid duplicate additions
         auto it = std::find(m_topmostWnds.begin(), m_topmostWnds.end(), m_hWnd);
         if (it == m_topmostWnds.end())
             m_topmostWnds.push_back(m_hWnd);
     }
     else
     {
-        // 取消置顶
+        // Cancel topmost
         SetWindowPos(&wndNoTopMost, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
         m_topmostWnds.erase(
             std::remove(m_topmostWnds.begin(), m_topmostWnds.end(), m_hWnd),
             m_topmostWnds.end());
     }
 
-    // 刷新置顶窗口列表
+    // Refresh topmost window list
     CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
     if (pTab && pTab->GetCurSel() == 3)
         UpdateTabVisibility(3);

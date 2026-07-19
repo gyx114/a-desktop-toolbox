@@ -9,7 +9,7 @@
 
 namespace fs = std::filesystem;
 
-// 右键菜单命令ID
+// Right-click menu command IDs
 #define IDM_FILE_MARK_DELETE    32820
 #define IDM_FILE_UNMARK_DELETE  32821
 #define IDM_FILE_CHANGE_EXT     32822
@@ -24,7 +24,7 @@ namespace fs = std::filesystem;
 #define IDM_FILE_TRACK          32831
 #define IDM_FILE_UNTRACK        32832
 
-// 简单的输入对话框类
+// Simple input dialog class
 class CInputDialog : public CDialogEx
 {
 public:
@@ -128,7 +128,7 @@ BEGIN_MESSAGE_MAP(CBatchRenameDlg, CDialogEx)
     ON_WM_CLOSE()
 END_MESSAGE_MAP()
 
-// ========== 初始化 ==========
+// ========== Initialization ==========
 
 BOOL CBatchRenameDlg::OnInitDialog()
 {
@@ -136,12 +136,12 @@ BOOL CBatchRenameDlg::OnInitDialog()
 
     DragAcceptFiles(TRUE);
 
-    // 初始化标签页
+    // Initialize tabs
     m_tabCtrl.SubclassDlgItem(IDC_TAB_FOLDER, this);
     m_tabCtrl.InsertItem(0, _T("文件夹操作"));
     m_tabCtrl.InsertItem(1, _T("文件批量处理"));
 
-    // 初始化文件列表
+    // Initialize file list
     CListCtrl* pFileList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_RENAME));
     if (pFileList)
     {
@@ -154,7 +154,7 @@ BOOL CBatchRenameDlg::OnInitDialog()
         pFileList->InsertColumn(1, _T("新文件名/状态"), LVCFMT_LEFT, totalWidth * 3 / 5 - totalWidth / 12);
     }
 
-    // 初始化文件夹列表
+    // Initialize folder list
     CListCtrl* pFolderList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_FOLDERS));
     if (pFolderList)
     {
@@ -169,7 +169,7 @@ BOOL CBatchRenameDlg::OnInitDialog()
     GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(FALSE);
     GetDlgItem(IDC_BTN_RENAME_PREVIEW)->EnableWindow(FALSE);
 
-    // 如果有初始文件夹路径，加载它
+    // If there is an initial folder path, load it
     if (!m_folderPath.IsEmpty())
     {
         SetDlgItemText(IDC_EDIT_RENAME_FOLDER, m_folderPath);
@@ -181,7 +181,7 @@ BOOL CBatchRenameDlg::OnInitDialog()
     return TRUE;
 }
 
-// ========== 标签页切换 ==========
+// ========== Tab switching ==========
 
 void CBatchRenameDlg::OnTcnSelchangeTab(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 {
@@ -193,7 +193,7 @@ void CBatchRenameDlg::ShowTab(int nTab)
 {
     m_nActiveTab = nTab;
 
-    // 文件夹操作控件（含标签）
+    // Folder operation controls (with labels)
     static const int folderIDs[] = {
         IDC_LIST_FOLDERS, IDC_BTN_FOLDER_RENAME, IDC_BTN_FOLDER_MOVE,
         IDC_BTN_FOLDER_DELETE, IDC_BTN_FOLDER_SELECTALL, IDC_BTN_FOLDER_DESELECTALL,
@@ -202,7 +202,7 @@ void CBatchRenameDlg::ShowTab(int nTab)
     };
     constexpr int nFolderIDs = sizeof(folderIDs) / sizeof(folderIDs[0]);
 
-    // 文件批量处理控件（含标签）
+    // File batch processing controls (with labels)
     static const int fileIDs[] = {
         IDC_LIST_RENAME,
         IDC_EDIT_RENAME_PREFIX, IDC_EDIT_RENAME_SUFFIX,
@@ -227,7 +227,7 @@ void CBatchRenameDlg::ShowTab(int nTab)
     };
     constexpr int nFileIDs = sizeof(fileIDs) / sizeof(fileIDs[0]);
 
-    // 隐藏所有tab相关控件
+    // Hide all tab-related controls
     for (int i = 0; i < nFolderIDs; i++)
     {
         CWnd* pWnd = GetDlgItem(folderIDs[i]);
@@ -239,7 +239,7 @@ void CBatchRenameDlg::ShowTab(int nTab)
         if (pWnd) pWnd->ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
     }
 
-    // 更新按钮状态
+    // Update button state
     if (nTab == 1)
     {
         GetDlgItem(IDC_BTN_RENAME_PREVIEW)->EnableWindow(!m_entries.empty());
@@ -275,7 +275,7 @@ BOOL CBatchRenameDlg::PreTranslateMessage(MSG* pMsg)
     return CDialogEx::PreTranslateMessage(pMsg);
 }
 
-// ========== 共享功能 ==========
+// ========== Shared functionality ==========
 
 void CBatchRenameDlg::SetFolderPath(const CString& path)
 {
@@ -346,7 +346,7 @@ void CBatchRenameDlg::OnDropFiles(HDROP hDrop)
     ::DragQueryFile(hDrop, 0, path, MAX_PATH);
     ::DragFinish(hDrop);
 
-    // 检查是否为文件夹
+    // Check if it is a folder
     DWORD attrs = ::GetFileAttributes(path);
     if (attrs == INVALID_FILE_ATTRIBUTES || !(attrs & FILE_ATTRIBUTE_DIRECTORY))
     {
@@ -357,7 +357,7 @@ void CBatchRenameDlg::OnDropFiles(HDROP hDrop)
     SetFolderPath(path);
 }
 
-// ========== Tab 0: 文件夹操作 ==========
+// ========== Tab 0: Folder operations ==========
 
 void CBatchRenameDlg::LoadFolders()
 {
@@ -444,7 +444,7 @@ void CBatchRenameDlg::OnBnClickedFolderRename()
         return;
     }
 
-    // 弹出输入对话框
+    // Show input dialog
     CString defaultName = m_folders[selected[0]].name;
     CInputDialog dlg(_T("请输入新的文件夹名称:"), _T("重命名文件夹"), defaultName);
     if (dlg.DoModal() != IDOK) return;
@@ -453,7 +453,7 @@ void CBatchRenameDlg::OnBnClickedFolderRename()
     newName.Trim();
     if (newName.IsEmpty()) return;
 
-    // 检查非法字符
+    // Check for illegal characters
     CString invalid = _T("\\/:*?\"<>|");
     for (int i = 0; i < invalid.GetLength(); i++)
     {
@@ -504,7 +504,7 @@ void CBatchRenameDlg::OnBnClickedFolderMove()
         return;
     }
 
-    // 弹出浏览对话框选择目标路径
+    // Show browse dialog to select target path
     BROWSEINFO bi = {0};
     bi.hwndOwner = m_hWnd;
     bi.lpszTitle = _T("选择目标文件夹");
@@ -670,7 +670,7 @@ void CBatchRenameDlg::OnBnClickedCurrentDelete()
         return;
     }
 
-    // 清除当前路径
+    // Clear current path
     m_folderPath.Empty();
     SetDlgItemText(IDC_EDIT_RENAME_FOLDER, _T(""));
     m_folders.clear();
@@ -727,7 +727,7 @@ void CBatchRenameDlg::OnFolderListRightClick(NMHDR* /*pNMHDR*/, LRESULT* pResult
 
 void CBatchRenameDlg::OnFolderListCheckChanged(NMHDR* pNMHDR, LRESULT* pResult)
 {
-    // 将列表选中状态同步到复选框：当用户点击/Shift+点击/拖拽选中时，自动勾选
+    // Sync list selection state to checkbox: auto-check when user clicks/Shift-clicks/drags
     NMLISTVIEW* pNMLV = reinterpret_cast<NMLISTVIEW*>(pNMHDR);
     if ((pNMLV->uChanged & LVIF_STATE) && pNMLV->iItem >= 0)
     {
@@ -794,7 +794,7 @@ void CBatchRenameDlg::OnFileIgnore()
             if (i < static_cast<int>(m_entries.size()))
             {
                 m_manualIgnoredSet.insert(m_entries[i].fullPath);
-                // 最近操作优先：手动忽略时清除跟踪和未忽略状态
+                // Recent operation priority: clear tracked and unignored state when manually ignoring
                 m_manualTrackedSet.erase(m_entries[i].fullPath);
                 m_manualUnignoredSet.erase(m_entries[i].fullPath);
                 m_entries[i].bIgnored = true;
@@ -822,7 +822,7 @@ void CBatchRenameDlg::OnFileUnignore()
             if (i < static_cast<int>(m_entries.size()))
             {
                 m_manualIgnoredSet.erase(m_entries[i].fullPath);
-                // 手动取消忽略：后续规则匹配不会重新忽略
+                // Manual unignore: subsequent rule matching will not re-ignore
                 m_manualUnignoredSet.insert(m_entries[i].fullPath);
             }
         }
@@ -872,7 +872,7 @@ void CBatchRenameDlg::OnFileTrack()
         {
             if (i < static_cast<int>(m_entries.size()))
             {
-                // 跟踪优先：跟踪时自动清除忽略
+                // Track priority: auto clear ignore when tracking
                 m_manualIgnoredSet.erase(m_entries[i].fullPath);
                 m_manualTrackedSet.insert(m_entries[i].fullPath);
                 m_entries[i].bTracked = true;
@@ -918,7 +918,7 @@ void CBatchRenameDlg::OnBnClickedTrackClear()
     GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(TRUE);
 }
 
-// ========== Tab 1: 文件批量处理 ==========
+// ========== Tab 1: File batch processing ==========
 
 void CBatchRenameDlg::LoadFiles()
 {
@@ -939,7 +939,7 @@ void CBatchRenameDlg::LoadFiles()
                 re.newName = re.oldName;
                 re.fullPath = entry.path();
                 re.bMarkedDelete = false;
-                // 根据路径恢复手动忽略/跟踪/未忽略状态
+                // Restore manual ignore/track/unignore state based on path
                 if (m_manualIgnoredSet.count(entry.path()) > 0)
                     re.bIgnored = true;
                 if (m_manualUnignoredSet.count(entry.path()) > 0)
@@ -975,7 +975,7 @@ void CBatchRenameDlg::ApplyIgnoreRules()
 
     for (size_t i = 0; i < m_entries.size(); i++)
     {
-        // 手动跟踪优先：已手动跟踪的文件不能被忽略
+        // Manual track priority: manually tracked files cannot be ignored
         if (m_manualTrackedSet.count(m_entries[i].fullPath) > 0)
         {
             m_entries[i].bIgnored = false;
@@ -983,7 +983,7 @@ void CBatchRenameDlg::ApplyIgnoreRules()
             continue;
         }
 
-        // 手动忽略
+        // Manual ignore
         if (m_manualIgnoredSet.count(m_entries[i].fullPath) > 0)
         {
             m_entries[i].bIgnored = true;
@@ -992,7 +992,7 @@ void CBatchRenameDlg::ApplyIgnoreRules()
             continue;
         }
 
-        // 手动取消忽略：用户明确取消忽略的文件不受规则影响
+        // Manual unignore: files explicitly unignored by user are not affected by rules
         if (m_manualUnignoredSet.count(m_entries[i].fullPath) > 0)
         {
             m_entries[i].bIgnored = false;
@@ -1001,7 +1001,7 @@ void CBatchRenameDlg::ApplyIgnoreRules()
 
         m_entries[i].bIgnored = false;
 
-        // 按后缀忽略
+        // Ignore by extension
         if (bIgnoreExt && !ignoreExtStr.IsEmpty())
         {
             CString ext = PathFindExtension(m_entries[i].oldName);
@@ -1030,7 +1030,7 @@ void CBatchRenameDlg::ApplyIgnoreRules()
 
         if (m_entries[i].bIgnored) continue;
 
-        // 按匹配忽略
+        // Ignore by match
         if (bIgnoreMatch && !ignorePattern.IsEmpty())
         {
             try
@@ -1071,7 +1071,7 @@ void CBatchRenameDlg::ApplyTrackRules()
 
     for (size_t i = 0; i < m_entries.size(); i++)
     {
-        // 手动跟踪优先：强制清除忽略状态
+        // Manual track priority: force clear ignore state
         if (m_manualTrackedSet.count(m_entries[i].fullPath) > 0)
         {
             m_entries[i].bTracked = true;
@@ -1080,7 +1080,7 @@ void CBatchRenameDlg::ApplyTrackRules()
             continue;
         }
 
-        // 已手动忽略的文件不参与跟踪
+        // Manually ignored files do not participate in tracking
         if (m_manualIgnoredSet.count(m_entries[i].fullPath) > 0)
         {
             m_entries[i].bTracked = false;
@@ -1089,7 +1089,7 @@ void CBatchRenameDlg::ApplyTrackRules()
 
         m_entries[i].bTracked = false;
 
-        // 按后缀跟踪
+        // Track by extension
         if (bTrackExt && !trackExtStr.IsEmpty())
         {
             CString ext = PathFindExtension(m_entries[i].oldName);
@@ -1119,7 +1119,7 @@ void CBatchRenameDlg::ApplyTrackRules()
 
         if (m_entries[i].bTracked) continue;
 
-        // 按匹配跟踪
+        // Track by match
         if (bTrackMatch && !trackPattern.IsEmpty())
         {
             try
@@ -1152,7 +1152,7 @@ void CBatchRenameDlg::ApplyTrackRules()
 
 void CBatchRenameDlg::ApplyRules()
 {
-    // 先应用忽略规则，再应用跟踪规则（跟踪优先，可覆盖忽略）
+    // Apply ignore rules first, then track rules (track takes priority, can override ignore)
     ApplyIgnoreRules();
     ApplyTrackRules();
 
@@ -1173,7 +1173,7 @@ void CBatchRenameDlg::ApplyRules()
     if (bDeleteMatch)
         GetDlgItemText(IDC_EDIT_DELETE_PATTERN, deletePattern);
 
-    // 计算非忽略、非删除的文件数量，用于序号位数
+    // Count non-ignored, non-deleted files for digit padding
     int activeCount = 0;
     for (size_t i = 0; i < m_entries.size(); i++)
     {
@@ -1192,7 +1192,7 @@ void CBatchRenameDlg::ApplyRules()
 
     for (size_t i = 0; i < m_entries.size(); i++)
     {
-        // 被忽略的文件：不参与任何操作
+        // Ignored files: skip all operations
         if (m_entries[i].bIgnored)
         {
             m_entries[i].newName = m_entries[i].oldName;
@@ -1200,7 +1200,7 @@ void CBatchRenameDlg::ApplyRules()
             continue;
         }
 
-        // 匹配删除检查
+        // Match delete check
         if (bDeleteMatch && !deletePattern.IsEmpty())
         {
             try
@@ -1208,7 +1208,7 @@ void CBatchRenameDlg::ApplyRules()
                 std::wstring wName = static_cast<LPCWSTR>(m_entries[i].oldName);
                 std::wregex re(static_cast<LPCWSTR>(deletePattern));
                 bool bMatched = std::regex_search(wName, re);
-                // 反选：匹配时不删除，不匹配时删除
+                // Invert: delete when not matched, keep when matched
                 bool bShouldDelete = bDeleteInvert ? !bMatched : bMatched;
                 if (bShouldDelete)
                 {
@@ -1231,7 +1231,7 @@ void CBatchRenameDlg::ApplyRules()
         CString stem, ext;
         if (m_entries[i].bCustomExt)
         {
-            // 使用用户自定义的后缀
+            // Use user-defined custom extension
             if (dotPos > 0)
                 stem = name.Left(dotPos);
             else
@@ -1277,12 +1277,12 @@ void CBatchRenameDlg::ApplyRules()
             numStr.Format(_T("_%0*d"), numDigits, startNum + numIdx - 1);
             if (bNumberAfterExt)
             {
-                // 序号在后缀后：prefix + stem + suffix + _num + ext
+                // Number after extension: prefix + stem + suffix + _num + ext
                 m_entries[i].newName = prefix + stem + suffix + numStr + ext;
             }
             else
             {
-                // 序号在后缀前（默认）：prefix + stem + _num + suffix + ext
+                // Number before extension (default): prefix + stem + _num + suffix + ext
                 m_entries[i].newName = prefix + stem + numStr + suffix + ext;
             }
         }
@@ -1331,10 +1331,10 @@ void CBatchRenameDlg::OnBnClickedFileExecute()
         return;
     }
 
-    // 分离删除和重命名操作
+    // Separate delete and rename operations
     int deleteCount = 0, renameCount = 0, renameFail = 0, deleteFail = 0;
 
-    // 确认删除
+    // Confirm delete
     for (const auto& entry : m_entries)
     {
         if (!entry.bIgnored && entry.bMarkedDelete) deleteCount++;
@@ -1354,7 +1354,7 @@ void CBatchRenameDlg::OnBnClickedFileExecute()
     }
     else
     {
-        // 检查重名
+        // Check for duplicate names
         std::set<CString> newNames;
         for (const auto& entry : m_entries)
         {
@@ -1373,7 +1373,7 @@ void CBatchRenameDlg::OnBnClickedFileExecute()
 
     std::error_code ec;
 
-    // 先执行删除
+    // Execute delete first
     int actualDeleted = 0;
     for (auto& entry : m_entries)
     {
@@ -1383,7 +1383,7 @@ void CBatchRenameDlg::OnBnClickedFileExecute()
         else actualDeleted++;
     }
 
-    // 再执行重命名
+    // Then execute rename
     for (auto& entry : m_entries)
     {
         if (entry.bIgnored || entry.bMarkedDelete) continue;
@@ -1430,7 +1430,7 @@ void CBatchRenameDlg::OnBnClickedRegexHelp()
     m_hRegexGuideWnd = pDlg->GetSafeHwnd();
 }
 
-// 右键菜单
+// Right-click menu
 void CBatchRenameDlg::OnFileListRightClick(NMHDR* /*pNMHDR*/, LRESULT* pResult)
 {
     CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_RENAME));
@@ -1520,7 +1520,7 @@ void CBatchRenameDlg::OnFileUnmarkAll()
         m_entries[i].bMarkedDelete = false;
     }
 
-    // 自动执行预览
+    // Auto execute preview
     ApplyRules();
     RefreshFileList();
     m_bPreviewDone = true;
@@ -1533,14 +1533,14 @@ void CBatchRenameDlg::OnFileResetAll()
         _T("确认"), MB_YESNO | MB_ICONQUESTION) != IDYES)
         return;
 
-    // 清除所有编辑框
+    // Clear all edit boxes
     SetDlgItemText(IDC_EDIT_RENAME_PREFIX, _T(""));
     SetDlgItemText(IDC_EDIT_RENAME_SUFFIX, _T(""));
     SetDlgItemText(IDC_EDIT_RENAME_REPLACE_FROM, _T(""));
     SetDlgItemText(IDC_EDIT_RENAME_REPLACE_TO, _T(""));
     SetDlgItemText(IDC_EDIT_DELETE_PATTERN, _T(""));
 
-    // 取消所有复选框
+    // Uncheck all checkboxes
     static_cast<CButton*>(GetDlgItem(IDC_CHECK_RENAME_NUMBER))->SetCheck(BST_UNCHECKED);
     static_cast<CButton*>(GetDlgItem(IDC_CHECK_RENAME_REGEX))->SetCheck(BST_UNCHECKED);
     static_cast<CButton*>(GetDlgItem(IDC_CHECK_DELETE_MATCH))->SetCheck(BST_UNCHECKED);
@@ -1557,7 +1557,7 @@ void CBatchRenameDlg::OnFileResetAll()
     SetDlgItemText(IDC_EDIT_TRACK_EXT, _T(""));
     SetDlgItemText(IDC_EDIT_TRACK_PATTERN, _T(""));
 
-    // 清除所有删除标记和忽略、跟踪、未忽略
+    // Clear all delete marks, ignore, track, and unignore
     m_manualIgnoredSet.clear();
     m_manualUnignoredSet.clear();
     m_manualTrackedSet.clear();
@@ -1568,7 +1568,7 @@ void CBatchRenameDlg::OnFileResetAll()
         m_entries[i].customExt.Empty();
     }
 
-    // 自动执行预览
+    // Auto execute preview
     ApplyRules();
     RefreshFileList();
     m_bPreviewDone = true;
@@ -1580,7 +1580,7 @@ void CBatchRenameDlg::OnFileChangeExt()
     CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_RENAME));
     if (!pList) return;
 
-    // 获取选中项的当前后缀
+    // Get current extension of selected item
     CString defaultExt = _T("txt");
     for (int i = 0; i < pList->GetItemCount(); i++)
     {
@@ -1598,7 +1598,7 @@ void CBatchRenameDlg::OnFileChangeExt()
         }
     }
 
-    // 弹出输入对话框
+    // Show input dialog
     CString newExt;
     CInputDialog dlg(_T("请输入新后缀（不含点号）:"), _T("修改后缀"), defaultExt);
     if (dlg.DoModal() != IDOK) return;
@@ -1607,7 +1607,7 @@ void CBatchRenameDlg::OnFileChangeExt()
     newExt.Trim();
     if (newExt.IsEmpty()) return;
 
-    // 检查非法字符
+    // Check for illegal characters
     CString invalid = _T("\\/:*?\"<>|.");
     for (int i = 0; i < invalid.GetLength(); i++)
     {
@@ -1618,7 +1618,7 @@ void CBatchRenameDlg::OnFileChangeExt()
         }
     }
 
-    // 为所有选中项修改后缀
+    // Change extension for all selected items
     int nCount = pList->GetItemCount();
     for (int i = 0; i < nCount; i++)
     {
@@ -1635,7 +1635,7 @@ void CBatchRenameDlg::OnFileChangeExt()
         }
     }
 
-    // 自动预览以显示完整结果
+    // Auto preview to show complete results
     ApplyRules();
     RefreshFileList();
     m_bPreviewDone = true;
@@ -1660,7 +1660,7 @@ void CBatchRenameDlg::OnFileRestoreExt()
         }
     }
 
-    // 自动预览以恢复原始后缀
+    // Auto preview to restore original extension
     ApplyRules();
     RefreshFileList();
     m_bPreviewDone = true;

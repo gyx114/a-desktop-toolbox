@@ -132,7 +132,7 @@ void CMFCApplication1Dlg::OnBiliNext()
     SendInput(2, inputs, sizeof(INPUT));
 }
 
-// Command handler for context menu "复制命令"
+// Command handler for context menu "Copy Command"
 void CMFCApplication1Dlg::OnCopyGitCommand()
 {
     CWnd* pWnd = GetDlgItem(IDC_LIST4);
@@ -192,17 +192,17 @@ void CMFCApplication1Dlg::OnBnClickedButton1()
 
     if (sel == 0)
     {
-        // 1分钟后重启
+        // Restart in 1 minute
         ::ShellExecute(NULL, _T("open"), _T("shutdown.exe"), _T("/r /t 60"), NULL, SW_HIDE);
     }
     else if (sel == 1)
     {
-        // 默认 3 分钟关机
+        // Default 3-minute shutdown
         ::ShellExecute(NULL, _T("open"), _T("shutdown.exe"), _T("/s /t 180"), NULL, SW_HIDE);
     }
     else if (sel == 2)
     {
-        // 设定时间关机
+        // Set time shutdown
         int seconds = ParseShutdownSeconds(this);
         CString cmd;
         cmd.Format(_T("/s /t %d"), seconds);
@@ -226,7 +226,7 @@ void CMFCApplication1Dlg::OnBnClickedButton8()
 
 void CMFCApplication1Dlg::OnBnClickedButton2()
 {
-    // 解除关机/重启
+    // Cancel shutdown/restart
     ::ShellExecute(NULL, _T("open"), _T("shutdown.exe"), _T("/a"), NULL, SW_HIDE);
 }
 
@@ -234,7 +234,7 @@ void CMFCApplication1Dlg::OnCbnSelchangeCombo1()
 {
     // Use the selected text instead of index because the combo may be
     // created with CBS_SORT or items may reorder. Enable edits only when
-    // the selected string indicates "设定时间".
+    // the selected string indicates "Set time".
     CComboBox* pCombo = (CComboBox*)GetDlgItem(IDC_COMBO1);
     CString selText;
     if (pCombo)
@@ -270,7 +270,7 @@ void CMFCApplication1Dlg::OnCbnSelchangeCombo1()
 
 void CMFCApplication1Dlg::OnBnClickedButton4()
 {
-    // 1. 通过遍历进程检查微信是否在运行
+    // 1. Check if WeChat is running by enumerating processes
     bool bIsWeChatRunning = false;
     HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (hProcessSnap != INVALID_HANDLE_VALUE)
@@ -296,7 +296,7 @@ void CMFCApplication1Dlg::OnBnClickedButton4()
 
     if (bIsWeChatRunning)
     {
-        // 微信已运行，模拟发送微信默认的全局快捷键 Ctrl + Alt + W
+        // WeChat is running, simulate its default global hotkey Ctrl + Alt + W
         INPUT inputs[6] = { 0 };
 
         inputs[0].type = INPUT_KEYBOARD;
@@ -332,7 +332,7 @@ void CMFCApplication1Dlg::OnBnClickedButton4()
 
 void CMFCApplication1Dlg::OnBnClickedButton5()
 {
-    // 1. 通过遍历进程检查QQ是否在运行
+    // 1. Check if QQ is running by enumerating processes
     bool bIsQQRunning = false;
     HANDLE hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     if (hProcessSnap != INVALID_HANDLE_VALUE)
@@ -345,7 +345,7 @@ void CMFCApplication1Dlg::OnBnClickedButton5()
             do
             {
                 CString strExeFile = pe32.szExeFile;
-                strExeFile.MakeLower(); // 转换为小写以便匹配
+                strExeFile.MakeLower(); // Convert to lowercase for matching
                 if (strExeFile == _T("qq.exe"))
                 {
                     bIsQQRunning = true;
@@ -358,37 +358,37 @@ void CMFCApplication1Dlg::OnBnClickedButton5()
 
     if (bIsQQRunning)
     {
-        // QQ已运行，模拟发送快捷键 Ctrl + Alt + X
+        // QQ is running, simulate hotkey Ctrl + Alt + X
         INPUT inputs[6] = { 0 };
 
-        // 1. 按下 Ctrl
+        // 1. Press Ctrl
         inputs[0].type = INPUT_KEYBOARD;
         inputs[0].ki.wVk = VK_CONTROL;
 
-        // 2. 按下 Alt
+        // 2. Press Alt
         inputs[1].type = INPUT_KEYBOARD;
         inputs[1].ki.wVk = VK_MENU;
 
-        // 3. 按下 X
+        // 3. Press X
         inputs[2].type = INPUT_KEYBOARD;
         inputs[2].ki.wVk = 'X';
 
-        // 4. 松开 X
+        // 4. Release X
         inputs[3].type = INPUT_KEYBOARD;
         inputs[3].ki.wVk = 'X';
         inputs[3].ki.dwFlags = KEYEVENTF_KEYUP;
 
-        // 5. 松开 Alt
+        // 5. Release Alt
         inputs[4].type = INPUT_KEYBOARD;
         inputs[4].ki.wVk = VK_MENU;
         inputs[4].ki.dwFlags = KEYEVENTF_KEYUP;
 
-        // 6. 松开 Ctrl
+        // 6. Release Ctrl
         inputs[5].type = INPUT_KEYBOARD;
         inputs[5].ki.wVk = VK_CONTROL;
         inputs[5].ki.dwFlags = KEYEVENTF_KEYUP;
 
-        // 发送输入
+        // Send input
         SendInput(ARRAYSIZE(inputs), inputs, sizeof(INPUT));
     }
     else

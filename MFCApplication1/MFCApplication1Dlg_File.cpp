@@ -15,11 +15,11 @@ void CMFCApplication1Dlg::OnDropFiles(HDROP hDropInfo)
         return;
     }
 
-    // 检查是否为文件夹
+    // Check if it is a folder
     DWORD attrs = ::GetFileAttributes(szFilePath);
     if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY))
     {
-        // 拖入的是文件夹，打开文件夹处理窗口
+        // Dropped item is a folder, open folder processing window
         DragFinish(hDropInfo);
         auto* pDlg = new CBatchRenameDlg(nullptr, szFilePath);
         pDlg->Create(IDD_BATCH_RENAME_DLG, nullptr);
@@ -27,7 +27,7 @@ void CMFCApplication1Dlg::OnDropFiles(HDROP hDropInfo)
         return;
     }
 
-    // 拖入的是文件，继续原有tab5逻辑
+    // Dropped item is a file, continue with existing tab5 logic
     m_strDroppedFilePath = szFilePath;
     // display path
     CWnd* pStatic = GetDlgItem(IDC_STATIC_PATH);
@@ -205,7 +205,7 @@ void CMFCApplication1Dlg::OnBnClickedButton23()
 
 void CMFCApplication1Dlg::OnStnClickedStaticPath()
 {
-    // TODO: 在此添加控件通知处理程序代码
+    // TODO: Add control notification handler code here
 }
 
 // Copy selected dropped file to target directory specified in IDC_MFCEDITBROWSE2
@@ -326,13 +326,13 @@ void CMFCApplication1Dlg::OnBnClickedButton26()
     }
 }
 
-// 复选按钮：设置或取消开机自启动（写入或删除当前用户 Run 注册表项）
+// Checkbox: set or cancel auto-start (write or delete current user Run registry entry)
 void CMFCApplication1Dlg::OnBnClickedCheck1()
 {
     CButton* pCheck = (CButton*)GetDlgItem(IDC_CHECK1);
     if (!pCheck) return;
 
-    // 获取可执行文件名及路径
+    // Get executable file name and path
     TCHAR exePath[MAX_PATH] = {0};
     if (GetModuleFileName(NULL, exePath, MAX_PATH) == 0)
     {
@@ -342,7 +342,7 @@ void CMFCApplication1Dlg::OnBnClickedCheck1()
 
     CString csExePath = exePath;
     int pos = csExePath.ReverseFind(_T('\\'));
-    CString keyName = (pos != -1) ? csExePath.Mid(pos + 1) : csExePath; // 使用可执行文件名作为注册表项名
+    CString keyName = (pos != -1) ? csExePath.Mid(pos + 1) : csExePath; // Use executable file name as registry key name
 
     HKEY hKey = NULL;
     LONG ret = RegOpenKeyEx(HKEY_CURRENT_USER, _T("Software\\Microsoft\\Windows\\CurrentVersion\\Run"), 0, KEY_SET_VALUE | KEY_QUERY_VALUE, &hKey);
@@ -360,7 +360,7 @@ void CMFCApplication1Dlg::OnBnClickedCheck1()
         return;
     }
 
-    // 查询当前注册表中是否已有自启动项，以实现复选按钮的开关切换效果
+    // Query if auto-start entry already exists in registry to toggle checkbox
     DWORD type = 0;
     TCHAR buf[MAX_PATH] = {0};
     DWORD bufSize = sizeof(buf);
@@ -369,7 +369,7 @@ void CMFCApplication1Dlg::OnBnClickedCheck1()
 
     if (isAlreadyAutostart)
     {
-        // 取消自启动：删除注册表值
+        // Cancel auto-start: delete registry value
         ret = RegDeleteValue(hKey, keyName);
         if (ret == ERROR_SUCCESS || ret == ERROR_FILE_NOT_FOUND)
         {
@@ -392,7 +392,7 @@ void CMFCApplication1Dlg::OnBnClickedCheck1()
     }
     else
     {
-        // 设置自启动：写入注册表，值为可执行完整路径并附加我们约定的启动标记 --elevate
+        // Set auto-start: write registry, value is full executable path with --elevate flag
         CString runValue;
         // Quote path in case it contains spaces
         runValue.Format(_T("\"%s\" --elevate"), csExePath);
@@ -412,7 +412,7 @@ void CMFCApplication1Dlg::OnBnClickedCheck1()
                 if (PromptRestartElevated()) { RegCloseKey(hKey); return; }
             }
             MessageBox(msg, _T("错误"), MB_OK | MB_ICONERROR);
-            // 恢复为未选中
+            // Restore to unchecked
             pCheck->SetCheck(BST_UNCHECKED);
         }
     }
@@ -425,6 +425,6 @@ void CMFCApplication1Dlg::OnBnClickedCheck2()
     CButton* pCheck = (CButton*)GetDlgItem(IDC_CHECK2);
     if (!pCheck) return;
 
-    // 更新内部标志
+    // Update internal flag
     m_bMinimizeOnClose = (pCheck->GetCheck() == BST_CHECKED);
 }

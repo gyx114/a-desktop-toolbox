@@ -3,7 +3,7 @@
 #include "afxwin.h"
 #include "resource.h"
 
-// 自定义消息：OCR识别完成，wParam=0失败/1成功，lParam=PWSTR结果文本
+// Custom message: OCR recognition complete, wParam=0 failure/1 success, lParam=PWSTR result text
 #define WM_OCR_COMPLETE       (WM_USER + 100)
 #define WM_TRANSLATE_COMPLETE (WM_USER + 101)
 
@@ -36,19 +36,19 @@ protected:
     DECLARE_MESSAGE_MAP()
 
 private:
-    // 框选截图：隐藏对话框→全屏截图→拖拽框选→返回选区位图
+    // Region capture: hide dialog → fullscreen screenshot → drag-select → return selected bitmap
     HBITMAP CaptureRegion();
 
-    // 后台线程：OCR 识别
+    // Background thread: OCR recognition
     static void OcrThreadProc(HBITMAP hBitmap, HWND hNotifyWnd);
 
-    // 后台线程：翻译（传入语言对）
+    // Background thread: translation (with language pair)
     static void TranslateThreadProc(const CString& text, const CString& langPair, HWND hNotifyWnd);
 
-    // 翻译 API 调用（带超时和语言对）
+    // Translation API call (with timeout and language pair)
     static CString CallTranslateAPI(const CString& text, const CString& langPair, int timeoutSeconds = 10);
 
-    // 获取当前选中的语言对（如 "zh-CN|en"）
+    // Get currently selected language pair (e.g. "zh-CN|en")
     CString GetSelectedLangPair() const;
 
     bool m_bBusy{ false };
@@ -60,7 +60,7 @@ private:
     CString m_ocrText;
     CString m_translatedText;
 
-    // 语言对映射：界面显示名 → API 参数
+    // Language pair mapping: display name → API parameter
     static const std::pair<const wchar_t*, const wchar_t*> s_langPairs[];
     static constexpr int s_langPairCount = 6;
 };

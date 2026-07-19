@@ -1,5 +1,4 @@
-
-// MFCApplication1.h: PROJECT_NAME 应用程序的主头文件
+// MFCApplication1.h: main header file for the PROJECT_NAME application
 //
 
 #pragma once
@@ -8,11 +7,11 @@
 	#error "在包含此文件之前包含 'pch.h' 以生成 PCH"
 #endif
 
-#include "resource.h"		// 主符号
+#include "resource.h"		// Main symbols
 
 
 // CMFCApplication1App:
-// 有关此类的实现，请参阅 MFCApplication1.cpp
+// See MFCApplication1.cpp for the implementation of this class
 //
 
 class CMFCApplication1App : public CWinApp
@@ -20,12 +19,12 @@ class CMFCApplication1App : public CWinApp
 public:
 	CMFCApplication1App();
 
-// 重写
+// Overrides
 public:
 	virtual BOOL InitInstance();
 	virtual int ExitInstance();
 
-// 实现
+// Implementation
 	DECLARE_MESSAGE_MAP()
 
 private:

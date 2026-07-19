@@ -5,15 +5,15 @@
 #include "Utils.h"
 #include <Shellapi.h>
 
-// ========== 托盘相关功能 ==========
+// ========== Tray-related functionality ==========
 
 void CMFCApplication1Dlg::OnSize(UINT nType, int cx, int cy)
 {
     CDialogEx::OnSize(nType, cx, cy);
-    // 当窗口被最小化时，隐藏主窗口并显示托盘图标
+    // When window is minimized, hide main window and show tray icon
     if (nType == SIZE_MINIMIZED)
     {
-        // 创建托盘图标
+        // Create tray icon
         if (!m_bTrayVisible)
         {
             ZeroMemory(&m_nid, sizeof(m_nid));
@@ -38,7 +38,7 @@ LRESULT CMFCApplication1Dlg::OnTrayNotification(WPARAM wParam, LPARAM lParam)
 
     if (lParam == WM_RBUTTONUP)
     {
-        // 弹出托盘菜单
+        // Show tray menu
         CMenu menu;
         menu.CreatePopupMenu();
         menu.AppendMenu(MF_STRING, 2001, _T("显示窗口"));
@@ -52,7 +52,7 @@ LRESULT CMFCApplication1Dlg::OnTrayNotification(WPARAM wParam, LPARAM lParam)
     }
     else if (lParam == WM_LBUTTONDBLCLK)
     {
-        // 双击恢复
+        // Double-click to restore
         ShowWindow(SW_SHOW);
         ShowWindow(SW_RESTORE);
         if (m_bTrayVisible)
@@ -78,7 +78,7 @@ void CMFCApplication1Dlg::OnTrayShowWindow()
 
 void CMFCApplication1Dlg::OnTrayExit()
 {
-    // 删除托盘图标并退出程序
+    // Delete tray icon and exit program
     if (m_bTrayVisible)
     {
         Shell_NotifyIcon(NIM_DELETE, &m_nid);
@@ -125,10 +125,10 @@ void CMFCApplication1Dlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 
 void CMFCApplication1Dlg::OnClose()
 {
-    // 根据 m_bMinimizeOnClose 决定关闭时是最小化到托盘还是直接退出
+    // Based on m_bMinimizeOnClose, decide whether to minimize to tray or exit directly
     if (m_bMinimizeOnClose)
     {
-        // 与 Ctrl+Alt+Space 快捷键一致：添加托盘图标 → 隐藏主窗口
+        // Consistent with Ctrl+Alt+Space hotkey: add tray icon, hide main window
         if (!m_bTrayVisible)
         {
             ZeroMemory(&m_nid, sizeof(m_nid));
@@ -146,15 +146,15 @@ void CMFCApplication1Dlg::OnClose()
     }
     else
     {
-        // 清理托盘图标并调用默认关闭流程
+        // Clean up tray icon and call default close flow
         if (m_bTrayVisible)
         {
             Shell_NotifyIcon(NIM_DELETE, &m_nid);
             m_bTrayVisible = false;
         }
-        // 取消剪贴板监听
+        // Cancel clipboard listener
         ::RemoveClipboardFormatListener(m_hWnd);
-        // 清理可能存在的捕获窗口
+        // Clean up any existing capture window
         if (m_hCaptureWnd && IsValidWindow(m_hCaptureWnd))
         {
             ::DestroyWindow(m_hCaptureWnd);

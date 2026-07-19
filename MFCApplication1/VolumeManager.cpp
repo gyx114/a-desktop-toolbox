@@ -1,4 +1,4 @@
-// VolumeManager.cpp: 系统音量管理实现
+// VolumeManager.cpp: System volume management implementation
 #include "pch.h"
 #include "framework.h"
 #include "VolumeManager.h"

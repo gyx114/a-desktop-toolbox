@@ -1,6 +1,6 @@
 #pragma once
 
-// 从 PNG 文件识别文字，结果写入 output 缓冲区（宽字符）
-// 返回 true 表示成功，false 表示失败
-// preferChinese: 是否优先使用中文 OCR 引擎
+// Recognize text from a PNG file, write result to output buffer (wide chars)
+// Returns true on success, false on failure
+// preferChinese: whether to prefer the Chinese OCR engine
 bool OcrRecognizeFromFile(const wchar_t* filePath, wchar_t* output, int outputSize, bool preferChinese = true);

@@ -1,22 +1,22 @@
-// VolumeManager.h: 系统音量管理封装
+// VolumeManager.h: System volume management encapsulation
 #pragma once
 #include <Mmdeviceapi.h>
 #include <Endpointvolume.h>
 
-// 系统主音量管理器（通过 Core Audio EndpointVolume API）
+// System master volume manager (via Core Audio EndpointVolume API)
 class CVolumeManager
 {
 public:
-    // 获取系统主音量百分比（0-100），失败返回 100
+    // Get system master volume percentage (0-100), returns 100 on failure
     [[nodiscard]] static int GetMasterVolumePercent();
 
-    // 设置系统主音量百分比（0-100），返回是否成功
+    // Set system master volume percentage (0-100), returns success status
     static bool SetMasterVolumePercent(int percent);
 
-    // 异步获取音量并发送 WM_VOLUME_UPDATED 消息到目标窗口
-    // wParam 为音量百分比
+    // Asynchronously fetch volume and send WM_VOLUME_UPDATED message to target window
+    // wParam is the volume percentage
     static void FetchVolumeAsync(HWND hwndNotify);
 
-    // 自定义消息 ID
+    // Custom message ID
     static constexpr UINT WM_VOLUME_UPDATED = WM_APP + 5;
 };

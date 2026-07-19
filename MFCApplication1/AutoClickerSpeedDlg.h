@@ -1,7 +1,7 @@
 #pragma once
 #include "AutoClicker.h"
 
-// 自定义消息：速度窗口关闭，通知主窗口清空指针
+// Custom message: speed dialog closed, notify main window to clear pointer
 static constexpr UINT WM_SPEED_DLG_CLOSED = WM_APP + 6;
 
 class CAutoClickerSpeedDlg : public CDialogEx

@@ -1,4 +1,4 @@
-// MFCApplication1Dlg.h: 头文件
+// MFCApplication1Dlg.h: header file
 //
 
 #pragma once
@@ -16,63 +16,63 @@ class CQRCodeGenDlg;
 class CScreenshotOCRDlg;
 class CBatchRenameDlg;
 
-// 按钮语义化别名
-#define IDC_BTN_SHUTDOWN       IDC_BUTTON1   // 关机/重启
-#define IDC_BTN_CANCEL_SHUTDOWN IDC_BUTTON2  // 取消关机
-#define IDC_BTN_MAKE_COPY      IDC_BUTTON3   // 生成副本
-#define IDC_BTN_WECHAT         IDC_BUTTON4   // 启动微信
-#define IDC_BTN_QQ             IDC_BUTTON5   // 启动QQ
-#define IDC_BTN_VSCODE         IDC_BUTTON6   // 启动VS Code
-#define IDC_BTN_VS             IDC_BUTTON7   // 启动Visual Studio
-#define IDC_BTN_BILIBILI       IDC_BUTTON8   // 启动哔哩哔哩
-#define IDC_BTN_STUDY          IDC_BUTTON9   // 打开学习文件夹
-#define IDC_BTN_LOCAL_SERVER   IDC_BUTTON10  // 打开本地服务器
-#define IDC_BTN_MOOC           IDC_BUTTON11  // 打开中国大学MOOC
-#define IDC_BTN_VOLUME_APPLY   IDC_BUTTON12  // 应用音量
-#define IDC_BTN_VOLUME_0       IDC_BUTTON13  // 音量设为0
-#define IDC_BTN_VOLUME_10      IDC_BUTTON14  // 音量设为10
-#define IDC_BTN_RUN_CMD        IDC_BUTTON17  // 运行命令
-#define IDC_BTN_CLEAR_CMD      IDC_BUTTON18  // 清空命令
-#define IDC_BTN_LOCATE         IDC_BUTTON19  // 窗口定位/置顶
-#define IDC_BTN_TASK_MGR       IDC_BUTTON20  // 打开任务管理器
-#define IDC_BTN_DOWNLOAD       IDC_BUTTON21  // 打开下载文件夹
-#define IDC_BTN_YUANBAO        IDC_BUTTON22  // 启动元宝
-#define IDC_BTN_RENAME_FILE    IDC_BUTTON23  // 重命名文件
-#define IDC_BTN_DELETE_FILE    IDC_BUTTON24  // 删除文件
-#define IDC_BTN_OPEN_FOLDER    IDC_BUTTON25  // 打开文件夹
-#define IDC_BTN_COPY_FILE      IDC_BUTTON26  // 复制文件
-#define IDC_BTN_POWERSHELL     IDC_BUTTON27  // 启动PowerShell
-#define IDC_BTN_WSL            IDC_BUTTON28  // 启动WSL
-#define IDC_BTN_LEETCODE       IDC_BUTTON29  // 打开LeetCode
-#define IDC_BTN_GITHUB         IDC_BUTTON30  // 打开GitHub
-#define IDC_BTN_GIT_BASH       IDC_BUTTON31  // 启动Git Bash
-#define IDC_BTN_CLEAR_PATH     IDC_BUTTON32  // 清除拖入路径
-#define IDC_BTN_BILI_NEXT      IDC_BUTTON33  // 哔哩哔哩下一首
+// Semantic button aliases
+#define IDC_BTN_SHUTDOWN       IDC_BUTTON1   // Shutdown/Restart
+#define IDC_BTN_CANCEL_SHUTDOWN IDC_BUTTON2  // Cancel shutdown
+#define IDC_BTN_MAKE_COPY      IDC_BUTTON3   // Make copy
+#define IDC_BTN_WECHAT         IDC_BUTTON4   // Launch WeChat
+#define IDC_BTN_QQ             IDC_BUTTON5   // Launch QQ
+#define IDC_BTN_VSCODE         IDC_BUTTON6   // Launch VS Code
+#define IDC_BTN_VS             IDC_BUTTON7   // Launch Visual Studio
+#define IDC_BTN_BILIBILI       IDC_BUTTON8   // Launch Bilibili
+#define IDC_BTN_STUDY          IDC_BUTTON9   // Open study folder
+#define IDC_BTN_LOCAL_SERVER   IDC_BUTTON10  // Open local server
+#define IDC_BTN_MOOC           IDC_BUTTON11  // Open China University MOOC
+#define IDC_BTN_VOLUME_APPLY   IDC_BUTTON12  // Apply volume
+#define IDC_BTN_VOLUME_0       IDC_BUTTON13  // Set volume to 0
+#define IDC_BTN_VOLUME_10      IDC_BUTTON14  // Set volume to 10
+#define IDC_BTN_RUN_CMD        IDC_BUTTON17  // Run command
+#define IDC_BTN_CLEAR_CMD      IDC_BUTTON18  // Clear command
+#define IDC_BTN_LOCATE         IDC_BUTTON19  // Window locate/topmost
+#define IDC_BTN_TASK_MGR       IDC_BUTTON20  // Open Task Manager
+#define IDC_BTN_DOWNLOAD       IDC_BUTTON21  // Open downloads folder
+#define IDC_BTN_YUANBAO        IDC_BUTTON22  // Launch Yuanbao
+#define IDC_BTN_RENAME_FILE    IDC_BUTTON23  // Rename file
+#define IDC_BTN_DELETE_FILE    IDC_BUTTON24  // Delete file
+#define IDC_BTN_OPEN_FOLDER    IDC_BUTTON25  // Open folder
+#define IDC_BTN_COPY_FILE      IDC_BUTTON26  // Copy file
+#define IDC_BTN_POWERSHELL     IDC_BUTTON27  // Launch PowerShell
+#define IDC_BTN_WSL            IDC_BUTTON28  // Launch WSL
+#define IDC_BTN_LEETCODE       IDC_BUTTON29  // Open LeetCode
+#define IDC_BTN_GITHUB         IDC_BUTTON30  // Open GitHub
+#define IDC_BTN_GIT_BASH       IDC_BUTTON31  // Launch Git Bash
+#define IDC_BTN_CLEAR_PATH     IDC_BUTTON32  // Clear drag-drop path
+#define IDC_BTN_BILI_NEXT      IDC_BUTTON33  // Bilibili next track
 
-// CMFCApplication1Dlg 对话框
+// CMFCApplication1Dlg dialog
 class CMFCApplication1Dlg : public CDialogEx
 {
-// 构造
+// Construction
 public:
-	CMFCApplication1Dlg(CWnd* pParent = nullptr);	// 标准构造函数
+	CMFCApplication1Dlg(CWnd* pParent = nullptr);	// Standard constructor
 
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	[[nodiscard]] void RefreshProcessList();
 
-// 对话框数据
+// Dialog data
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_MFCAPPLICATION1_DIALOG };
 #endif
 
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
+	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV support
 
 
-// 实现
+// Implementation
 protected:
 	HICON m_hIcon;
 
-	// 初始化辅助函数
+	// Initialization helpers
 	void InitTabControl();
 	void InitProcessTab();
 	void InitStartupTab();
@@ -82,7 +82,7 @@ protected:
 	void InitGitTab();
 	void UpdateTabVisibility(int nTab);
 
-	// 生成的消息映射函数
+	// Generated message map functions
 	virtual BOOL OnInitDialog();
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
 	afx_msg void OnPaint();
@@ -94,24 +94,24 @@ protected:
 	afx_msg void OnBnClickedButton1();
 	afx_msg void OnBnClickedButton2();
 	afx_msg void OnCbnSelchangeCombo1();
-   // 启动项管理
+   // Startup item management
 	void RefreshStartupList();
 	afx_msg void OnAddStartup();
 	afx_msg void OnRemoveStartup();
 
-    // (文件管理功能已移除)
+    // (File management features removed)
 
-	// 文件管理: 拖放的文件路径和生成副本按钮
+	// File management: drag-drop file path and make copy button
 	afx_msg void OnDropFiles(HDROP hDropInfo);
 	afx_msg void OnBnClickedButton3();
-	CString m_strDroppedFilePath; // 保存拖入的文件路径
+	CString m_strDroppedFilePath; // Stored drag-drop file path
 
 
 
-	// 开机自启动复选按钮
+	// Auto-start with Windows checkbox
 	afx_msg void OnBnClickedCheck1();
 
-	// 托盘相关
+	// System tray
 	afx_msg LRESULT OnTrayNotification(WPARAM wParam, LPARAM lParam);
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	virtual void OnClose();
@@ -151,7 +151,7 @@ public:
 	afx_msg void OnBnClickedCheck4();
 	afx_msg LRESULT OnAutoClickStopped(WPARAM wParam, LPARAM lParam);
 
-	// 剪贴板管理: 最近复制历史 (双击可重新复制)
+	// Clipboard manager: recent copy history (double-click to re-copy)
 	afx_msg LRESULT OnClipboardUpdate(WPARAM wParam, LPARAM lParam);
 	afx_msg void OnNMDblclkList3(NMHDR* pNMHDR, LRESULT* pResult);
 
@@ -167,7 +167,7 @@ public:
     struct ProcInfo { CString name; DWORD pid; CString path; SIZE_T memKB; };
 	struct StartupInfo { CString name; CString cmd; };
 
-    // 进程列表：存储原始数据以支持排序和过滤
+    // Process list: store raw data for sorting and filtering
     std::vector<ProcInfo> m_processes;
     int m_nSortColumn{-1};
     bool m_bSortAscending{true};
@@ -184,21 +184,21 @@ public:
 	afx_msg LRESULT OnVolumeUpdated(WPARAM wParam, LPARAM lParam);
 
     // Window locate / topmost controls
-	afx_msg void OnBnClickedButton19(); // 开始/取消定位 或 取消当前置顶
+	afx_msg void OnBnClickedButton19(); // Start/cancel locate or cancel current topmost
 
 	// Called by capture overlay when user selects a target window
 	void OnTargetSelected(HWND hTarget, POINT pt);
 
     HWND m_hCaptureWnd{nullptr};
 	HWND m_hSelectedWnd{nullptr};
-	std::vector<HWND> m_topmostWnds;       // 置顶窗口列表
-	std::vector<HWND> m_historyWnds;       // 历史定位窗口列表
+	std::vector<HWND> m_topmostWnds;       // Topmost window list
+	std::vector<HWND> m_historyWnds;       // History located window list
 
-	// 窗口处理新功能: 透明度、强制结束、截图
+	// Window features: transparency, force kill, screenshot
 	afx_msg void OnForceKillProcess();
 	afx_msg void OnWindowScreenshot();
 
-	// 菜单命令处理函数
+	// Menu command handlers
 	afx_msg void OnViewProcess();
 	afx_msg void OnViewStartup();
 	afx_msg void OnViewClipboard();
@@ -208,15 +208,15 @@ public:
 	afx_msg void OnWindowLocate();
 	afx_msg void OnWindowUntopmost();
 	afx_msg void OnWindowClose();
-	afx_msg void OnUntopmostWindow();   // LIST6 右键取消置顶
-	afx_msg void OnCopyStartupPath();     // LIST2 右键复制路径
-	afx_msg void OnNMDblclkList2(NMHDR* pNMHDR, LRESULT* pResult);  // LIST2 双击复制
-	afx_msg void OnClickList6(NMHDR* pNMHDR, LRESULT* pResult);       // LIST6 单击加载详情
-	afx_msg void OnClickList7(NMHDR* pNMHDR, LRESULT* pResult);       // LIST7 单击加载详情
-	afx_msg void OnDeleteList6Record();                                // LIST6 右键删除
-	afx_msg void OnDeleteList7Record();                                // LIST7 右键删除
-	afx_msg void OnTopmostFromHistory();                               // LIST7 右键置顶
-	afx_msg void OnUntopmostFromHistory();                             // LIST7 右键取消置顶
+	afx_msg void OnUntopmostWindow();   // LIST6 right-click cancel topmost
+	afx_msg void OnCopyStartupPath();     // LIST2 right-click copy path
+	afx_msg void OnNMDblclkList2(NMHDR* pNMHDR, LRESULT* pResult);  // LIST2 double-click copy
+	afx_msg void OnClickList6(NMHDR* pNMHDR, LRESULT* pResult);       // LIST6 click load details
+	afx_msg void OnClickList7(NMHDR* pNMHDR, LRESULT* pResult);       // LIST7 click load details
+	afx_msg void OnDeleteList6Record();                                // LIST6 right-click delete
+	afx_msg void OnDeleteList7Record();                                // LIST7 right-click delete
+	afx_msg void OnTopmostFromHistory();                               // LIST7 right-click topmost
+	afx_msg void OnUntopmostFromHistory();                             // LIST7 right-click cancel topmost
 	afx_msg void OnHelpShortcuts();
 	afx_msg void OnHelpGithub();
 	afx_msg void OnHelpRegexGuide();
@@ -229,20 +229,20 @@ public:
 	static constexpr UINT WM_AUTOCLICK_STOPPED = CAutoClicker::WM_STOPPED;
 	static constexpr UINT WM_SPEED_DLG_CLOSED = WM_APP + 6;
 
-	// 连点器速度调节窗口（置顶）
+	// Auto-clicker speed adjustment dialog (topmost)
 	std::unique_ptr<CAutoClickerSpeedDlg> m_pSpeedDlg;
 
-	// 速度窗口关闭回调
+	// Speed dialog close callback
 	afx_msg LRESULT OnSpeedDlgClosed(WPARAM wParam, LPARAM lParam);
 
-	// 连点器统一启动/停止
+	// Auto-clicker unified start/stop
 	void StartAutoClicker();
 	void StopAutoClicker();
 
 	// Prevent automatic lock/screen-off checkbox state (IDC_CHECK5)
 	bool m_bPreventLockScreen{false};
 
-	// 将窗口详细信息加载到 LIST5 中
+	// Load window details into LIST5
 	void LoadWindowDetailToList5(HWND hWnd);
 
 	// background worker thread for volume retrieval; ensure joined on destroy
@@ -261,7 +261,7 @@ public:
 	afx_msg void OnBnClickedButton31();
     afx_msg void OnBnClickedButton32();
     afx_msg void OnBiliNext();
-    // 进程列表排序和过滤
+    // Process list sorting and filtering
     afx_msg void OnProcessColumnClick(NMHDR* pNMHDR, LRESULT* pResult);
     afx_msg void OnProcessFilterChange();
     afx_msg void OnProcessRegexHelp();

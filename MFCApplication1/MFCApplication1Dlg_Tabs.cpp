@@ -5,7 +5,7 @@
 #include "Utils.h"
 #include <algorithm>
 
-// ========== 标签页初始化辅助函数 ==========
+// ========== Tab page initialization helpers ==========
 
 void CMFCApplication1Dlg::InitTabControl()
 {
@@ -32,7 +32,7 @@ void CMFCApplication1Dlg::InitProcessTab()
     pList1->InsertColumn(2, _T("路径"), LVCFMT_LEFT, 600);
     pList1->InsertColumn(3, _T("内存(KB)"), LVCFMT_RIGHT, 200);
 
-    // 强制表头重绘
+    // Force header redraw
     if (pList1->GetHeaderCtrl())
         pList1->GetHeaderCtrl()->Invalidate(TRUE);
 }
@@ -69,7 +69,7 @@ void CMFCApplication1Dlg::InitWindowTab()
         pList5->InsertColumn(1, _T("值"), LVCFMT_LEFT, 980);
     }
 
-    // 初始化透明度滑块（资源控件）
+    // Initialize transparency slider (resource control)
     CSliderCtrl* pSlider2 = static_cast<CSliderCtrl*>(GetDlgItem(IDC_SLIDER2));
     if (pSlider2)
     {
@@ -79,7 +79,7 @@ void CMFCApplication1Dlg::InitWindowTab()
     }
     SetDlgItemText(IDC_STATIC18, _T("透明度: 100%"));
 
-    // 初始化置顶窗口列表
+    // Initialize topmost window list
     CListCtrl* pList6 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST6));
     if (pList6)
     {
@@ -89,7 +89,7 @@ void CMFCApplication1Dlg::InitWindowTab()
         pList6->InsertColumn(1, _T("窗口标题"), LVCFMT_LEFT, 280);
     }
 
-    // 初始化历史定位窗口列表
+    // Initialize history window list
     CListCtrl* pList7 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST7));
     if (pList7)
     {
@@ -102,8 +102,8 @@ void CMFCApplication1Dlg::InitWindowTab()
 
 void CMFCApplication1Dlg::InitFileTab()
 {
-    // 文件管理标签页的控件在资源编辑器中定义，此处仅做占位
-    // 实际可见性由 UpdateTabVisibility 管理
+    // File management tab controls are defined in resource editor, placeholder here
+    // Actual visibility managed by UpdateTabVisibility
 }
 
 void CMFCApplication1Dlg::InitGitTab()
@@ -116,7 +116,7 @@ void CMFCApplication1Dlg::InitGitTab()
     pList4->InsertColumn(0, _T("说明"), LVCFMT_LEFT, 190);
     pList4->InsertColumn(1, _T("命令"), LVCFMT_LEFT, 400);
 
-    // 如果 config.ini 不存在，创建默认 Git 命令
+    // If config.ini does not exist, create default Git commands
     const TCHAR* section = _T("GitCommands");
     TCHAR exePath[MAX_PATH] = {0};
     GetModuleFileName(NULL, exePath, MAX_PATH);
@@ -150,7 +150,7 @@ void CMFCApplication1Dlg::InitGitTab()
         WritePrivateProfileString(section, _T("Cmd20"), _T("把暂存区文件撤回来|git restore --staged <文件>"), configPath);
     }
 
-    // 从 INI 加载命令列表
+    // Load command list from INI
     pList4->DeleteAllItems();
     for (int i = 1; i <= 99; ++i)
     {
@@ -168,11 +168,11 @@ void CMFCApplication1Dlg::InitGitTab()
     }
 }
 
-// ========== 统一标签页可见性管理 ==========
+// ========== Unified tab visibility management ==========
 
 void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
 {
-    // 列表控件
+    // List controls
     CListCtrl* pList1 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST1));
     CListCtrl* pList2 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST2));
     CListCtrl* pList3 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST3));
@@ -186,7 +186,7 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
             pList1->RedrawWindow(NULL, NULL, RDW_FRAME | RDW_INVALIDATE | RDW_UPDATENOW | RDW_ERASE);
         }
     }
-    // 进程搜索过滤控件
+    // Process search filter controls
     CWnd* pEditFilter = GetDlgItem(IDC_EDIT_PROCESS_FILTER);
     if (pEditFilter)
         pEditFilter->ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
@@ -206,13 +206,13 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
         }
     }
 
-    // 窗口处理标签页按钮
+    // Window handling tab buttons
     CWnd* pBtn19 = GetDlgItem(IDC_BUTTON19);
     CWnd* pStatic12 = GetDlgItem(IDC_STATIC12);
     if (pBtn19) pBtn19->ShowWindow(nTab == 3 ? SW_SHOW : SW_HIDE);
     if (pStatic12) pStatic12->ShowWindow(nTab == 3 ? SW_SHOW : SW_HIDE);
 
-    // Git 工具按钮
+    // Git tools buttons
     CWnd* pBtn30 = GetDlgItem(IDC_BUTTON30);
     CWnd* pBtn31 = GetDlgItem(IDC_BUTTON31);
     CWnd* pBtn32 = GetDlgItem(IDC_BUTTON32);
@@ -233,7 +233,7 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
         }
     }
 
-    // 文件管理控件
+    // File management controls
     BOOL showFile = (nTab == 4);
     CWnd* pStaticPath = GetDlgItem(IDC_STATIC_PATH);
     CWnd* pEdit4 = GetDlgItem(IDC_EDIT4);
@@ -269,13 +269,13 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
         SetDlgItemText(IDC_STATIC_PATH, stDisplay);
     }
 
-    // 窗口处理标签页：填充窗口信息
+    // Window handling tab: populate window info
     if (nTab == 3 && pList5)
     {
         LoadWindowDetailToList5(m_hSelectedWnd);
     }
 
-    // 窗口处理标签页的新控件可见性
+    // New control visibility for window handling tab
     BOOL showWindowTab = (nTab == 3);
     CWnd* pSlider2 = GetDlgItem(IDC_SLIDER2);
     CWnd* pStatic18 = GetDlgItem(IDC_STATIC18);
@@ -286,7 +286,7 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
     if (pBtn15) pBtn15->ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
     if (pBtn16) pBtn16->ShowWindow(showWindowTab ? SW_SHOW : SW_HIDE);
 
-    // 切换到窗口管理tab时，同步工具箱自身置顶复选框状态
+    // When switching to window management tab, sync toolbox topmost checkbox state
     if (showWindowTab)
     {
         CButton* pCheck3 = static_cast<CButton*>(GetDlgItem(IDC_CHECK3));
@@ -297,7 +297,7 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
         }
     }
 
-    // 置顶窗口列表 (LIST6)
+    // Topmost window list (LIST6)
     CListCtrl* pList6 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST6));
     if (pList6)
     {
@@ -324,7 +324,7 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
         }
     }
 
-    // 历史定位窗口列表 (LIST7)
+    // History window list (LIST7)
     CListCtrl* pList7 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST7));
     if (pList7)
     {
@@ -345,14 +345,14 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
                 label.Format(_T("%zu"), row + 1);
                 int idx = pList7->InsertItem(row, label);
                 pList7->SetItemText(idx, 1, CString(title));
-                pList7->SetItemData(idx, static_cast<DWORD_PTR>(i));  // 存储真实索引
+                pList7->SetItemData(idx, static_cast<DWORD_PTR>(i));  // Store real index
                 ++row;
             }
         }
     }
 }
 
-// ========== 菜单栏视图切换 ==========
+// ========== Menu bar view switching ==========
 
 void CMFCApplication1Dlg::OnViewProcess()
 {

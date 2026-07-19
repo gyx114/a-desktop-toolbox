@@ -1,4 +1,4 @@
-// MFCApplication1Dlg.cpp: 实现文件
+// MFCApplication1Dlg.cpp: Implementation file
 //
 
 #include "pch.h"
@@ -62,7 +62,7 @@
 
 
 
-// CMFCApplication1Dlg 对话框
+// CMFCApplication1Dlg dialog
 
 
 
@@ -74,7 +74,7 @@ CMFCApplication1Dlg::CMFCApplication1Dlg(CWnd* pParent /*=nullptr*/)
     m_bTrayVisible = false;
     ZeroMemory(&m_nid, sizeof(m_nid));
     m_bExiting = false;
-    m_bMinimizeOnClose = true; // 默认选中
+    m_bMinimizeOnClose = true; // Checked by default
 
     m_hCaptureWnd = NULL;
     m_hSelectedWnd = nullptr;
@@ -146,10 +146,10 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_NOTIFY(NM_CLICK,  IDC_LIST6, &CMFCApplication1Dlg::OnClickList6)
     ON_NOTIFY(NM_CLICK,  IDC_LIST7, &CMFCApplication1Dlg::OnClickList7)
     ON_BN_CLICKED(IDC_BUTTON19, &CMFCApplication1Dlg::OnBnClickedButton19)
-    // 窗口处理控件
+    // Window handling controls
     ON_BN_CLICKED(IDC_BUTTON15, &CMFCApplication1Dlg::OnForceKillProcess)
     ON_BN_CLICKED(IDC_BUTTON16, &CMFCApplication1Dlg::OnWindowScreenshot)
-    // 菜单栏扩展
+    // Menu bar extensions
     ON_COMMAND(ID_VIEW_PROCESS,     &CMFCApplication1Dlg::OnViewProcess)
     ON_COMMAND(ID_VIEW_STARTUP,     &CMFCApplication1Dlg::OnViewStartup)
     ON_COMMAND(ID_VIEW_CLIPBOARD,   &CMFCApplication1Dlg::OnViewClipboard)
@@ -208,14 +208,14 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
 END_MESSAGE_MAP()
 
 
-// CMFCApplication1Dlg 消息处理程序
+// CMFCApplication1Dlg message handlers
 
 
 BOOL CMFCApplication1Dlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
 
-	// 将"关于..."菜单项添加到系统菜单中。
+	// Add "About..." menu item to system menu.
 	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
 	ASSERT(IDM_ABOUTBOX < 0xF000);
 
@@ -236,7 +236,7 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);
 	SetIcon(m_hIcon, FALSE);
 
-	// 菜单栏
+	// Menu bar
 	CMenu menu;
 	menu.LoadMenu(IDR_MAIN_MENU);
 	SetMenu(&menu);
@@ -246,7 +246,7 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
 	m_strDroppedFilePath.Empty();
 	SetDlgItemText(IDC_EDIT4, AfxGetApp()->GetProfileString(_T("Template"), _T("DefaultReportName"), _T("")));
 
-	// 初始化标签页和各标签页控件
+	// Initialize tab control and tab controls
 	InitTabControl();
 	InitProcessTab();
 	InitStartupTab();
@@ -255,19 +255,19 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
 	InitFileTab();
 	InitGitTab();
 
-	// 根据当前选中标签页统一更新控件可见性
+	// Update control visibility based on current selected tab
 	int nCur = 0;
 	CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
 	if (pTab) nCur = pTab->GetCurSel();
 	UpdateTabVisibility(nCur);
 
-	// 首屏加载数据
+	// Load initial data
 	if (nCur == 0)
 		RefreshProcessList();
 	else
 		RefreshStartupList();
 
-	// 关机/重启 combo 初始化
+	// Shutdown/restart combo initialization
 	CComboBox* pCombo = static_cast<CComboBox*>(GetDlgItem(IDC_COMBO1));
 	if (pCombo)
 	{
@@ -281,7 +281,7 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
 		OnCbnSelchangeCombo1();
 	}
 
-	// 开机自启动复选按钮
+	// Auto-start checkbox
 	CButton* pCheck1 = static_cast<CButton*>(GetDlgItem(IDC_CHECK1));
 	if (pCheck1)
 	{
@@ -312,31 +312,31 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
 		}
 	}
 
-	// 拖放接收
+	// Drag-and-drop acceptance
 	CWnd* pCtrl = nullptr;
 	pCtrl = GetDlgItem(IDC_STATIC_PATH); if (pCtrl) ::DragAcceptFiles(pCtrl->GetSafeHwnd(), TRUE);
 	pCtrl = GetDlgItem(IDC_EDIT4);       if (pCtrl) ::DragAcceptFiles(pCtrl->GetSafeHwnd(), TRUE);
 	pCtrl = GetDlgItem(IDC_BUTTON3);     if (pCtrl) ::DragAcceptFiles(pCtrl->GetSafeHwnd(), TRUE);
 	pCtrl = GetDlgItem(IDC_STATIC7);     if (pCtrl) ::DragAcceptFiles(pCtrl->GetSafeHwnd(), TRUE);
 
-	// 最小化到托盘复选按钮
+	// Minimize to tray checkbox
 	CButton* pCheckMin = static_cast<CButton*>(GetDlgItem(IDC_CHECK2));
 	if (pCheckMin) pCheckMin->SetCheck(m_bMinimizeOnClose ? BST_CHECKED : BST_UNCHECKED);
 
-	// 非管理员权限 PowerShell 复选按钮默认选中
+	// Non-admin PowerShell checkbox checked by default
 	CButton* pCheck6 = static_cast<CButton*>(GetDlgItem(IDC_CHECK6));
 	if (pCheck6) pCheck6->SetCheck(BST_CHECKED);
 
-	// 剪贴板监听
+	// Clipboard listener
 	::AddClipboardFormatListener(m_hWnd);
 
-	// 文件拖放
+	// File drag-and-drop
 	::DragAcceptFiles(m_hWnd, TRUE);
 	AllowUIPIMessage(m_hWnd, WM_DROPFILES, TRUE);
 	AllowUIPIMessage(m_hWnd, WM_COPYDATA, TRUE);
 	AllowUIPIMessage(m_hWnd, 0x0049, TRUE);
 
-	// 管理员权限提升
+	// Elevate to admin privileges
 	if (!IsProcessElevated())
 	{
 		auto RelaunchElevatedNoPrompt = []() -> bool {
@@ -364,14 +364,14 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
 		}
 	}
 
-	// 全局快捷键
+	// Global hotkey
 	CString strTitle;
 	GetWindowText(strTitle);
 	strTitle += _T(" (ctrl+alt+空格唤起此窗口)");
 	SetWindowText(strTitle);
 	RegisterHotKey(m_hWnd, 1001, MOD_CONTROL | MOD_ALT, VK_SPACE);
 
-	// 音量滑块
+	// Volume slider
 	CSliderCtrl* pSlider = static_cast<CSliderCtrl*>(GetDlgItem(IDC_SLIDER1));
 	CEdit* pEditVol = static_cast<CEdit*>(GetDlgItem(IDC_EDIT5));
 	if (pSlider)
@@ -385,7 +385,7 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
 	return TRUE;
 }
 
-// ========== 窗口处理新功能 ==========
+// ========== Window handling new features ==========
 
 
 void CMFCApplication1Dlg::OnDestroy()
@@ -401,7 +401,7 @@ void CMFCApplication1Dlg::OnDestroy()
     // Ensure we unregister clipboard listener if we registered it in OnInitDialog.
     ::RemoveClipboardFormatListener(m_hWnd);
 
-    // 销毁连点器速度调节窗口
+    // Destroy auto-clicker speed adjustment window
     if (m_pSpeedDlg)
     {
         m_pSpeedDlg->DestroyWindow();
@@ -473,19 +473,19 @@ void CMFCApplication1Dlg::OnSysCommand(UINT nID, LPARAM lParam)
 	}
 }
 
-// 如果向对话框添加最小化按钮，则需要下面的代码
-//  来绘制该图标。  对于使用文档/视图模型的 MFC 应用程序，
-//  这将由框架自动完成。
+// If you add a minimize button to your dialog, you will need the code below
+//  to draw the icon. For MFC applications using the document/view model,
+//  this is automatically done for you by the framework.
 
 void CMFCApplication1Dlg::OnPaint()
 {
 	if (IsIconic())
 	{
-		CPaintDC dc(this); // 用于绘制的设备上下文
+		CPaintDC dc(this); // Device context for painting
 
 		SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
 
-		// 使图标在工作区矩形中居中
+		// Center icon in client area rectangle
 		int cxIcon = GetSystemMetrics(SM_CXICON);
 		int cyIcon = GetSystemMetrics(SM_CYICON);
 		CRect rect;
@@ -493,7 +493,7 @@ void CMFCApplication1Dlg::OnPaint()
 		int x = (rect.Width() - cxIcon + 1) / 2;
 		int y = (rect.Height() - cyIcon + 1) / 2;
 
-		// 绘制图标
+		// Draw the icon
 		dc.DrawIcon(x, y, m_hIcon);
 	}
 	else
@@ -502,8 +502,8 @@ void CMFCApplication1Dlg::OnPaint()
 	}
 }
 
-//当用户拖动最小化窗口时系统调用此函数取得光标
-//显示。
+// The system calls this function to obtain the cursor to display while the user drags
+//  the minimized window.
 HCURSOR CMFCApplication1Dlg::OnQueryDragIcon()
 {
 	return static_cast<HCURSOR>(m_hIcon);
@@ -511,11 +511,11 @@ HCURSOR CMFCApplication1Dlg::OnQueryDragIcon()
 
 BOOL CMFCApplication1Dlg::PreTranslateMessage(MSG* pMsg)
 {
-    // ===== 全局快捷键 =====
+    // ===== Global hotkeys =====
 
     if (pMsg->message == WM_KEYDOWN)
     {
-        // F5: 刷新当前tab列表
+        // F5: Refresh current tab list
         if (pMsg->wParam == VK_F5)
         {
             CTabCtrl* pTab = static_cast<CTabCtrl*>(GetDlgItem(IDC_TAB1));
@@ -527,14 +527,14 @@ BOOL CMFCApplication1Dlg::PreTranslateMessage(MSG* pMsg)
             }
         }
 
-        // Ctrl+Alt+D: 窗口定位
+        // Ctrl+Alt+D: Window locate
         if (pMsg->wParam == 'D' && (GetKeyState(VK_CONTROL) & 0x8000) && (GetKeyState(VK_MENU) & 0x8000))
         {
             OnWindowLocate();
             return TRUE;
         }
 
-        // Enter: 当焦点在编辑框时的处理
+        // Enter: Handle when focus is in edit box
         if (pMsg->wParam == VK_RETURN)
         {
             CWnd* pFocus = CWnd::FromHandle(::GetFocus());
@@ -542,21 +542,21 @@ BOOL CMFCApplication1Dlg::PreTranslateMessage(MSG* pMsg)
             {
                 int nID = pFocus->GetDlgCtrlID();
 
-                // 音量调节输入框：触发应用音量
+                // Volume adjustment input: trigger apply volume
                 if (nID == IDC_EDIT5)
                 {
                     OnBnClickedButton12();
                     return TRUE;
                 }
 
-                // 命令输入框：运行命令
+                // Command input: run command
                 if (nID == IDC_EDIT6)
                 {
                     OnBnClickedButton17();
                     return TRUE;
                 }
 
-                // 其他编辑框：吞掉回车，防止退出程序
+                // Other edit boxes: swallow Enter to prevent exiting
                 TCHAR className[64] = {0};
                 ::GetClassName(pFocus->GetSafeHwnd(), className, 64);
                 if (_tcsstr(className, _T("Edit")) || _tcsstr(className, _T("edit")))
@@ -567,7 +567,7 @@ BOOL CMFCApplication1Dlg::PreTranslateMessage(MSG* pMsg)
         }
     }
 
-    // Alt+1~6: 切换标签页
+    // Alt+1~6: Switch tabs
     if (pMsg->message == WM_SYSKEYDOWN)
     {
         if (pMsg->wParam >= '1' && pMsg->wParam <= '6')
@@ -643,7 +643,7 @@ afx_msg LRESULT CMFCApplication1Dlg::OnRefreshProcessesDone(WPARAM wParam, LPARA
     m_processes = std::move(*vec);
     delete vec;
 
-    m_nSortColumn = -1;  // 重置排序状态
+    m_nSortColumn = -1;  // Reset sort state
     ApplyProcessFilter();
     return 0;
 }
@@ -688,7 +688,7 @@ void CMFCApplication1Dlg::OnContextMenu(CWnd* pWnd, CPoint point)
 
     HWND hClicked = pWnd ? pWnd->GetSafeHwnd() : ::WindowFromPoint(point);
 
-    // 右键在进程列表上
+    // Right-click on process list
     if (pList1 && hClicked == pList1->GetSafeHwnd())
     {
         int nSel = pList1->GetNextItem(-1, LVNI_SELECTED);
@@ -703,13 +703,13 @@ void CMFCApplication1Dlg::OnContextMenu(CWnd* pWnd, CPoint point)
         return;
     }
 
-    // 右键在启动项管理列表上
+    // Right-click on startup management list
     if (pList2 && hClicked == pList2->GetSafeHwnd())
     {
         int nSel = pList2->GetNextItem(-1, LVNI_SELECTED);
         CMenu menu;
         menu.CreatePopupMenu();
-        // 添加和删除命令
+        // Add and delete commands
         menu.AppendMenu(MF_STRING, 32772, _T("添加启动项"));
         if (nSel != -1)
         {
@@ -722,7 +722,7 @@ void CMFCApplication1Dlg::OnContextMenu(CWnd* pWnd, CPoint point)
     }
 
 
-    // 右键在窗口处理列表上 (复制值)
+    // Right-click on window handling list (copy value)
     CListCtrl* pList5 = (CListCtrl*)GetDlgItem(IDC_LIST5);
     if (pList5 && hClicked == pList5->GetSafeHwnd())
     {
@@ -741,7 +741,7 @@ void CMFCApplication1Dlg::OnContextMenu(CWnd* pWnd, CPoint point)
         }
         return;
     }
-    // 右键在置顶窗口列表上 (取消置顶 / 删除)
+    // Right-click on topmost window list (untopmost / delete)
     CListCtrl* pList6 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST6));
     if (pList6 && hClicked == pList6->GetSafeHwnd())
     {
@@ -757,7 +757,7 @@ void CMFCApplication1Dlg::OnContextMenu(CWnd* pWnd, CPoint point)
         return;
     }
 
-    // 右键在历史窗口列表上 (置顶 / 删除)
+    // Right-click on history window list (topmost / delete)
     CListCtrl* pList7 = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST7));
     if (pList7 && hClicked == pList7->GetSafeHwnd())
     {
@@ -783,7 +783,7 @@ void CMFCApplication1Dlg::OnContextMenu(CWnd* pWnd, CPoint point)
         }
         return;
     }
-    // 右键在 git 工具列表上 (复制指令)
+    // Right-click on git tools list (copy command)
     CWnd* pList4 = GetDlgItem(IDC_LIST4);
     if (pList4 && hClicked == pList4->GetSafeHwnd())
     {
@@ -843,7 +843,7 @@ void CMFCApplication1Dlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScroll
 
             if (m_hSelectedWnd && IsValidWindow(m_hSelectedWnd))
             {
-                // 设置分层窗口透明度
+                // Set layered window transparency
                 LONG style = ::GetWindowLong(m_hSelectedWnd, GWL_EXSTYLE);
                 ::SetWindowLong(m_hSelectedWnd, GWL_EXSTYLE, style | WS_EX_LAYERED);
                 ::SetLayeredWindowAttributes(m_hSelectedWnd, 0, static_cast<BYTE>(pos), LWA_ALPHA);
@@ -866,13 +866,13 @@ void CMFCApplication1Dlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScroll
 
 
 
-// ===== 连点器统一启动/停止 =====
+// ===== Auto-clicker unified start/stop =====
 
 void CMFCApplication1Dlg::StartAutoClicker()
 {
     int interval = AfxGetApp()->GetProfileInt(_T("AutoClicker"), _T("IntervalMs"), 100);
 
-    // 读取触发键配置，默认 A/B
+    // Read trigger key config, default A/B
     CString strKey = AfxGetApp()->GetProfileString(_T("AutoClicker"), _T("KeyStart"), _T("A"));
     char keyStart = static_cast<char>(strKey.IsEmpty() ? 'A' : strKey[0]);
     strKey = AfxGetApp()->GetProfileString(_T("AutoClicker"), _T("KeyStop"), _T("B"));
@@ -880,7 +880,7 @@ void CMFCApplication1Dlg::StartAutoClicker()
     m_autoClicker.SetKeys(keyStart, keyStop);
     m_autoClicker.Start(interval, m_hWnd);
 
-    // 显示速度调节窗口
+    // Show speed adjustment window
     if (!m_pSpeedDlg)
     {
         auto pDlg = std::make_unique<CAutoClickerSpeedDlg>(&m_autoClicker);
@@ -895,7 +895,7 @@ void CMFCApplication1Dlg::StopAutoClicker()
 {
     m_autoClicker.Stop();
 
-    // 销毁速度调节窗口
+    // Destroy speed adjustment window
     if (m_pSpeedDlg)
     {
         m_pSpeedDlg->DestroyWindow();
@@ -921,14 +921,14 @@ afx_msg LRESULT CMFCApplication1Dlg::OnAutoClickStopped(WPARAM wParam, LPARAM lP
     CButton* pCheck = (CButton*)GetDlgItem(IDC_CHECK4);
     if (pCheck) pCheck->SetCheck(BST_UNCHECKED);
 
-    // 销毁速度调节窗口
+    // Destroy speed adjustment window
     if (m_pSpeedDlg)
     {
         m_pSpeedDlg->DestroyWindow();
         m_pSpeedDlg.reset();
     }
 
-    // 托盘气泡通知（托盘已初始化才发送）
+    // Tray bubble notification (only send if tray is initialized)
     if (m_bTrayVisible && m_nid.hWnd != NULL)
     {
         m_nid.uFlags = NIF_INFO;
@@ -941,10 +941,10 @@ afx_msg LRESULT CMFCApplication1Dlg::OnAutoClickStopped(WPARAM wParam, LPARAM lP
     return 0;
 }
 
-// 速度调节窗口关闭回调：清空指针
+// Speed dialog close callback: clear pointer
 afx_msg LRESULT CMFCApplication1Dlg::OnSpeedDlgClosed(WPARAM wParam, LPARAM lParam)
 {
-    // 同步 CHECK4 状态
+    // Sync CHECK4 state
     CButton* pCheck = static_cast<CButton*>(GetDlgItem(IDC_CHECK4));
     if (pCheck) pCheck->SetCheck(BST_UNCHECKED);
 

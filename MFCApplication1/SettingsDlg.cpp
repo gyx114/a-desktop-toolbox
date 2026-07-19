@@ -46,7 +46,7 @@ BOOL CSettingsDlg::OnInitDialog()
     SetDlgItemText(IDC_EDIT_MOOC_URL, AfxGetApp()->GetProfileString(_T("Sites"), _T("MoocUrl"), _T("")));
     SetDlgItemText(IDC_EDIT_SDUCS_URL, AfxGetApp()->GetProfileString(_T("Sites"), _T("Sducs"), _T("")));
 
-    // 截图保存目录，默认桌面
+    // Screenshot save directory, default desktop
     CString strDefaultScreenshot;
     TCHAR szDesktop[MAX_PATH];
     if (SUCCEEDED(SHGetFolderPath(NULL, CSIDL_DESKTOP, NULL, 0, szDesktop)))
@@ -54,11 +54,11 @@ BOOL CSettingsDlg::OnInitDialog()
     SetDlgItemText(IDC_EDIT_SCREENSHOT_DIR,
         AfxGetApp()->GetProfileString(_T("Paths"), _T("ScreenshotDir"), strDefaultScreenshot));
 
-    // 连点器间隔，默认100ms
+    // Auto-clicker interval, default 100ms
     SetDlgItemInt(IDC_EDIT_CLICK_INTERVAL,
         AfxGetApp()->GetProfileInt(_T("AutoClicker"), _T("IntervalMs"), 100));
 
-    // 连点器触发键，默认A和B，配置不存在时自动创建
+    // Auto-clicker trigger keys, default A and B, auto-create if config missing
     TCHAR szKey[2] = {};
     CString strKey = AfxGetApp()->GetProfileString(_T("AutoClicker"), _T("KeyStart"), _T(""));
     if (strKey.IsEmpty())
@@ -115,7 +115,7 @@ void CSettingsDlg::OnOK()
     GetDlgItemText(IDC_EDIT_SDUCS_URL, v); AfxGetApp()->WriteProfileString(_T("Sites"), _T("Sducs"), v);
     AfxGetApp()->WriteProfileInt(_T("AutoClicker"), _T("IntervalMs"), GetDlgItemInt(IDC_EDIT_CLICK_INTERVAL));
 
-    // 连点器触发键验证：空字符串默认 A/B，不能相同
+    // Auto-clicker trigger key validation: empty defaults to A/B, cannot be same
     CString strStart, strStop;
     GetDlgItemText(IDC_EDIT_CLICK_KEY_START, strStart);
     GetDlgItemText(IDC_EDIT_CLICK_KEY_STOP, strStop);

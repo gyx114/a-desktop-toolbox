@@ -147,7 +147,7 @@ void CMFCApplication1Dlg::OnLocateProcess()
     int idx = pList->GetNextItem(-1, LVNI_SELECTED);
     if (idx == -1) return;
 
-    // 路径在第3列 (index 为 2)
+    // Path is in column 3 (index 2)
     CString path = pList->GetItemText(idx, 2);
     if (path.IsEmpty())
     {
@@ -286,7 +286,7 @@ static BOOL CALLBACK EnumWindowsCloseCallback(HWND hWnd, LPARAM lParam)
     return TRUE;
 }
 
-// ========== 进程排序与过滤 ==========
+// ========== Process sorting and filtering ==========
 
 void CMFCApplication1Dlg::PopulateProcessList()
 {
@@ -338,10 +338,10 @@ void CMFCApplication1Dlg::ApplyProcessFilter()
     CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST1);
     if (!pList) return;
 
-    // 只有 m_processes 里有数据时才处理
+    // Only process when m_processes has data
     if (m_processes.empty()) return;
 
-    // 获取过滤文本
+    // Get filter text
     CString filterText;
     CEdit* pEditFilter = (CEdit*)GetDlgItem(IDC_EDIT_PROCESS_FILTER);
     if (pEditFilter)
@@ -352,10 +352,10 @@ void CMFCApplication1Dlg::ApplyProcessFilter()
     if (pBtnRegex)
         useRegex = (pBtnRegex->GetCheck() == BST_CHECKED);
 
-    // 应用排序
+    // Apply sorting
     SortProcessList();
 
-    // 如果有过滤文本，进行过滤
+    // If there is filter text, apply filtering
     if (!filterText.IsEmpty())
     {
         std::vector<ProcInfo> filtered;
@@ -388,11 +388,11 @@ void CMFCApplication1Dlg::ApplyProcessFilter()
         }
         catch (...)
         {
-            // 正则表达式无效时，忽略过滤
+            // If regex is invalid, ignore filtering
             filtered = m_processes;
         }
 
-        // 用过滤后的数据填充列表
+        // Populate list with filtered data
         pList->DeleteAllItems();
         for (int i = 0; i < (int)filtered.size(); i++)
         {
@@ -414,11 +414,11 @@ void CMFCApplication1Dlg::ApplyProcessFilter()
     }
     else
     {
-        // 无过滤文本，直接填充全部
+        // No filter text, populate all directly
         PopulateProcessList();
     }
 
-    // 更新表头排序箭头
+    // Update header sort arrows
     if (pList->GetHeaderCtrl())
     {
         for (int i = 0; i < 4; i++)
@@ -430,12 +430,12 @@ void CMFCApplication1Dlg::ApplyProcessFilter()
             hdi.cchTextMax = 128;
             pList->GetHeaderCtrl()->GetItem(i, &hdi);
 
-            // 去掉已有的箭头符号
+            // Remove existing arrow symbols
             CString text = hdi.pszText;
             if (text.GetLength() >= 2 &&
                 (text[0] == _T('\x25B2') || text[0] == _T('\x25BC') || text[0] == _T(' ')))
             {
-                text = text.Mid(2);  // 去掉 "▲ " 或 "▼ "
+                text = text.Mid(2);  // Remove "▲ " or "▼ "
             }
 
             if (i == m_nSortColumn)

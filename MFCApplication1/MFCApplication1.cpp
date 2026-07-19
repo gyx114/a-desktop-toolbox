@@ -1,4 +1,4 @@
-// MFCApplication1.cpp: 定义应用程序的类行为。
+// MFCApplication1.cpp: Defines the class behaviors for the application.
 //
 
 #include "pch.h"
@@ -24,30 +24,30 @@ BEGIN_MESSAGE_MAP(CMFCApplication1App, CWinApp)
 END_MESSAGE_MAP()
 
 
-// CMFCApplication1App 构造
+// CMFCApplication1App construction
 
 CMFCApplication1App::CMFCApplication1App()
 {
-	// 支持重新启动管理器
+	// Support restart manager
 	m_dwRestartManagerSupportFlags = AFX_RESTART_MANAGER_SUPPORT_RESTART;
 
-	// TODO: 在此处添加构造代码，
-	// 将所有重要的初始化放置在 InitInstance 中
+	// TODO: Add construction code here,
+	// place all significant initialization in InitInstance
 }
 
 
-// 唯一的 CMFCApplication1App 对象
+// The one and only CMFCApplication1App object
 
 CMFCApplication1App theApp;
 
 
-// CMFCApplication1App 初始化
+// CMFCApplication1App initialization
 
 BOOL CMFCApplication1App::InitInstance()
 {
-	// 如果应用程序存在以下情况，Windows XP 上需要 InitCommonControlsEx()
-	// 使用 ComCtl32.dll 版本 6 或更高版本来启用可视化方式，
-	//则需要 InitCommonControlsEx()。  否则，将无法创建窗口。
+	// InitCommonControlsEx() is required on Windows XP if an application
+	// manifest specifies use of ComCtl32.dll version 6 or later to enable
+	// visual styles. Otherwise, any window creation will fail.
 	INITCOMMONCONTROLSEX InitCtrls{
 		.dwSize = sizeof(InitCtrls),
 		.dwICC = ICC_WIN95_CLASSES
@@ -56,7 +56,7 @@ BOOL CMFCApplication1App::InitInstance()
 
 	CWinApp::InitInstance();
 
-    // 初始化 GDI+
+    // Initialize GDI+
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
     Gdiplus::GdiplusStartup(&m_gdiplusToken, &gdiplusStartupInput, nullptr);
 
@@ -93,23 +93,23 @@ BOOL CMFCApplication1App::InitInstance()
 		return FALSE;
 	}
 
-    // 创建 shell 管理器，以防对话框包含
-	// 任何 shell 树视图控件或 shell 列表视图控件。
+    // Create shell manager, in case the dialog contains
+	// any shell tree view or shell list view controls.
 	auto pShellManager = std::make_unique<CShellManager>();
 
-    // 激活"Windows Native"视觉管理器，以便在 MFC 控件中启用主题
+    // Activate "Windows Native" visual manager to enable themes in MFC controls
 	CMFCVisualManager::SetDefaultManager(RUNTIME_CLASS(CMFCVisualManagerWindows));
 
-	// 标准初始化
-	// 如果未使用这些功能并希望减小
-	// 最终可执行文件的大小，则应移除下列
-	// 不需要的特定初始化例程
-	// 更改用于存储设置的注册表项
-	// TODO: 应适当修改该字符串，
-	// 例如修改为公司或组织名
-	// SetRegistryKey(_T("应用程序向导生成的本地应用程序"));
+	// Standard initialization
+	// If you are not using these features and wish to reduce the size
+	// of your final executable, you should remove the following
+	// specific initialization routines you do not need.
+	// Change the registry key under which our settings are stored.
+	// TODO: You should modify this string to be something appropriate,
+	// such as the name of your company or organization.
+	// SetRegistryKey(_T("Local AppWizard-Generated Applications"));
 
-	// 获取程序当前路径，并设置 ini 文件路径
+	// Get the current program path and set the ini file path
 	TCHAR szAppPath[MAX_PATH]{};
 	GetModuleFileName(nullptr, szAppPath, MAX_PATH);
 	namespace fs = std::filesystem;
@@ -117,7 +117,7 @@ BOOL CMFCApplication1App::InitInstance()
 	fs::path iniPath = appPath.parent_path() / L"config.ini";
 	CString strIniPath(iniPath.c_str());
 
-	// 释放默认的 m_pszProfileName 并将其指向新的.ini文件路径
+	// Release the default m_pszProfileName and point it to the new .ini file path
 	if (m_pszProfileName != nullptr)
 	{
 		free(const_cast<void*>(static_cast<const void*>(m_pszProfileName)));
@@ -134,13 +134,13 @@ BOOL CMFCApplication1App::InitInstance()
 		INT_PTR nResponse = dlg.DoModal();
 		if (nResponse == IDOK)
 		{
-			// TODO: 在此放置处理何时用
-			//  "确定"来关闭对话框的代码
+			// TODO: Place code here to handle when the dialog is
+			//  dismissed with OK
 		}
 		else if (nResponse == IDCANCEL)
 		{
-			// TODO: 在此放置处理何时用
-			//  "取消"来关闭对话框的代码
+			// TODO: Place code here to handle when the dialog is
+			//  dismissed with Cancel
 		}
 		else if (nResponse == -1)
 		{
@@ -172,8 +172,8 @@ BOOL CMFCApplication1App::InitInstance()
 	_CrtDumpMemoryLeaks();
 #endif
 
-	// 由于对话框已关闭，所以将返回 FALSE 以便退出应用程序，
-	//  而不是启动应用程序的消息泵。
+	// Since the dialog has been closed, return FALSE so that we exit the
+	//  application, rather than start the application's message pump.
 	return FALSE;
 }
 

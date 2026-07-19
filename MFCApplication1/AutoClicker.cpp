@@ -1,4 +1,4 @@
-// AutoClicker.cpp: 连点器功能实现
+// AutoClicker.cpp: Auto-clicker functionality implementation
 #include "pch.h"
 #include "framework.h"
 #include "AutoClicker.h"
@@ -14,7 +14,7 @@ void CAutoClicker::Start(int intervalMs, HWND hwndOwner)
     m_intervalMs = intervalMs;
     m_hwndOwner = hwndOwner;
 
-    if (m_bMonitorRunning.load()) return; // 已在运行
+    if (m_bMonitorRunning.load()) return; // Already running
 
     m_bEnabled = true;
     m_monitorStopSource.request_stop();
@@ -66,7 +66,7 @@ void CAutoClicker::SetInterval(int intervalMs)
     if (intervalMs > 10000) intervalMs = 10000;
     m_intervalMs = intervalMs;
 
-    // 如果正在点击，重启点击线程以应用新间隔
+    // If currently clicking, restart click thread to apply new interval
     if (m_bClicking.load())
     {
         m_clickStopSource.request_stop();
@@ -80,7 +80,7 @@ void CAutoClicker::SetKeys(char keyStart, char keyStop)
 {
     char ks = static_cast<char>(toupper(static_cast<unsigned char>(keyStart)));
     char kp = static_cast<char>(toupper(static_cast<unsigned char>(keyStop)));
-    // 防御：空字符或相同键，保持默认 A/B
+    // Guard: empty char or same key, keep default A/B
     if (ks == '\0') ks = 'A';
     if (kp == '\0') kp = 'B';
     if (ks == kp) return;

@@ -103,14 +103,14 @@ void CMFCApplication1Dlg::OnBnClickedButton24()
     }
 }
 
-// 刷新启动项列表（Tab2）
+// Refresh startup list (Tab2)
 void CMFCApplication1Dlg::RefreshStartupList()
 {
     // Start background thread to enumerate startup entries
     AfxBeginThread(EnumStartupsThread, this);
 }
 
-// 添加启动项：通过文件对话框选择可执行文件，使用文件名作为条目名
+// Add startup: select executable via file dialog, use filename as entry name
 void CMFCApplication1Dlg::OnAddStartup()
 {
     CFileDialog dlg(TRUE, _T("exe"), NULL, OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST, _T("Executable Files (*.exe)|*.exe||"));
@@ -120,7 +120,7 @@ void CMFCApplication1Dlg::OnAddStartup()
         int pos = path.ReverseFind('\\');
         CString name = (pos != -1) ? path.Mid(pos + 1) : path;
 
-        // 尝试写入注册表
+        // Try to write to registry
         HKEY hKey = NULL;
         if (RegOpenKeyEx(HKEY_CURRENT_USER, _T("Software\\Microsoft\\Windows\\CurrentVersion\\Run"), 0, KEY_SET_VALUE, &hKey) == ERROR_SUCCESS)
         {
@@ -138,7 +138,7 @@ void CMFCApplication1Dlg::OnAddStartup()
     }
 }
 
-// 删除选中的启动项
+// Delete selected startup item
 void CMFCApplication1Dlg::OnRemoveStartup()
 {
     CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST2);

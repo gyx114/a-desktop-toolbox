@@ -88,7 +88,7 @@ void CQRCodeGenDlg::OnBnClickedSave()
 
     CString filePath = dlg.GetPathName();
 
-    // 使用 GDI+ 保存为 PNG
+    // Use GDI+ to save as PNG
     Gdiplus::Bitmap bmp(m_hBitmap, nullptr);
     CLSID pngClsid;
     CLSIDFromString(L"{557CF406-1A04-11D3-9A73-0000F81EF32E}", &pngClsid);
@@ -116,7 +116,7 @@ void CQRCodeGenDlg::GenerateQRCode(const CString& text)
         HBITMAP hNewBitmap = CreateQRBitmap(qr, moduleSize);
         m_bitmapSize = CSize(qr.getSize() * moduleSize, qr.getSize() * moduleSize);
 
-        // 显示在静态控件中：SetBitmap 返回旧位图，由我们负责删除
+        // Display in static control: SetBitmap returns old bitmap, we are responsible for deleting it
         CStatic* pImage = static_cast<CStatic*>(GetDlgItem(IDC_STATIC_QR_IMAGE));
         if (pImage && hNewBitmap)
         {
@@ -144,19 +144,19 @@ void CQRCodeGenDlg::GenerateQRCode(const CString& text)
 HBITMAP CQRCodeGenDlg::CreateQRBitmap(const qrcodegen::QrCode& qr, int moduleSize)
 {
     int size = qr.getSize();
-    int imgSize = (size + 8) * moduleSize; // 留白边
+    int imgSize = (size + 8) * moduleSize; // Leave margin
 
     HDC hdcScreen = ::GetDC(NULL);
     HDC hdcMem = ::CreateCompatibleDC(hdcScreen);
     HBITMAP hBitmap = ::CreateCompatibleBitmap(hdcScreen, imgSize, imgSize);
     HBITMAP hOldBitmap = static_cast<HBITMAP>(::SelectObject(hdcMem, hBitmap));
 
-    // 白色背景
+    // White background
     HBRUSH hWhiteBrush = static_cast<HBRUSH>(::GetStockObject(WHITE_BRUSH));
     RECT rc = {0, 0, imgSize, imgSize};
     ::FillRect(hdcMem, &rc, hWhiteBrush);
 
-    // 黑色模块
+    // Black modules
     HBRUSH hBlackBrush = static_cast<HBRUSH>(::GetStockObject(BLACK_BRUSH));
     int margin = 4 * moduleSize;
     for (int y = 0; y < size; y++)

@@ -1,4 +1,4 @@
-// Utils.cpp: 通用工具函数实现
+// Utils.cpp: Utility function implementations
 #include "pch.h"
 #include "framework.h"
 #include "Utils.h"
@@ -6,7 +6,7 @@
 #include <userenv.h>
 #pragma comment(lib, "Userenv.lib")
 
-// 格式化 Windows 错误码为可读字符串
+// Format Windows error code to readable string
 [[nodiscard]] CString FormatLastError(DWORD err)
 {
     LPVOID msgBuf = nullptr;
@@ -25,7 +25,7 @@
     return res;
 }
 
-// 将文本复制到剪贴板
+// Copy text to clipboard
 void CopyToClipboard(HWND hwnd, const CString& text)
 {
     if (text.IsEmpty()) return;
@@ -50,7 +50,7 @@ void CopyToClipboard(HWND hwnd, const CString& text)
     CloseClipboard();
 }
 
-// 检查当前进程是否以管理员权限运行
+// Check if current process is running with admin privileges
 [[nodiscard]] bool IsProcessElevated()
 {
     HANDLE hToken = nullptr;
@@ -65,7 +65,7 @@ void CopyToClipboard(HWND hwnd, const CString& text)
     return elev.TokenIsElevated != 0;
 }
 
-// 弹窗询问用户是否以管理员权限重启，返回 true 表示已启动重启
+// Prompt user to restart with admin privileges, returns true if restart initiated
 [[nodiscard]] bool PromptRestartElevated()
 {
     int r = MessageBox(nullptr, _T("操作需要管理员权限。是否以管理员权限重新启动程序？"), _T("需要权限"), MB_YESNO | MB_ICONQUESTION);
@@ -84,7 +84,7 @@ void CopyToClipboard(HWND hwnd, const CString& text)
     return false;
 }
 
-// 从 ini 获取已保存路径，若无效则弹窗让用户选择并保存
+// Get saved path from ini, prompt user to select if invalid, then save
 [[nodiscard]] CString GetOrAskPath(CWnd* pParent, LPCTSTR pszKey, LPCTSTR pszTitle, bool bFolder)
 {
     CString path = AfxGetApp()->GetProfileString(_T("Paths"), pszKey, _T(""));
@@ -116,7 +116,7 @@ void CopyToClipboard(HWND hwnd, const CString& text)
     return _T("");
 }
 
-// 从三个编辑框（时、分、秒）解析总秒数
+// Parse total seconds from three edit boxes (hours, minutes, seconds)
 [[nodiscard]] int ParseShutdownSeconds(CDialogEx* pDlg)
 {
     ASSERT(pDlg != nullptr);
@@ -147,7 +147,7 @@ void CopyToClipboard(HWND hwnd, const CString& text)
     return static_cast<int>(total);
 }
 
-// 允许 UIPI 消息（用于跨权限窗口通信）
+// Allow UIPI messages (for cross-privilege window communication)
 void AllowUIPIMessage(HWND hwnd, UINT msg, BOOL allow)
 {
     typedef BOOL(WINAPI* PFN_CHANGE_WINDOW_MESSAGE_FILTER)(UINT, DWORD);
@@ -160,7 +160,7 @@ void AllowUIPIMessage(HWND hwnd, UINT msg, BOOL allow)
     }
 }
 
-// 以当前桌面用户（非管理员）身份启动进程
+// Launch process as current desktop user (non-admin)
 bool LaunchProcessAsShellUser(LPCTSTR exe, LPCTSTR params, CString* pError)
 {
     if (pError) *pError = _T("");

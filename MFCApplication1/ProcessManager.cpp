@@ -1,4 +1,4 @@
-// ProcessManager.cpp: 进程管理功能实现
+// ProcessManager.cpp: Process management functionality implementation
 #include "pch.h"
 #include "framework.h"
 #include "ProcessManager.h"
@@ -22,7 +22,7 @@
             info.name = pe32.szExeFile;
             info.pid = pe32.th32ProcessID;
 
-            // 获取进程路径和内存
+            // Get process path and memory
             HANDLE hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, info.pid);
             if (hProc)
             {
