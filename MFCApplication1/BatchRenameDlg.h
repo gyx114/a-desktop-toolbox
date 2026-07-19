@@ -93,4 +93,5 @@ private:
     std::set<size_t> m_manualIgnored;
     bool m_bPreviewDone{false};
     int m_nActiveTab{0};
+    HWND m_hRegexGuideWnd{nullptr};
 };

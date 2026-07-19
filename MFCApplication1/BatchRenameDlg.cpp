@@ -1194,8 +1194,15 @@ void CBatchRenameDlg::OnEnChangeRule()
 
 void CBatchRenameDlg::OnBnClickedRegexHelp()
 {
-    CRegexGuideDlg dlg(this);
-    dlg.DoModal();
+    if (m_hRegexGuideWnd && ::IsWindow(m_hRegexGuideWnd))
+    {
+        ::SetForegroundWindow(m_hRegexGuideWnd);
+        return;
+    }
+    auto* pDlg = new CRegexGuideDlg(nullptr);
+    pDlg->Create(IDD_REGEX_GUIDE_DLG, nullptr);
+    pDlg->ShowWindow(SW_SHOW);
+    m_hRegexGuideWnd = pDlg->GetSafeHwnd();
 }
 
 // 右键菜单
