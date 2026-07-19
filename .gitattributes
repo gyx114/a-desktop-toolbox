@@ -1,0 +1,3 @@
+# Lock RC files as binary to prevent Git from corrupting UTF-16LE encoding via line-ending conversion
+*.rc    binary
+*.rc2   binary

@@ -71,6 +71,8 @@ private:
     void ApplyRules();
     void ApplyIgnoreRules();
     void ApplyTrackRules();
+    static bool MatchExtension(const CString& fileName, const CString& extList);
+    static bool MatchPattern(const CString& fileName, const CString& pattern, bool bRegex);
     void RefreshFileList();
     afx_msg void OnBnClickedFilePreview();
     afx_msg void OnBnClickedFileExecute();

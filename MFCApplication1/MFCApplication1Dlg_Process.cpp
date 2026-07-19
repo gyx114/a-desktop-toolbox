@@ -388,7 +388,7 @@ void CMFCApplication1Dlg::ApplyProcessFilter()
         }
         catch (...)
         {
-            // If regex is invalid, ignore filtering
+            OutputDebugString(_T("[ProcessManager] Invalid regex filter, falling back to unfiltered\n"));
             filtered = m_processes;
         }
 

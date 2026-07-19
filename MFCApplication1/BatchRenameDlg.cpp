@@ -379,7 +379,7 @@ void CBatchRenameDlg::LoadFolders()
             }
         }
     }
-    catch (...) {}
+    catch (...) { OutputDebugString(_T("[BatchRename] Failed to enumerate folder directory\n")); }
 
     std::sort(m_folders.begin(), m_folders.end(),
         [](const FolderEntry& a, const FolderEntry& b) {
@@ -950,7 +950,7 @@ void CBatchRenameDlg::LoadFiles()
             }
         }
     }
-    catch (...) {}
+    catch (...) { OutputDebugString(_T("[BatchRename] Failed to enumerate file directory\n")); }
 
     std::sort(m_entries.begin(), m_entries.end(),
         [](const RenameEntry& a, const RenameEntry& b) {
@@ -961,6 +961,50 @@ void CBatchRenameDlg::LoadFiles()
     GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(FALSE);
 
     RefreshFileList();
+}
+
+// --- Shared matching helpers ---
+
+bool CBatchRenameDlg::MatchExtension(const CString& fileName, const CString& extList)
+{
+    CString ext = PathFindExtension(fileName);
+    ext.MakeLower();
+    CString lowerList = extList;
+    lowerList.MakeLower();
+
+    int start = 0;
+    while (start < lowerList.GetLength())
+    {
+        CString token = lowerList.Tokenize(_T(";"), start);
+        token.Trim();
+        if (!token.IsEmpty())
+        {
+            if (token[0] != _T('.'))
+                token = _T('.') + token;
+            if (ext == token)
+                return true;
+        }
+    }
+    return false;
+}
+
+bool CBatchRenameDlg::MatchPattern(const CString& fileName, const CString& pattern, bool bRegex)
+{
+    try
+    {
+        std::wstring wName = static_cast<LPCWSTR>(fileName);
+        if (bRegex)
+        {
+            std::wregex re(static_cast<LPCWSTR>(pattern));
+            return std::regex_search(wName, re);
+        }
+        else
+        {
+            return wName.find(static_cast<LPCWSTR>(pattern)) != std::wstring::npos;
+        }
+    }
+    catch (const std::regex_error&) { OutputDebugString(_T("[BatchRename] Invalid regex pattern\n")); }
+    return false;
 }
 
 void CBatchRenameDlg::ApplyIgnoreRules()
@@ -1002,59 +1046,19 @@ void CBatchRenameDlg::ApplyIgnoreRules()
         m_entries[i].bIgnored = false;
 
         // Ignore by extension
-        if (bIgnoreExt && !ignoreExtStr.IsEmpty())
+        if (bIgnoreExt && !ignoreExtStr.IsEmpty() && MatchExtension(m_entries[i].oldName, ignoreExtStr))
         {
-            CString ext = PathFindExtension(m_entries[i].oldName);
-            ext.MakeLower();
-            CString extList = ignoreExtStr;
-            extList.MakeLower();
-
-            int start = 0;
-            while (start < extList.GetLength())
-            {
-                CString token = extList.Tokenize(_T(";"), start);
-                token.Trim();
-                if (!token.IsEmpty())
-                {
-                    if (token[0] != _T('.'))
-                        token = _T('.') + token;
-                    if (ext == token)
-                    {
-                        m_entries[i].bIgnored = true;
-                        m_entries[i].bMarkedDelete = false;
-                        break;
-                    }
-                }
-            }
+            m_entries[i].bIgnored = true;
+            m_entries[i].bMarkedDelete = false;
         }
 
         if (m_entries[i].bIgnored) continue;
 
-        // Ignore by match
-        if (bIgnoreMatch && !ignorePattern.IsEmpty())
+        // Ignore by match/pattern
+        if (bIgnoreMatch && !ignorePattern.IsEmpty() && MatchPattern(m_entries[i].oldName, ignorePattern, bIgnoreRegex))
         {
-            try
-            {
-                std::wstring wName = static_cast<LPCWSTR>(m_entries[i].oldName);
-                if (bIgnoreRegex)
-                {
-                    std::wregex re(static_cast<LPCWSTR>(ignorePattern));
-                    if (std::regex_search(wName, re))
-                    {
-                        m_entries[i].bIgnored = true;
-                        m_entries[i].bMarkedDelete = false;
-                    }
-                }
-                else
-                {
-                    if (wName.find(static_cast<LPCWSTR>(ignorePattern)) != std::wstring::npos)
-                    {
-                        m_entries[i].bIgnored = true;
-                        m_entries[i].bMarkedDelete = false;
-                    }
-                }
-            }
-            catch (const std::regex_error&) {}
+            m_entries[i].bIgnored = true;
+            m_entries[i].bMarkedDelete = false;
         }
     }
 }
@@ -1090,62 +1094,21 @@ void CBatchRenameDlg::ApplyTrackRules()
         m_entries[i].bTracked = false;
 
         // Track by extension
-        if (bTrackExt && !trackExtStr.IsEmpty())
+        if (bTrackExt && !trackExtStr.IsEmpty() && MatchExtension(m_entries[i].oldName, trackExtStr))
         {
-            CString ext = PathFindExtension(m_entries[i].oldName);
-            ext.MakeLower();
-            CString extList = trackExtStr;
-            extList.MakeLower();
-
-            int start = 0;
-            while (start < extList.GetLength())
-            {
-                CString token = extList.Tokenize(_T(";"), start);
-                token.Trim();
-                if (!token.IsEmpty())
-                {
-                    if (token[0] != _T('.'))
-                        token = _T('.') + token;
-                    if (ext == token)
-                    {
-                        m_entries[i].bTracked = true;
-                        m_entries[i].bIgnored = false;
-                        m_entries[i].bMarkedDelete = false;
-                        break;
-                    }
-                }
-            }
+            m_entries[i].bTracked = true;
+            m_entries[i].bIgnored = false;
+            m_entries[i].bMarkedDelete = false;
         }
 
         if (m_entries[i].bTracked) continue;
 
-        // Track by match
-        if (bTrackMatch && !trackPattern.IsEmpty())
+        // Track by match/pattern
+        if (bTrackMatch && !trackPattern.IsEmpty() && MatchPattern(m_entries[i].oldName, trackPattern, bTrackRegex))
         {
-            try
-            {
-                std::wstring wName = static_cast<LPCWSTR>(m_entries[i].oldName);
-                if (bTrackRegex)
-                {
-                    std::wregex re(static_cast<LPCWSTR>(trackPattern));
-                    if (std::regex_search(wName, re))
-                    {
-                        m_entries[i].bTracked = true;
-                        m_entries[i].bIgnored = false;
-                        m_entries[i].bMarkedDelete = false;
-                    }
-                }
-                else
-                {
-                    if (wName.find(static_cast<LPCWSTR>(trackPattern)) != std::wstring::npos)
-                    {
-                        m_entries[i].bTracked = true;
-                        m_entries[i].bIgnored = false;
-                        m_entries[i].bMarkedDelete = false;
-                    }
-                }
-            }
-            catch (const std::regex_error&) {}
+            m_entries[i].bTracked = true;
+            m_entries[i].bIgnored = false;
+            m_entries[i].bMarkedDelete = false;
         }
     }
 }
@@ -1217,7 +1180,7 @@ void CBatchRenameDlg::ApplyRules()
                     continue;
                 }
             }
-            catch (const std::regex_error&) {}
+            catch (const std::regex_error&) { OutputDebugString(_T("[BatchRename] Invalid regex pattern\n")); }
         }
 
         if (m_entries[i].bMarkedDelete)
@@ -1262,7 +1225,7 @@ void CBatchRenameDlg::ApplyRules()
                     std::wstring result = std::regex_replace(wStem, re, wTo);
                     stem = result.c_str();
                 }
-                catch (const std::regex_error&) {}
+                catch (const std::regex_error&) { OutputDebugString(_T("[BatchRename] Invalid regex pattern\n")); }
             }
             else
             {

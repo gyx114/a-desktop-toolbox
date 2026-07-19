@@ -122,7 +122,7 @@ bool OcrRecognizeFromFile(const wchar_t* filePath, wchar_t* output, int outputSi
     }
     catch (...)
     {
-        wcsncpy_s(output, outputSize, L"OCR 识别失败：未知错误。", _TRUNCATE);
+        wcsncpy_s(output, outputSize, L"OCR failed: unknown error.", _TRUNCATE);
         return false;
     }
 }
