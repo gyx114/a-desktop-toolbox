@@ -1109,6 +1109,8 @@ void CBatchRenameDlg::ApplyTrackRules()
                     if (ext == token)
                     {
                         m_entries[i].bTracked = true;
+                        m_entries[i].bIgnored = false;
+                        m_entries[i].bMarkedDelete = false;
                         break;
                     }
                 }
@@ -1129,6 +1131,8 @@ void CBatchRenameDlg::ApplyTrackRules()
                     if (std::regex_search(wName, re))
                     {
                         m_entries[i].bTracked = true;
+                        m_entries[i].bIgnored = false;
+                        m_entries[i].bMarkedDelete = false;
                     }
                 }
                 else
@@ -1136,6 +1140,8 @@ void CBatchRenameDlg::ApplyTrackRules()
                     if (wName.find(static_cast<LPCWSTR>(trackPattern)) != std::wstring::npos)
                     {
                         m_entries[i].bTracked = true;
+                        m_entries[i].bIgnored = false;
+                        m_entries[i].bMarkedDelete = false;
                     }
                 }
             }
