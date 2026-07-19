@@ -167,6 +167,15 @@ public:
     struct ProcInfo { CString name; DWORD pid; CString path; SIZE_T memKB; };
 	struct StartupInfo { CString name; CString cmd; };
 
+    // 进程列表：存储原始数据以支持排序和过滤
+    std::vector<ProcInfo> m_processes;
+    int m_nSortColumn{-1};
+    bool m_bSortAscending{true};
+
+    void ApplyProcessFilter();
+    void SortProcessList();
+    void PopulateProcessList();
+
 	afx_msg LRESULT OnRefreshProcessesDone(WPARAM wParam, LPARAM lParam);
 	afx_msg LRESULT OnRefreshStartupsDone(WPARAM wParam, LPARAM lParam);
 	afx_msg void OnBnClickedCheck3();
@@ -252,6 +261,9 @@ public:
 	afx_msg void OnBnClickedButton31();
     afx_msg void OnBnClickedButton32();
     afx_msg void OnBiliNext();
+    // 进程列表排序和过滤
+    afx_msg void OnProcessColumnClick(NMHDR* pNMHDR, LRESULT* pResult);
+    afx_msg void OnProcessFilterChange();
     // Git list handlers
 	afx_msg void OnCopyGitCommand();
 	afx_msg void OnNMDblclkList4(NMHDR* pNMHDR, LRESULT* pResult);

@@ -31,6 +31,10 @@ void CMFCApplication1Dlg::InitProcessTab()
     pList1->InsertColumn(1, _T("PID"), LVCFMT_LEFT, 160);
     pList1->InsertColumn(2, _T("路径"), LVCFMT_LEFT, 600);
     pList1->InsertColumn(3, _T("内存(KB)"), LVCFMT_RIGHT, 200);
+
+    // 强制表头重绘
+    if (pList1->GetHeaderCtrl())
+        pList1->GetHeaderCtrl()->Invalidate(TRUE);
 }
 
 void CMFCApplication1Dlg::InitStartupTab()
@@ -178,9 +182,17 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
     if (pList1) {
         pList1->ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
         if (nTab == 0) {
-            pList1->GetHeaderCtrl()->Invalidate();
+            pList1->GetHeaderCtrl()->Invalidate(TRUE);
+            pList1->RedrawWindow(NULL, NULL, RDW_FRAME | RDW_INVALIDATE | RDW_UPDATENOW | RDW_ERASE);
         }
     }
+    // 进程搜索过滤控件
+    CWnd* pEditFilter = GetDlgItem(IDC_EDIT_PROCESS_FILTER);
+    if (pEditFilter)
+        pEditFilter->ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
+    CWnd* pBtnRegex = GetDlgItem(IDC_CHECK_PROCESS_REGEX);
+    if (pBtnRegex)
+        pBtnRegex->ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
     if (pList2) pList2->ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
     if (pList3) pList3->ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
     if (pList4) pList4->ShowWindow(nTab == 5 ? SW_SHOW : SW_HIDE);

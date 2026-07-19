@@ -6,6 +6,8 @@
 #include <TlHelp32.h>
 #include <Shellapi.h>
 #include <Psapi.h>
+#include <regex>
+#include <algorithm>
 
 // Forward declarations for static helper functions
 static UINT EnumProcessesThread(LPVOID pParam);
@@ -282,4 +284,190 @@ static BOOL CALLBACK EnumWindowsCloseCallback(HWND hWnd, LPARAM lParam)
         ::PostMessage(hWnd, WM_CLOSE, 0, 0);
     }
     return TRUE;
+}
+
+// ========== 进程排序与过滤 ==========
+
+void CMFCApplication1Dlg::PopulateProcessList()
+{
+    CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST1);
+    if (!pList) return;
+
+    pList->DeleteAllItems();
+
+    for (int i = 0; i < (int)m_processes.size(); i++)
+    {
+        auto& pi = m_processes[i];
+        CString pidStr;
+        pidStr.Format(_T("%u"), pi.pid);
+        CString memStr;
+        memStr.Format(_T("%llu"), (unsigned long long)pi.memKB);
+
+        LVITEM li = {0};
+        li.mask = LVIF_TEXT;
+        li.iItem = i;
+        li.pszText = const_cast<LPTSTR>((LPCTSTR)pi.name);
+        pList->InsertItem(&li);
+        pList->SetItemText(i, 1, pidStr);
+        pList->SetItemText(i, 2, pi.path);
+        pList->SetItemText(i, 3, memStr);
+    }
+}
+
+void CMFCApplication1Dlg::SortProcessList()
+{
+    if (m_nSortColumn < 0 || m_nSortColumn > 3) return;
+
+    std::sort(m_processes.begin(), m_processes.end(),
+        [this](const ProcInfo& a, const ProcInfo& b) -> bool
+        {
+            int cmp = 0;
+            switch (m_nSortColumn)
+            {
+            case 0: cmp = a.name.CompareNoCase(b.name); break;
+            case 1: cmp = (a.pid > b.pid) ? 1 : (a.pid < b.pid) ? -1 : 0; break;
+            case 2: cmp = a.path.CompareNoCase(b.path); break;
+            case 3: cmp = (a.memKB > b.memKB) ? 1 : (a.memKB < b.memKB) ? -1 : 0; break;
+            }
+            return m_bSortAscending ? (cmp < 0) : (cmp > 0);
+        });
+}
+
+void CMFCApplication1Dlg::ApplyProcessFilter()
+{
+    CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST1);
+    if (!pList) return;
+
+    // 只有 m_processes 里有数据时才处理
+    if (m_processes.empty()) return;
+
+    // 获取过滤文本
+    CString filterText;
+    CEdit* pEditFilter = (CEdit*)GetDlgItem(IDC_EDIT_PROCESS_FILTER);
+    if (pEditFilter)
+        pEditFilter->GetWindowText(filterText);
+
+    bool useRegex = false;
+    CButton* pBtnRegex = (CButton*)GetDlgItem(IDC_CHECK_PROCESS_REGEX);
+    if (pBtnRegex)
+        useRegex = (pBtnRegex->GetCheck() == BST_CHECKED);
+
+    // 应用排序
+    SortProcessList();
+
+    // 如果有过滤文本，进行过滤
+    if (!filterText.IsEmpty())
+    {
+        std::vector<ProcInfo> filtered;
+        try
+        {
+            if (useRegex)
+            {
+                std::wregex re(filterText.GetString(), std::regex_constants::icase);
+                for (auto& pi : m_processes)
+                {
+                    if (std::regex_search(std::wstring(pi.name), re) ||
+                        std::regex_search(std::wstring(pi.path), re))
+                    {
+                        filtered.push_back(pi);
+                    }
+                }
+            }
+            else
+            {
+                CString lower = filterText;
+                lower.MakeLower();
+                for (auto& pi : m_processes)
+                {
+                    CString name = pi.name; name.MakeLower();
+                    CString path = pi.path; path.MakeLower();
+                    if (name.Find(lower) >= 0 || path.Find(lower) >= 0)
+                        filtered.push_back(pi);
+                }
+            }
+        }
+        catch (...)
+        {
+            // 正则表达式无效时，忽略过滤
+            filtered = m_processes;
+        }
+
+        // 用过滤后的数据填充列表
+        pList->DeleteAllItems();
+        for (int i = 0; i < (int)filtered.size(); i++)
+        {
+            auto& pi = filtered[i];
+            CString pidStr;
+            pidStr.Format(_T("%u"), pi.pid);
+            CString memStr;
+            memStr.Format(_T("%llu"), (unsigned long long)pi.memKB);
+
+            LVITEM li = {0};
+            li.mask = LVIF_TEXT;
+            li.iItem = i;
+            li.pszText = const_cast<LPTSTR>((LPCTSTR)pi.name);
+            pList->InsertItem(&li);
+            pList->SetItemText(i, 1, pidStr);
+            pList->SetItemText(i, 2, pi.path);
+            pList->SetItemText(i, 3, memStr);
+        }
+    }
+    else
+    {
+        // 无过滤文本，直接填充全部
+        PopulateProcessList();
+    }
+
+    // 更新表头排序箭头
+    if (pList->GetHeaderCtrl())
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            HDITEM hdi = {0};
+            hdi.mask = HDI_TEXT;
+            TCHAR buf[128];
+            hdi.pszText = buf;
+            hdi.cchTextMax = 128;
+            pList->GetHeaderCtrl()->GetItem(i, &hdi);
+
+            // 去掉已有的箭头符号
+            CString text = hdi.pszText;
+            if (text.GetLength() >= 2 &&
+                (text[0] == _T('\x25B2') || text[0] == _T('\x25BC') || text[0] == _T(' ')))
+            {
+                text = text.Mid(2);  // 去掉 "▲ " 或 "▼ "
+            }
+
+            if (i == m_nSortColumn)
+            {
+                text = (m_bSortAscending ? _T("▲ ") : _T("▼ ")) + text;
+            }
+
+            hdi.mask = HDI_TEXT;
+            hdi.pszText = const_cast<LPTSTR>((LPCTSTR)text);
+            pList->GetHeaderCtrl()->SetItem(i, &hdi);
+        }
+    }
+}
+
+void CMFCApplication1Dlg::OnProcessColumnClick(NMHDR* pNMHDR, LRESULT* pResult)
+{
+    NM_LISTVIEW* pNMListView = (NM_LISTVIEW*)pNMHDR;
+    int nCol = pNMListView->iSubItem;
+
+    if (nCol == m_nSortColumn)
+        m_bSortAscending = !m_bSortAscending;
+    else
+    {
+        m_nSortColumn = nCol;
+        m_bSortAscending = true;
+    }
+
+    ApplyProcessFilter();
+    *pResult = 0;
+}
+
+void CMFCApplication1Dlg::OnProcessFilterChange()
+{
+    ApplyProcessFilter();
 }

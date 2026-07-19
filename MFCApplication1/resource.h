@@ -76,9 +76,9 @@
 #define IDC_LIST5                       1076
 #define IDC_BUTTON33                    1077
 #define IDC_EDIT_DEFAULT_NAME           1078
-#define IDC_LIST6                       1078
+#define IDC_LIST6                       1178
 #define IDC_EDIT_BILI_PATH              1079
-#define IDC_LIST7                       1079
+#define IDC_LIST7                       1179
 #define IDC_BROWSE_BILI                 1080
 #define IDC_EDIT_WECHAT_PATH            1081
 #define IDC_BROWSE_WECHAT               1082
@@ -176,6 +176,8 @@
 #define IDC_CHECK_IGNORE_REGEX          1173
 #define IDC_BTN_IGNORE_CLEAR            1174
 #define IDC_COMBO_OCR_LANG              1175
+#define IDC_EDIT_PROCESS_FILTER         1176
+#define IDC_CHECK_PROCESS_REGEX         1177
 
 #define ID_FILE_SETTINGS                32775
 #define ID_FILE_EXIT                    32776

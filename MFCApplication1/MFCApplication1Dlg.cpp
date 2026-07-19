@@ -201,6 +201,9 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_COMMAND(ID_FILE_SETTINGS, &CMFCApplication1Dlg::OnFileSettings)
     ON_COMMAND(ID_FILE_EXIT, &CMFCApplication1Dlg::OnFileExit)
     ON_COMMAND(ID_HELP_ABOUT, &CMFCApplication1Dlg::OnHelpAbout)
+    ON_NOTIFY(LVN_COLUMNCLICK, IDC_LIST1, &CMFCApplication1Dlg::OnProcessColumnClick)
+    ON_EN_CHANGE(IDC_EDIT_PROCESS_FILTER, &CMFCApplication1Dlg::OnProcessFilterChange)
+    ON_BN_CLICKED(IDC_CHECK_PROCESS_REGEX, &CMFCApplication1Dlg::OnProcessFilterChange)
 END_MESSAGE_MAP()
 
 
@@ -636,42 +639,11 @@ LRESULT CMFCApplication1Dlg::OnClipboardUpdate(WPARAM wParam, LPARAM lParam)
 afx_msg LRESULT CMFCApplication1Dlg::OnRefreshProcessesDone(WPARAM wParam, LPARAM lParam)
 {
     auto vec = reinterpret_cast<std::vector<ProcInfo>*>(wParam);
-    CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST1);
-    if (pList)
-    {
-        pList->DeleteAllItems();
-        // Ensure report style and reasonable column widths are set
-        pList->ModifyStyle(0, LVS_REPORT);
-        pList->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_INFOTIP);
-        pList->SetColumnWidth(0, 200);
-        pList->SetColumnWidth(1, 160);
-        pList->SetColumnWidth(2, 600);
-        pList->SetColumnWidth(3, 200);
-
-        int idx = 0;
-        for (auto &pi : *vec)
-        {
-            CString pidStr;
-            pidStr.Format(_T("%u"), pi.pid);
-            CString memStr;
-            memStr.Format(_T("%llu"), (unsigned long long)pi.memKB);
-
-            LVITEM li = {0};
-            li.mask = LVIF_TEXT;
-            li.iItem = idx;
-            li.iSubItem = 0;
-            li.pszText = const_cast<LPTSTR>((LPCTSTR)pi.name);
-            pList->InsertItem(&li);
-
-            // Explicitly set subitem texts
-            pList->SetItemText(idx, 0, pi.name);
-            pList->SetItemText(idx, 1, pidStr);
-            pList->SetItemText(idx, 2, pi.path);
-            pList->SetItemText(idx, 3, memStr);
-            idx++;
-        }
-    }
+    m_processes = std::move(*vec);
     delete vec;
+
+    m_nSortColumn = -1;  // 重置排序状态
+    ApplyProcessFilter();
     return 0;
 }
 
