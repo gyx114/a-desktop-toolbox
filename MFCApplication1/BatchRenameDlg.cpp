@@ -21,6 +21,8 @@ namespace fs = std::filesystem;
 #define IDM_FILE_EXPLORE        32828
 #define IDM_FILE_IGNORE         32829
 #define IDM_FILE_UNIGNORE       32830
+#define IDM_FILE_TRACK          32831
+#define IDM_FILE_UNTRACK        32832
 
 // 简单的输入对话框类
 class CInputDialog : public CDialogEx
@@ -104,6 +106,8 @@ BEGIN_MESSAGE_MAP(CBatchRenameDlg, CDialogEx)
     ON_COMMAND(IDM_FILE_EXPLORE, &CBatchRenameDlg::OnFileExplore)
     ON_COMMAND(IDM_FILE_IGNORE, &CBatchRenameDlg::OnFileIgnore)
     ON_COMMAND(IDM_FILE_UNIGNORE, &CBatchRenameDlg::OnFileUnignore)
+    ON_COMMAND(IDM_FILE_TRACK, &CBatchRenameDlg::OnFileTrack)
+    ON_COMMAND(IDM_FILE_UNTRACK, &CBatchRenameDlg::OnFileUntrack)
     ON_NOTIFY(NM_RCLICK, IDC_LIST_RENAME, &CBatchRenameDlg::OnFileListRightClick)
     ON_COMMAND(IDM_FILE_MARK_DELETE, &CBatchRenameDlg::OnFileMarkDelete)
     ON_COMMAND(IDM_FILE_UNMARK_DELETE, &CBatchRenameDlg::OnFileUnmarkDelete)
@@ -113,6 +117,13 @@ BEGIN_MESSAGE_MAP(CBatchRenameDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BTN_FILE_RESET_ALL, &CBatchRenameDlg::OnFileResetAll)
     ON_BN_CLICKED(IDC_CHECK_DELETE_INVERT, &CBatchRenameDlg::OnCheckDeleteInvert)
     ON_BN_CLICKED(IDC_BTN_IGNORE_CLEAR, &CBatchRenameDlg::OnBnClickedIgnoreClear)
+    ON_BN_CLICKED(IDC_CHECK_IGNORE_EXT, &CBatchRenameDlg::OnIgnoreRuleChanged)
+    ON_BN_CLICKED(IDC_CHECK_IGNORE_MATCH, &CBatchRenameDlg::OnIgnoreRuleChanged)
+    ON_BN_CLICKED(IDC_CHECK_IGNORE_REGEX, &CBatchRenameDlg::OnIgnoreRuleChanged)
+    ON_BN_CLICKED(IDC_CHECK_TRACK_EXT, &CBatchRenameDlg::OnTrackRuleChanged)
+    ON_BN_CLICKED(IDC_CHECK_TRACK_MATCH, &CBatchRenameDlg::OnTrackRuleChanged)
+    ON_BN_CLICKED(IDC_CHECK_TRACK_REGEX, &CBatchRenameDlg::OnTrackRuleChanged)
+    ON_BN_CLICKED(IDC_BTN_TRACK_CLEAR, &CBatchRenameDlg::OnBnClickedTrackClear)
     ON_WM_DROPFILES()
     ON_WM_CLOSE()
 END_MESSAGE_MAP()
@@ -208,7 +219,11 @@ void CBatchRenameDlg::ShowTab(int nTab)
         IDC_CHECK_IGNORE_EXT, IDC_EDIT_IGNORE_EXT,
         IDC_CHECK_IGNORE_MATCH, IDC_EDIT_IGNORE_PATTERN,
         IDC_CHECK_IGNORE_REGEX, IDC_BTN_IGNORE_CLEAR,
-        IDC_STATIC_IGNORE_GROUP
+        IDC_STATIC_IGNORE_GROUP,
+        IDC_CHECK_TRACK_EXT, IDC_EDIT_TRACK_EXT,
+        IDC_CHECK_TRACK_MATCH, IDC_EDIT_TRACK_PATTERN,
+        IDC_CHECK_TRACK_REGEX, IDC_BTN_TRACK_CLEAR,
+        IDC_STATIC_TRACK_GROUP
     };
     constexpr int nFileIDs = sizeof(fileIDs) / sizeof(fileIDs[0]);
 
@@ -778,8 +793,11 @@ void CBatchRenameDlg::OnFileIgnore()
         {
             if (i < static_cast<int>(m_entries.size()))
             {
-                m_manualIgnored.insert(static_cast<size_t>(i));
+                m_manualIgnoredSet.insert(m_entries[i].fullPath);
+                // 忽略优先：如果同时被跟踪，取消跟踪
+                m_manualTrackedSet.erase(m_entries[i].fullPath);
                 m_entries[i].bIgnored = true;
+                m_entries[i].bTracked = false;
                 m_entries[i].bMarkedDelete = false;
             }
         }
@@ -802,7 +820,7 @@ void CBatchRenameDlg::OnFileUnignore()
         {
             if (i < static_cast<int>(m_entries.size()))
             {
-                m_manualIgnored.erase(static_cast<size_t>(i));
+                m_manualIgnoredSet.erase(m_entries[i].fullPath);
             }
         }
     }
@@ -814,8 +832,82 @@ void CBatchRenameDlg::OnFileUnignore()
 
 void CBatchRenameDlg::OnBnClickedIgnoreClear()
 {
-    if (m_manualIgnored.empty()) return;
-    m_manualIgnored.clear();
+    if (m_manualIgnoredSet.empty()) return;
+    m_manualIgnoredSet.clear();
+    ApplyRules();
+    RefreshFileList();
+    m_bPreviewDone = true;
+    GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(TRUE);
+}
+
+void CBatchRenameDlg::OnIgnoreRuleChanged()
+{
+    ApplyRules();
+    RefreshFileList();
+    m_bPreviewDone = true;
+    GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(TRUE);
+}
+
+void CBatchRenameDlg::OnTrackRuleChanged()
+{
+    ApplyRules();
+    RefreshFileList();
+    m_bPreviewDone = true;
+    GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(TRUE);
+}
+
+void CBatchRenameDlg::OnFileTrack()
+{
+    CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_RENAME));
+    if (!pList) return;
+
+    int nCount = pList->GetItemCount();
+    for (int i = 0; i < nCount; i++)
+    {
+        if (pList->GetItemState(i, LVIS_SELECTED) & LVIS_SELECTED)
+        {
+            if (i < static_cast<int>(m_entries.size()))
+            {
+                // 如果已被忽略，不允许跟踪（忽略优先）
+                if (m_manualIgnoredSet.count(m_entries[i].fullPath) > 0)
+                    continue;
+                m_manualTrackedSet.insert(m_entries[i].fullPath);
+                m_entries[i].bTracked = true;
+            }
+        }
+    }
+    ApplyRules();
+    RefreshFileList();
+    m_bPreviewDone = true;
+    GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(TRUE);
+}
+
+void CBatchRenameDlg::OnFileUntrack()
+{
+    CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_RENAME));
+    if (!pList) return;
+
+    int nCount = pList->GetItemCount();
+    for (int i = 0; i < nCount; i++)
+    {
+        if (pList->GetItemState(i, LVIS_SELECTED) & LVIS_SELECTED)
+        {
+            if (i < static_cast<int>(m_entries.size()))
+            {
+                m_manualTrackedSet.erase(m_entries[i].fullPath);
+            }
+        }
+    }
+    ApplyRules();
+    RefreshFileList();
+    m_bPreviewDone = true;
+    GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(TRUE);
+}
+
+void CBatchRenameDlg::OnBnClickedTrackClear()
+{
+    if (m_manualTrackedSet.empty()) return;
+    m_manualTrackedSet.clear();
     ApplyRules();
     RefreshFileList();
     m_bPreviewDone = true;
@@ -827,7 +919,6 @@ void CBatchRenameDlg::OnBnClickedIgnoreClear()
 void CBatchRenameDlg::LoadFiles()
 {
     m_entries.clear();
-    m_manualIgnored.clear();
     m_bPreviewDone = false;
 
     if (m_folderPath.IsEmpty()) return;
@@ -844,6 +935,11 @@ void CBatchRenameDlg::LoadFiles()
                 re.newName = re.oldName;
                 re.fullPath = entry.path();
                 re.bMarkedDelete = false;
+                // 根据路径恢复手动忽略/跟踪状态
+                if (m_manualIgnoredSet.count(entry.path()) > 0)
+                    re.bIgnored = true;
+                if (m_manualTrackedSet.count(entry.path()) > 0)
+                    re.bTracked = true;
                 m_entries.push_back(re);
             }
         }
@@ -873,10 +969,11 @@ void CBatchRenameDlg::ApplyIgnoreRules()
 
     for (size_t i = 0; i < m_entries.size(); i++)
     {
-        // 手动忽略优先
-        if (m_manualIgnored.count(i) > 0)
+        // 手动忽略优先（路径-based）
+        if (m_manualIgnoredSet.count(m_entries[i].fullPath) > 0)
         {
             m_entries[i].bIgnored = true;
+            m_entries[i].bTracked = false;
             m_entries[i].bMarkedDelete = false;
             continue;
         }
@@ -941,10 +1038,95 @@ void CBatchRenameDlg::ApplyIgnoreRules()
     }
 }
 
+void CBatchRenameDlg::ApplyTrackRules()
+{
+    BOOL bTrackExt = static_cast<CButton*>(GetDlgItem(IDC_CHECK_TRACK_EXT))->GetCheck() == BST_CHECKED;
+    BOOL bTrackMatch = static_cast<CButton*>(GetDlgItem(IDC_CHECK_TRACK_MATCH))->GetCheck() == BST_CHECKED;
+    BOOL bTrackRegex = static_cast<CButton*>(GetDlgItem(IDC_CHECK_TRACK_REGEX))->GetCheck() == BST_CHECKED;
+
+    CString trackExtStr, trackPattern;
+    if (bTrackExt) GetDlgItemText(IDC_EDIT_TRACK_EXT, trackExtStr);
+    if (bTrackMatch) GetDlgItemText(IDC_EDIT_TRACK_PATTERN, trackPattern);
+
+    for (size_t i = 0; i < m_entries.size(); i++)
+    {
+        // 已忽略的文件不参与跟踪（忽略优先）
+        if (m_entries[i].bIgnored)
+        {
+            m_entries[i].bTracked = false;
+            continue;
+        }
+
+        // 手动跟踪优先（路径-based）
+        if (m_manualTrackedSet.count(m_entries[i].fullPath) > 0)
+        {
+            m_entries[i].bTracked = true;
+            continue;
+        }
+
+        m_entries[i].bTracked = false;
+
+        // 按后缀跟踪
+        if (bTrackExt && !trackExtStr.IsEmpty())
+        {
+            CString ext = PathFindExtension(m_entries[i].oldName);
+            ext.MakeLower();
+            CString extList = trackExtStr;
+            extList.MakeLower();
+
+            int start = 0;
+            while (start < extList.GetLength())
+            {
+                CString token = extList.Tokenize(_T(";"), start);
+                token.Trim();
+                if (!token.IsEmpty())
+                {
+                    if (token[0] != _T('.'))
+                        token = _T('.') + token;
+                    if (ext == token)
+                    {
+                        m_entries[i].bTracked = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (m_entries[i].bTracked) continue;
+
+        // 按匹配跟踪
+        if (bTrackMatch && !trackPattern.IsEmpty())
+        {
+            try
+            {
+                std::wstring wName = static_cast<LPCWSTR>(m_entries[i].oldName);
+                if (bTrackRegex)
+                {
+                    std::wregex re(static_cast<LPCWSTR>(trackPattern));
+                    if (std::regex_search(wName, re))
+                    {
+                        m_entries[i].bTracked = true;
+                    }
+                }
+                else
+                {
+                    if (wName.find(static_cast<LPCWSTR>(trackPattern)) != std::wstring::npos)
+                    {
+                        m_entries[i].bTracked = true;
+                    }
+                }
+            }
+            catch (const std::regex_error&) {}
+        }
+    }
+}
+
 void CBatchRenameDlg::ApplyRules()
 {
     // 先应用忽略规则
     ApplyIgnoreRules();
+    // 再应用跟踪规则（忽略优先，已忽略的文件不会被跟踪）
+    ApplyTrackRules();
 
     CString prefix, suffix, replaceFrom, replaceTo;
     GetDlgItemText(IDC_EDIT_RENAME_PREFIX, prefix);
@@ -1095,6 +1277,8 @@ void CBatchRenameDlg::RefreshFileList()
         CString status;
         if (m_entries[i].bIgnored)
             status = _T("已忽略");
+        else if (m_entries[i].bTracked)
+            status = _T("【跟踪】") + m_entries[i].newName;
         else
             status = m_entries[i].newName;
         pList->SetItemText(idx, 1, status);
@@ -1235,6 +1419,9 @@ void CBatchRenameDlg::OnFileListRightClick(NMHDR* /*pNMHDR*/, LRESULT* pResult)
         menu.AppendMenu(MF_STRING, IDM_FILE_IGNORE, _T("忽略"));
         menu.AppendMenu(MF_STRING, IDM_FILE_UNIGNORE, _T("取消忽略"));
         menu.AppendMenu(MF_SEPARATOR);
+        menu.AppendMenu(MF_STRING, IDM_FILE_TRACK, _T("跟踪"));
+        menu.AppendMenu(MF_STRING, IDM_FILE_UNTRACK, _T("取消跟踪"));
+        menu.AppendMenu(MF_SEPARATOR);
         menu.AppendMenu(MF_STRING, IDM_FILE_MARK_DELETE, _T("标记删除"));
         menu.AppendMenu(MF_STRING, IDM_FILE_UNMARK_DELETE, _T("取消标记"));
         menu.AppendMenu(MF_SEPARATOR);
@@ -1336,9 +1523,15 @@ void CBatchRenameDlg::OnFileResetAll()
     static_cast<CButton*>(GetDlgItem(IDC_CHECK_IGNORE_REGEX))->SetCheck(BST_UNCHECKED);
     SetDlgItemText(IDC_EDIT_IGNORE_EXT, _T(""));
     SetDlgItemText(IDC_EDIT_IGNORE_PATTERN, _T(""));
+    static_cast<CButton*>(GetDlgItem(IDC_CHECK_TRACK_EXT))->SetCheck(BST_UNCHECKED);
+    static_cast<CButton*>(GetDlgItem(IDC_CHECK_TRACK_MATCH))->SetCheck(BST_UNCHECKED);
+    static_cast<CButton*>(GetDlgItem(IDC_CHECK_TRACK_REGEX))->SetCheck(BST_UNCHECKED);
+    SetDlgItemText(IDC_EDIT_TRACK_EXT, _T(""));
+    SetDlgItemText(IDC_EDIT_TRACK_PATTERN, _T(""));
 
-    // 清除所有删除标记和忽略
-    m_manualIgnored.clear();
+    // 清除所有删除标记和忽略、跟踪
+    m_manualIgnoredSet.clear();
+    m_manualTrackedSet.clear();
     for (size_t i = 0; i < m_entries.size(); i++)
     {
         m_entries[i].bMarkedDelete = false;

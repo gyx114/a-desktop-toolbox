@@ -178,6 +178,13 @@
 #define IDC_COMBO_OCR_LANG              1175
 #define IDC_EDIT_PROCESS_FILTER         1176
 #define IDC_CHECK_PROCESS_REGEX         1177
+#define IDC_CHECK_TRACK_EXT            1180
+#define IDC_EDIT_TRACK_EXT             1181
+#define IDC_CHECK_TRACK_MATCH          1182
+#define IDC_EDIT_TRACK_PATTERN         1183
+#define IDC_CHECK_TRACK_REGEX          1184
+#define IDC_BTN_TRACK_CLEAR            1185
+#define IDC_STATIC_TRACK_GROUP         1186
 
 #define ID_FILE_SETTINGS                32775
 #define ID_FILE_EXIT                    32776

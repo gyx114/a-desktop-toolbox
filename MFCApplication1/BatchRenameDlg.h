@@ -13,6 +13,7 @@ struct RenameEntry {
         bool bCustomExt{false};
         CString customExt;
         bool bIgnored{false};
+        bool bTracked{false};
     };
 
 struct FolderEntry {
@@ -69,10 +70,13 @@ private:
     void LoadFiles();
     void ApplyRules();
     void ApplyIgnoreRules();
+    void ApplyTrackRules();
     void RefreshFileList();
     afx_msg void OnBnClickedFilePreview();
     afx_msg void OnBnClickedFileExecute();
     afx_msg void OnEnChangeRule();
+    afx_msg void OnIgnoreRuleChanged();
+    afx_msg void OnTrackRuleChanged();
     afx_msg void OnBnClickedRegexHelp();
     afx_msg void OnFileListRightClick(NMHDR* pNMHDR, LRESULT* pResult);
     afx_msg void OnFileMarkDelete();
@@ -87,10 +91,14 @@ private:
     afx_msg void OnBnClickedCurrentMove();
     afx_msg void OnBnClickedCurrentDelete();
     afx_msg void OnBnClickedIgnoreClear();
+    afx_msg void OnBnClickedTrackClear();
     afx_msg void OnFileIgnore();
     afx_msg void OnFileUnignore();
+    afx_msg void OnFileTrack();
+    afx_msg void OnFileUntrack();
     std::vector<RenameEntry> m_entries;
-    std::set<size_t> m_manualIgnored;
+    std::set<std::filesystem::path> m_manualIgnoredSet;
+    std::set<std::filesystem::path> m_manualTrackedSet;
     bool m_bPreviewDone{false};
     int m_nActiveTab{0};
     HWND m_hRegexGuideWnd{nullptr};
