@@ -794,8 +794,9 @@ void CBatchRenameDlg::OnFileIgnore()
             if (i < static_cast<int>(m_entries.size()))
             {
                 m_manualIgnoredSet.insert(m_entries[i].fullPath);
-                // 忽略优先：如果同时被跟踪，取消跟踪
+                // 最近操作优先：手动忽略时清除跟踪和未忽略状态
                 m_manualTrackedSet.erase(m_entries[i].fullPath);
+                m_manualUnignoredSet.erase(m_entries[i].fullPath);
                 m_entries[i].bIgnored = true;
                 m_entries[i].bTracked = false;
                 m_entries[i].bMarkedDelete = false;
@@ -821,6 +822,8 @@ void CBatchRenameDlg::OnFileUnignore()
             if (i < static_cast<int>(m_entries.size()))
             {
                 m_manualIgnoredSet.erase(m_entries[i].fullPath);
+                // 手动取消忽略：后续规则匹配不会重新忽略
+                m_manualUnignoredSet.insert(m_entries[i].fullPath);
             }
         }
     }
@@ -832,8 +835,9 @@ void CBatchRenameDlg::OnFileUnignore()
 
 void CBatchRenameDlg::OnBnClickedIgnoreClear()
 {
-    if (m_manualIgnoredSet.empty()) return;
+    if (m_manualIgnoredSet.empty() && m_manualUnignoredSet.empty()) return;
     m_manualIgnoredSet.clear();
+    m_manualUnignoredSet.clear();
     ApplyRules();
     RefreshFileList();
     m_bPreviewDone = true;
@@ -868,11 +872,11 @@ void CBatchRenameDlg::OnFileTrack()
         {
             if (i < static_cast<int>(m_entries.size()))
             {
-                // 如果已被忽略，不允许跟踪（忽略优先）
-                if (m_manualIgnoredSet.count(m_entries[i].fullPath) > 0)
-                    continue;
+                // 跟踪优先：跟踪时自动清除忽略
+                m_manualIgnoredSet.erase(m_entries[i].fullPath);
                 m_manualTrackedSet.insert(m_entries[i].fullPath);
                 m_entries[i].bTracked = true;
+                m_entries[i].bIgnored = false;
             }
         }
     }
@@ -935,9 +939,11 @@ void CBatchRenameDlg::LoadFiles()
                 re.newName = re.oldName;
                 re.fullPath = entry.path();
                 re.bMarkedDelete = false;
-                // 根据路径恢复手动忽略/跟踪状态
+                // 根据路径恢复手动忽略/跟踪/未忽略状态
                 if (m_manualIgnoredSet.count(entry.path()) > 0)
                     re.bIgnored = true;
+                if (m_manualUnignoredSet.count(entry.path()) > 0)
+                    re.bIgnored = false;
                 if (m_manualTrackedSet.count(entry.path()) > 0)
                     re.bTracked = true;
                 m_entries.push_back(re);
@@ -969,12 +975,27 @@ void CBatchRenameDlg::ApplyIgnoreRules()
 
     for (size_t i = 0; i < m_entries.size(); i++)
     {
-        // 手动忽略优先（路径-based）
+        // 手动跟踪优先：已手动跟踪的文件不能被忽略
+        if (m_manualTrackedSet.count(m_entries[i].fullPath) > 0)
+        {
+            m_entries[i].bIgnored = false;
+            m_entries[i].bTracked = true;
+            continue;
+        }
+
+        // 手动忽略
         if (m_manualIgnoredSet.count(m_entries[i].fullPath) > 0)
         {
             m_entries[i].bIgnored = true;
             m_entries[i].bTracked = false;
             m_entries[i].bMarkedDelete = false;
+            continue;
+        }
+
+        // 手动取消忽略：用户明确取消忽略的文件不受规则影响
+        if (m_manualUnignoredSet.count(m_entries[i].fullPath) > 0)
+        {
+            m_entries[i].bIgnored = false;
             continue;
         }
 
@@ -1050,17 +1071,19 @@ void CBatchRenameDlg::ApplyTrackRules()
 
     for (size_t i = 0; i < m_entries.size(); i++)
     {
-        // 已忽略的文件不参与跟踪（忽略优先）
-        if (m_entries[i].bIgnored)
-        {
-            m_entries[i].bTracked = false;
-            continue;
-        }
-
-        // 手动跟踪优先（路径-based）
+        // 手动跟踪优先：强制清除忽略状态
         if (m_manualTrackedSet.count(m_entries[i].fullPath) > 0)
         {
             m_entries[i].bTracked = true;
+            m_entries[i].bIgnored = false;
+            m_entries[i].bMarkedDelete = false;
+            continue;
+        }
+
+        // 已手动忽略的文件不参与跟踪
+        if (m_manualIgnoredSet.count(m_entries[i].fullPath) > 0)
+        {
+            m_entries[i].bTracked = false;
             continue;
         }
 
@@ -1123,9 +1146,8 @@ void CBatchRenameDlg::ApplyTrackRules()
 
 void CBatchRenameDlg::ApplyRules()
 {
-    // 先应用忽略规则
+    // 先应用忽略规则，再应用跟踪规则（跟踪优先，可覆盖忽略）
     ApplyIgnoreRules();
-    // 再应用跟踪规则（忽略优先，已忽略的文件不会被跟踪）
     ApplyTrackRules();
 
     CString prefix, suffix, replaceFrom, replaceTo;
@@ -1529,8 +1551,9 @@ void CBatchRenameDlg::OnFileResetAll()
     SetDlgItemText(IDC_EDIT_TRACK_EXT, _T(""));
     SetDlgItemText(IDC_EDIT_TRACK_PATTERN, _T(""));
 
-    // 清除所有删除标记和忽略、跟踪
+    // 清除所有删除标记和忽略、跟踪、未忽略
     m_manualIgnoredSet.clear();
+    m_manualUnignoredSet.clear();
     m_manualTrackedSet.clear();
     for (size_t i = 0; i < m_entries.size(); i++)
     {

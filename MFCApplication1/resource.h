@@ -185,6 +185,7 @@
 #define IDC_CHECK_TRACK_REGEX          1184
 #define IDC_BTN_TRACK_CLEAR            1185
 #define IDC_STATIC_TRACK_GROUP         1186
+#define IDC_BTN_PROCESS_REGEX_HELP     1187
 
 #define ID_FILE_SETTINGS                32775
 #define ID_FILE_EXIT                    32776

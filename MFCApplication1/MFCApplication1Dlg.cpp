@@ -204,6 +204,7 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_NOTIFY(LVN_COLUMNCLICK, IDC_LIST1, &CMFCApplication1Dlg::OnProcessColumnClick)
     ON_EN_CHANGE(IDC_EDIT_PROCESS_FILTER, &CMFCApplication1Dlg::OnProcessFilterChange)
     ON_BN_CLICKED(IDC_CHECK_PROCESS_REGEX, &CMFCApplication1Dlg::OnProcessFilterChange)
+    ON_BN_CLICKED(IDC_BTN_PROCESS_REGEX_HELP, &CMFCApplication1Dlg::OnProcessRegexHelp)
 END_MESSAGE_MAP()
 
 

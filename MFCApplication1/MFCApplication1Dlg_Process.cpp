@@ -471,3 +471,8 @@ void CMFCApplication1Dlg::OnProcessFilterChange()
 {
     ApplyProcessFilter();
 }
+
+void CMFCApplication1Dlg::OnProcessRegexHelp()
+{
+    OnHelpRegexGuide();
+}

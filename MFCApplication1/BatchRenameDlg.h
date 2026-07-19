@@ -98,6 +98,7 @@ private:
     afx_msg void OnFileUntrack();
     std::vector<RenameEntry> m_entries;
     std::set<std::filesystem::path> m_manualIgnoredSet;
+    std::set<std::filesystem::path> m_manualUnignoredSet;
     std::set<std::filesystem::path> m_manualTrackedSet;
     bool m_bPreviewDone{false};
     int m_nActiveTab{0};

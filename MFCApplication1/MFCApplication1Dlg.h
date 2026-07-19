@@ -264,6 +264,7 @@ public:
     // 进程列表排序和过滤
     afx_msg void OnProcessColumnClick(NMHDR* pNMHDR, LRESULT* pResult);
     afx_msg void OnProcessFilterChange();
+    afx_msg void OnProcessRegexHelp();
     // Git list handlers
 	afx_msg void OnCopyGitCommand();
 	afx_msg void OnNMDblclkList4(NMHDR* pNMHDR, LRESULT* pResult);
