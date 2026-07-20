@@ -193,6 +193,9 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
     CWnd* pBtnRegex = GetDlgItem(IDC_CHECK_PROCESS_REGEX);
     if (pBtnRegex)
         pBtnRegex->ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
+    CWnd* pBtnRegexHelp = GetDlgItem(IDC_BTN_PROCESS_REGEX_HELP);
+    if (pBtnRegexHelp)
+        pBtnRegexHelp->ShowWindow(nTab == 0 ? SW_SHOW : SW_HIDE);
     if (pList2) pList2->ShowWindow(nTab == 1 ? SW_SHOW : SW_HIDE);
     if (pList3) pList3->ShowWindow(nTab == 2 ? SW_SHOW : SW_HIDE);
     if (pList4) pList4->ShowWindow(nTab == 5 ? SW_SHOW : SW_HIDE);
