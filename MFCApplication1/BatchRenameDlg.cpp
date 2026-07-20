@@ -1274,21 +1274,11 @@ void CBatchRenameDlg::RefreshFileList()
 	CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_RENAME));
 	if (!pList) return;
 
-	// Save scroll position and selection
+	// Remember the file path at the top of the viewport, so we can put it back after rebuild
+	fs::path topPath;
 	int nTopIndex = pList->GetTopIndex();
-	int nSelCount = pList->GetSelectedCount();
-	std::vector<int> selectedIndices;
-	if (nSelCount > 0)
-	{
-		selectedIndices.reserve(nSelCount);
-		int nItem = -1;
-		for (int i = 0; i < nSelCount; i++)
-		{
-			nItem = pList->GetNextItem(nItem, LVNI_SELECTED);
-			if (nItem >= 0)
-				selectedIndices.push_back(nItem);
-		}
-	}
+	if (nTopIndex >= 0 && nTopIndex < static_cast<int>(m_entries.size()))
+		topPath = m_entries[nTopIndex].fullPath;
 
 	pList->DeleteAllItems();
 	for (size_t i = 0; i < m_entries.size(); i++)
@@ -1304,16 +1294,19 @@ void CBatchRenameDlg::RefreshFileList()
 		pList->SetItemText(idx, 1, status);
 	}
 
-	// Restore scroll position and selection
-	if (nTopIndex >= 0 && nTopIndex < pList->GetItemCount())
-		pList->EnsureVisible(nTopIndex, FALSE);
-	if (!selectedIndices.empty())
+	// Restore scroll position: find the same file and put it back at the top
+	if (!topPath.empty())
 	{
-		for (int& idx : selectedIndices)
+		for (size_t i = 0; i < m_entries.size(); i++)
 		{
-			if (idx >= pList->GetItemCount())
-				idx = pList->GetItemCount() - 1;
-			pList->SetItemState(idx, LVIS_SELECTED, LVIS_SELECTED);
+			if (m_entries[i].fullPath == topPath)
+			{
+				// Scroll to bottom first, then to target: this forces the target to the top of viewport
+				int nLast = pList->GetItemCount() - 1;
+				pList->EnsureVisible(nLast, FALSE);
+				pList->EnsureVisible(static_cast<int>(i), FALSE);
+				break;
+			}
 		}
 	}
 }

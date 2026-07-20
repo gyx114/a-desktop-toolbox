@@ -62,6 +62,8 @@ struct RegionCaptureData
     bool    bDone;
     RECT    rcResult;      // Selected region
     int     screenW, screenH;
+    HWND    hOcrWnd;       // OCR dialog to restore on destroy
+    HWND    hMainWnd;      // Main window to restore on destroy
 };
 
 static LRESULT CALLBACK RegionOverlayProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -201,8 +203,17 @@ static LRESULT CALLBACK RegionOverlayProc(HWND hwnd, UINT uMsg, WPARAM wParam, L
         return 0;
 
     case WM_DESTROY:
-        // Do not call PostQuitMessage, otherwise it would exit the entire program
-        // data.bDone flag is already sufficient to exit the local message loop
+        // Restore both windows now that the user has finished selecting (or cancelled)
+        if (pData)
+        {
+            if (pData->hOcrWnd && IsWindow(pData->hOcrWnd))
+            {
+                ::ShowWindow(pData->hOcrWnd, SW_SHOW);
+                ::SetForegroundWindow(pData->hOcrWnd);
+            }
+            if (pData->hMainWnd && IsWindow(pData->hMainWnd))
+                ::ShowWindow(pData->hMainWnd, SW_SHOWNOACTIVATE);
+        }
         return 0;
     }
 
@@ -212,9 +223,16 @@ static LRESULT CALLBACK RegionOverlayProc(HWND hwnd, UINT uMsg, WPARAM wParam, L
 // ========== Region capture screenshot ==========
 HBITMAP CScreenshotOCRDlg::CaptureRegion()
 {
-    // 1. Full-screen screenshot
     int screenW = ::GetSystemMetrics(SM_CXSCREEN);
     int screenH = ::GetSystemMetrics(SM_CYSCREEN);
+
+    // 1. Hide both windows first, so the screenshot shows only the desktop
+    ShowWindow(SW_HIDE);
+    if (m_pMainWnd && IsWindow(m_pMainWnd->GetSafeHwnd()))
+        m_pMainWnd->ShowWindow(SW_HIDE);
+    Sleep(200);
+
+    // 2. Full-screen screenshot (windows are hidden, so desktop only)
     HDC hdcScreen = ::GetDC(nullptr);
     HDC hdcMem = CreateCompatibleDC(hdcScreen);
     HBITMAP hFullScreen = CreateCompatibleBitmap(hdcScreen, screenW, screenH);
@@ -223,7 +241,7 @@ HBITMAP CScreenshotOCRDlg::CaptureRegion()
     SelectObject(hdcMem, hOld);
     DeleteDC(hdcMem);
 
-    // 2. Pre-create 32-bit DIB overlay and off-screen buffer (double-buffering to eliminate flicker)
+    // 3. Pre-create 32-bit DIB overlay and off-screen buffer (double-buffering to eliminate flicker)
     BITMAPINFO bmi = {};
     bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
     bmi.bmiHeader.biWidth = screenW;
@@ -246,12 +264,6 @@ HBITMAP CScreenshotOCRDlg::CaptureRegion()
             p[i] = 0x78000000;
     }
 
-    // 3. Hide both OCR dialog and main window
-	ShowWindow(SW_HIDE);
-	if (m_pMainWnd && IsWindow(m_pMainWnd->GetSafeHwnd()))
-		m_pMainWnd->ShowWindow(SW_HIDE);
-	Sleep(200);
-
     // 4. Register overlay window class
     WNDCLASS wc = {};
     wc.lpfnWndProc = RegionOverlayProc;
@@ -273,6 +285,9 @@ HBITMAP CScreenshotOCRDlg::CaptureRegion()
     data.pOverlayBits = pOverlayBits;
     data.screenW = screenW;
     data.screenH = screenH;
+    data.hOcrWnd = m_hWnd;
+    if (m_pMainWnd && IsWindow(m_pMainWnd->GetSafeHwnd()))
+        data.hMainWnd = m_pMainWnd->GetSafeHwnd();
 
     HWND hOverlay = CreateWindowEx(
         WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
@@ -287,7 +302,7 @@ HBITMAP CScreenshotOCRDlg::CaptureRegion()
         DeleteObject(hFullScreen);
         ShowWindow(SW_SHOW);
         if (m_pMainWnd && IsWindow(m_pMainWnd->GetSafeHwnd()))
-            m_pMainWnd->ShowWindow(SW_SHOW);
+            m_pMainWnd->ShowWindow(SW_SHOWNOACTIVATE);
         return nullptr;
     }
 
@@ -329,13 +344,8 @@ HBITMAP CScreenshotOCRDlg::CaptureRegion()
 
     DeleteObject(hFullScreen);
 
-    // 9. Restore both OCR dialog and main window
-	ShowWindow(SW_SHOW);
-	if (m_pMainWnd && IsWindow(m_pMainWnd->GetSafeHwnd()))
-		m_pMainWnd->ShowWindow(SW_SHOW);
-	::SetForegroundWindow(m_hWnd);
-
-	return hResult;
+    // Windows are already restored by WM_DESTROY in the overlay window procedure
+    return hResult;
 }
 
 IMPLEMENT_DYNAMIC(CScreenshotOCRDlg, CDialogEx)
