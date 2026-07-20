@@ -114,6 +114,76 @@ void CMFCApplication1Dlg::OnKillProcess()
     }
 }
 
+void CMFCApplication1Dlg::OnRclickProcessList(NMHDR* pNMHDR, LRESULT* pResult)
+{
+    CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST1);
+    if (!pList) return;
+
+    int idx = pList->GetNextItem(-1, LVNI_SELECTED);
+    if (idx == -1) return;
+
+    CPoint pt;
+    ::GetCursorPos(&pt);
+
+    CMenu menu;
+    menu.CreatePopupMenu();
+    menu.AppendMenu(MF_STRING, 32771, _T("结束进程"));
+    menu.AppendMenu(MF_STRING, IDM_KILL_SAME_NAME, _T("结束所有同名进程"));
+
+    menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, this);
+    *pResult = 0;
+}
+
+void CMFCApplication1Dlg::OnKillSameName()
+{
+    CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST1);
+    if (!pList) return;
+
+    int idx = pList->GetNextItem(-1, LVNI_SELECTED);
+    if (idx == -1) return;
+
+    CString procName = pList->GetItemText(idx, 0);
+
+    // Count all processes with the same name (from the full m_processes list, not just visible ones)
+    std::vector<DWORD> sameNamePids;
+    for (const auto& pi : m_processes)
+    {
+        if (pi.name.CompareNoCase(procName) == 0)
+            sameNamePids.push_back(pi.pid);
+    }
+
+    if (sameNamePids.empty()) return;
+
+    CString strMsg;
+    strMsg.Format(_T("确定要结束所有 \"%s\" 进程吗？\n共 %d 个实例。"), procName, (int)sameNamePids.size());
+    if (MessageBox(strMsg, _T("确认批量结束"), MB_YESNO | MB_ICONWARNING) != IDYES) return;
+
+    int success = 0, fail = 0;
+    for (DWORD pid : sameNamePids)
+    {
+        HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
+        if (hProcess)
+        {
+            EnumWindows(EnumWindowsCloseCallback, (LPARAM)pid);
+            Sleep(50);
+            if (TerminateProcess(hProcess, 0))
+                success++;
+            else
+                fail++;
+            CloseHandle(hProcess);
+        }
+        else
+        {
+            fail++;
+        }
+    }
+
+    CString resultMsg;
+    resultMsg.Format(_T("已结束 %d 个进程，失败 %d 个。"), success, fail);
+    MessageBox(resultMsg, _T("批量结束完成"), MB_OK | MB_ICONINFORMATION);
+    RefreshProcessList();
+}
+
 void CMFCApplication1Dlg::OnBnClickedButton20()
 {
     // Try to launch Task Manager. ShellExecute usually finds it in PATH/System32.

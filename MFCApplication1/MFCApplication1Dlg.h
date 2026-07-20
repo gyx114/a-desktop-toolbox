@@ -90,6 +90,8 @@ protected:
 	afx_msg void OnTcnSelchangeTab1(NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg void OnContextMenu(CWnd* pWnd, CPoint point);
 	afx_msg void OnKillProcess();
+	afx_msg void OnKillSameName();
+	afx_msg void OnRclickProcessList(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnLocateProcess();
 	afx_msg void OnBnClickedButton1();
 	afx_msg void OnBnClickedButton2();
