@@ -197,12 +197,36 @@ static LRESULT CALLBACK RegionOverlayProc(HWND hwnd, UINT uMsg, WPARAM wParam, L
     case WM_KEYDOWN:
         if (wParam == VK_ESCAPE)
         {
-            if (pData) pData->bDone = true;
+            if (pData)
+            {
+                pData->bDone = true;
+                if (pData->bDragging)
+                {
+                    ::ReleaseCapture();
+                    pData->bDragging = false;
+                }
+            }
             ::DestroyWindow(hwnd);
         }
         return 0;
 
     case WM_DESTROY:
+        // Release mouse capture and force-release modifier keys to prevent stuck keys
+        ::ReleaseCapture();
+        {
+            // Use SendInput to physically release modifier keys (more reliable than SetKeyboardState)
+            INPUT inputs[3] = {};
+            inputs[0].type = INPUT_KEYBOARD;
+            inputs[0].ki.wVk = VK_MENU;
+            inputs[0].ki.dwFlags = KEYEVENTF_KEYUP;
+            inputs[1].type = INPUT_KEYBOARD;
+            inputs[1].ki.wVk = VK_CONTROL;
+            inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+            inputs[2].type = INPUT_KEYBOARD;
+            inputs[2].ki.wVk = VK_SHIFT;
+            inputs[2].ki.dwFlags = KEYEVENTF_KEYUP;
+            ::SendInput(3, inputs, sizeof(INPUT));
+        }
         // Restore both windows now that the user has finished selecting (or cancelled)
         if (pData)
         {
@@ -435,7 +459,20 @@ void CScreenshotOCRDlg::OnCancel()
 
 void CScreenshotOCRDlg::OnClose()
 {
-    DestroyWindow();
+	// Force-release modifier keys to prevent stuck keys (e.g. Alt causing double-click → properties)
+	INPUT inputs[3] = {};
+	inputs[0].type = INPUT_KEYBOARD;
+	inputs[0].ki.wVk = VK_MENU;
+	inputs[0].ki.dwFlags = KEYEVENTF_KEYUP;
+	inputs[1].type = INPUT_KEYBOARD;
+	inputs[1].ki.wVk = VK_CONTROL;
+	inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+	inputs[2].type = INPUT_KEYBOARD;
+	inputs[2].ki.wVk = VK_SHIFT;
+	inputs[2].ki.dwFlags = KEYEVENTF_KEYUP;
+	::SendInput(3, inputs, sizeof(INPUT));
+
+	DestroyWindow();
 }
 
 void CScreenshotOCRDlg::PostNcDestroy()
