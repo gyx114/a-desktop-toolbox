@@ -118,6 +118,21 @@ void CMFCApplication1Dlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
             }
             ::SetForegroundWindow(m_hWnd);
         }
+
+        // Force-release modifier keys to prevent stuck keys from external SendInput simulation
+        // (e.g. desktop pet simulating Ctrl+Alt+Space — the system may eat key-up events)
+        INPUT inputs[3] = {};
+        inputs[0].type = INPUT_KEYBOARD;
+        inputs[0].ki.wVk = VK_MENU;
+        inputs[0].ki.dwFlags = KEYEVENTF_KEYUP;
+        inputs[1].type = INPUT_KEYBOARD;
+        inputs[1].ki.wVk = VK_CONTROL;
+        inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+        inputs[2].type = INPUT_KEYBOARD;
+        inputs[2].ki.wVk = VK_SHIFT;
+        inputs[2].ki.dwFlags = KEYEVENTF_KEYUP;
+        ::SendInput(3, inputs, sizeof(INPUT));
+
         return;
     }
     CDialogEx::OnHotKey(nHotKeyId, nKey1, nKey2);
