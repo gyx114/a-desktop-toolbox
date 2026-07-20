@@ -79,6 +79,7 @@ BEGIN_MESSAGE_MAP(CBatchRenameDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BTN_RENAME_BROWSE, &CBatchRenameDlg::OnBnClickedBrowse)
     ON_BN_CLICKED(IDC_BTN_RENAME_PREVIEW, &CBatchRenameDlg::OnBnClickedFilePreview)
     ON_BN_CLICKED(IDC_BTN_RENAME_EXECUTE, &CBatchRenameDlg::OnBnClickedFileExecute)
+    ON_BN_CLICKED(IDC_BTN_RENAME_UNDO, &CBatchRenameDlg::OnBnClickedRenameUndo)
     ON_BN_CLICKED(IDC_BTN_RENAME_CLEAR, &CBatchRenameDlg::OnBnClickedClear)
     ON_BN_CLICKED(IDC_BTN_RENAME_REFRESH, &CBatchRenameDlg::OnBnClickedRefresh)
     ON_BN_CLICKED(IDC_BTN_RENAME_REGEX_HELP, &CBatchRenameDlg::OnBnClickedRegexHelp)
@@ -211,7 +212,7 @@ void CBatchRenameDlg::ShowTab(int nTab)
         IDC_CHECK_RENAME_NUMBER, IDC_EDIT_RENAME_START_NUM,
         IDC_CHECK_DELETE_MATCH, IDC_EDIT_DELETE_PATTERN,
         IDC_CHECK_DELETE_INVERT, IDC_CHECK_NUMBER_AFTER_EXT,
-        IDC_BTN_RENAME_PREVIEW, IDC_BTN_RENAME_EXECUTE,
+        IDC_BTN_RENAME_PREVIEW, IDC_BTN_RENAME_EXECUTE, IDC_BTN_RENAME_UNDO,
         IDC_BTN_FILE_UNMARK_ALL, IDC_BTN_FILE_RESET_ALL,
         IDC_STATIC_TAB1_PREFIX, IDC_STATIC_TAB1_SUFFIX,
         IDC_STATIC_TAB1_REPLACE_FROM, IDC_STATIC_TAB1_REPLACE_TO,
@@ -1347,18 +1348,21 @@ void CBatchRenameDlg::OnBnClickedFileExecute()
     }
 
     // Then execute rename
+    m_undoList.clear();
     for (auto& entry : m_entries)
     {
         if (entry.bIgnored || entry.bMarkedDelete) continue;
         if (entry.oldName == entry.newName) continue;
 
         fs::path newPath = entry.fullPath.parent_path() / static_cast<LPCWSTR>(entry.newName);
+        fs::path oldPath = entry.fullPath;
         fs::rename(entry.fullPath, newPath, ec);
         if (ec)
             renameFail++;
         else
         {
             renameCount++;
+            m_undoList.push_back({newPath, oldPath});
             entry.fullPath = newPath;
             entry.oldName = entry.newName;
         }
@@ -1371,6 +1375,39 @@ void CBatchRenameDlg::OnBnClickedFileExecute()
 
     m_bPreviewDone = false;
     GetDlgItem(IDC_BTN_RENAME_EXECUTE)->EnableWindow(FALSE);
+    GetDlgItem(IDC_BTN_RENAME_UNDO)->EnableWindow(!m_undoList.empty());
+    LoadFiles();
+}
+
+void CBatchRenameDlg::OnBnClickedRenameUndo()
+{
+    if (m_undoList.empty())
+        return;
+
+    if (MessageBox(_T("Undo all renames from last execute?"), _T("Undo"), MB_YESNO | MB_ICONQUESTION) != IDYES)
+        return;
+
+    int undoCount = 0;
+    int undoFail = 0;
+    std::error_code ec;
+
+    // Undo in reverse order
+    for (auto it = m_undoList.rbegin(); it != m_undoList.rend(); ++it)
+    {
+        fs::rename(it->first, it->second, ec);
+        if (ec)
+            undoFail++;
+        else
+            undoCount++;
+    }
+
+    m_undoList.clear();
+    GetDlgItem(IDC_BTN_RENAME_UNDO)->EnableWindow(FALSE);
+
+    CString msg;
+    msg.Format(_T("Undo complete: %d reverted, %d failed."), undoCount, undoFail);
+    MessageBox(msg, _T("Undo"), MB_OK | MB_ICONINFORMATION);
+
     LoadFiles();
 }
 

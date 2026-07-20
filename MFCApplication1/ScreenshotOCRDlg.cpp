@@ -335,7 +335,7 @@ HBITMAP CScreenshotOCRDlg::CaptureRegion()
 IMPLEMENT_DYNAMIC(CScreenshotOCRDlg, CDialogEx)
 
 CScreenshotOCRDlg::CScreenshotOCRDlg(CWnd* pParent, CAutoClicker* /*pAutoClicker*/)
-    : CDialogEx(IDD_SCREENSHOT_OCR_DLG, pParent)
+    : CDialogEx(IDD_SCREENSHOT_OCR_DLG, pParent), m_pMainWnd(pParent)
 {
 }
 
@@ -424,6 +424,8 @@ void CScreenshotOCRDlg::OnClose()
 
 void CScreenshotOCRDlg::PostNcDestroy()
 {
+    if (m_pMainWnd && IsWindow(m_pMainWnd->GetSafeHwnd()))
+        m_pMainWnd->ShowWindow(SW_SHOW);
     delete this;
 }
 

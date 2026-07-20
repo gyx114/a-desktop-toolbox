@@ -26,6 +26,8 @@ protected:
     virtual void PostNcDestroy() override;
     afx_msg void OnClose();
 
+    CWnd* m_pMainWnd{nullptr};
+
     afx_msg void OnBnClickedBtnOcr();
     afx_msg void OnBnClickedBtnTranslate();
     afx_msg void OnBnClickedBtnCopy();

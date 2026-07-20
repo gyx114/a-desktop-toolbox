@@ -184,6 +184,7 @@ void CMFCApplication1Dlg::UpdateTabVisibility(int nTab)
         if (nTab == 0) {
             pList1->GetHeaderCtrl()->Invalidate(TRUE);
             pList1->RedrawWindow(NULL, NULL, RDW_FRAME | RDW_INVALIDATE | RDW_UPDATENOW | RDW_ERASE);
+            RefreshProcessList();
         }
     }
     // Process search filter controls

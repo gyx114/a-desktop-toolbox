@@ -1010,8 +1010,9 @@ void CMFCApplication1Dlg::OnToolsQRCode()
 
 void CMFCApplication1Dlg::OnToolsScreenshotOCR()
 {
-    auto* pDlg = new CScreenshotOCRDlg(nullptr, &m_autoClicker);
-    pDlg->Create(IDD_SCREENSHOT_OCR_DLG, nullptr);
+    ShowWindow(SW_HIDE);
+    auto* pDlg = new CScreenshotOCRDlg(this, &m_autoClicker);
+    pDlg->Create(IDD_SCREENSHOT_OCR_DLG, this);
     pDlg->ShowWindow(SW_SHOW);
 }
 

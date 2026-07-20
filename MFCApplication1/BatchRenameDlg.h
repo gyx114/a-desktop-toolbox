@@ -76,6 +76,7 @@ private:
     void RefreshFileList();
     afx_msg void OnBnClickedFilePreview();
     afx_msg void OnBnClickedFileExecute();
+    afx_msg void OnBnClickedRenameUndo();
     afx_msg void OnEnChangeRule();
     afx_msg void OnIgnoreRuleChanged();
     afx_msg void OnTrackRuleChanged();
@@ -102,6 +103,7 @@ private:
     std::set<std::filesystem::path> m_manualIgnoredSet;
     std::set<std::filesystem::path> m_manualUnignoredSet;
     std::set<std::filesystem::path> m_manualTrackedSet;
+    std::vector<std::pair<std::filesystem::path, std::filesystem::path>> m_undoList;
     bool m_bPreviewDone{false};
     int m_nActiveTab{0};
     HWND m_hRegexGuideWnd{nullptr};
