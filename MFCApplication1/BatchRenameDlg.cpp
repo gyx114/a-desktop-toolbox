@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <set>
 #include <regex>
+#include <shellapi.h>
 
 namespace fs = std::filesystem;
 
@@ -63,6 +64,19 @@ protected:
 
 BEGIN_MESSAGE_MAP(CInputDialog, CDialogEx)
 END_MESSAGE_MAP()
+
+// Move a file or folder to the recycle bin using SHFileOperation
+static bool MoveToRecycleBin(const fs::path& path)
+{
+    std::wstring wPath = path.wstring();
+    // SHFileOperation requires double-null-terminated string
+    std::wstring buffer = wPath + L'\0' + L'\0';
+    SHFILEOPSTRUCTW fos = {};
+    fos.wFunc = FO_DELETE;
+    fos.pFrom = buffer.c_str();
+    fos.fFlags = FOF_ALLOWUNDO | FOF_NOERRORUI | FOF_NOCONFIRMATION | FOF_SILENT;
+    return ::SHFileOperationW(&fos) == 0 && !fos.fAnyOperationsAborted;
+}
 
 CBatchRenameDlg::CBatchRenameDlg(CWnd* pParent, const CString& initialFolder)
     : CDialogEx(IDD_BATCH_RENAME_DLG, pParent)
@@ -547,18 +561,18 @@ void CBatchRenameDlg::OnBnClickedFolderDelete()
     }
 
     CString msg;
-    msg.Format(_T("确定要删除选中的 %d 个文件夹吗？此操作不可撤销！"), (int)selected.size());
-    if (MessageBox(msg, _T("确认删除"), MB_YESNO | MB_ICONWARNING) != IDYES)
-        return;
+	msg.Format(_T("确定要将选中的 %d 个文件夹移入回收站吗？"), (int)selected.size());
+	if (MessageBox(msg, _T("确认删除"), MB_YESNO | MB_ICONWARNING) != IDYES)
+		return;
 
-    int success = 0, fail = 0;
-    std::error_code ec;
-    for (int idx : selected)
-    {
-        fs::remove_all(m_folders[idx].fullPath, ec);
-        if (ec) fail++;
-        else success++;
-    }
+	int success = 0, fail = 0;
+	for (int idx : selected)
+	{
+		if (MoveToRecycleBin(m_folders[idx].fullPath))
+			success++;
+		else
+			fail++;
+	}
     msg.Format(_T("删除完成：成功 %d 个，失败 %d 个。"), success, fail);
     MessageBox(msg, _T("结果"), MB_OK | MB_ICONINFORMATION);
 
@@ -658,18 +672,16 @@ void CBatchRenameDlg::OnBnClickedCurrentDelete()
     }
 
     fs::path curPath(static_cast<LPCWSTR>(m_folderPath));
-    CString msg;
-    msg.Format(_T("确定要删除当前目录 \"%s\" 及其所有内容吗？\n此操作不可撤销！"), curPath.filename().c_str());
-    if (MessageBox(msg, _T("确认删除"), MB_YESNO | MB_ICONWARNING) != IDYES)
-        return;
+	CString msg;
+	msg.Format(_T("确定要将当前目录 \"%s\" 及其所有内容移入回收站吗？"), curPath.filename().c_str());
+	if (MessageBox(msg, _T("确认删除"), MB_YESNO | MB_ICONWARNING) != IDYES)
+		return;
 
-    std::error_code ec;
-    fs::remove_all(curPath, ec);
-    if (ec)
-    {
-        MessageBox(_T("删除失败。"), _T("错误"), MB_OK | MB_ICONERROR);
-        return;
-    }
+	if (!MoveToRecycleBin(curPath))
+	{
+		MessageBox(_T("移入回收站失败。"), _T("错误"), MB_OK | MB_ICONERROR);
+		return;
+	}
 
     // Clear current path
     m_folderPath.Empty();
@@ -1259,22 +1271,51 @@ void CBatchRenameDlg::ApplyRules()
 
 void CBatchRenameDlg::RefreshFileList()
 {
-    CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_RENAME));
-    if (!pList) return;
+	CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_RENAME));
+	if (!pList) return;
 
-    pList->DeleteAllItems();
-    for (size_t i = 0; i < m_entries.size(); i++)
-    {
-        int idx = pList->InsertItem(static_cast<int>(i), m_entries[i].oldName);
-        CString status;
-        if (m_entries[i].bIgnored)
-            status = _T("已忽略");
-        else if (m_entries[i].bTracked)
-            status = _T("【跟踪】") + m_entries[i].newName;
-        else
-            status = m_entries[i].newName;
-        pList->SetItemText(idx, 1, status);
-    }
+	// Save scroll position and selection
+	int nTopIndex = pList->GetTopIndex();
+	int nSelCount = pList->GetSelectedCount();
+	std::vector<int> selectedIndices;
+	if (nSelCount > 0)
+	{
+		selectedIndices.reserve(nSelCount);
+		int nItem = -1;
+		for (int i = 0; i < nSelCount; i++)
+		{
+			nItem = pList->GetNextItem(nItem, LVNI_SELECTED);
+			if (nItem >= 0)
+				selectedIndices.push_back(nItem);
+		}
+	}
+
+	pList->DeleteAllItems();
+	for (size_t i = 0; i < m_entries.size(); i++)
+	{
+		int idx = pList->InsertItem(static_cast<int>(i), m_entries[i].oldName);
+		CString status;
+		if (m_entries[i].bIgnored)
+			status = _T("已忽略");
+		else if (m_entries[i].bTracked)
+			status = _T("【跟踪】") + m_entries[i].newName;
+		else
+			status = m_entries[i].newName;
+		pList->SetItemText(idx, 1, status);
+	}
+
+	// Restore scroll position and selection
+	if (nTopIndex >= 0 && nTopIndex < pList->GetItemCount())
+		pList->EnsureVisible(nTopIndex, FALSE);
+	if (!selectedIndices.empty())
+	{
+		for (int& idx : selectedIndices)
+		{
+			if (idx >= pList->GetItemCount())
+				idx = pList->GetItemCount() - 1;
+			pList->SetItemState(idx, LVIS_SELECTED, LVIS_SELECTED);
+		}
+	}
 }
 
 void CBatchRenameDlg::OnBnClickedFilePreview()
@@ -1307,12 +1348,13 @@ void CBatchRenameDlg::OnBnClickedFileExecute()
     if (deleteCount > 0)
     {
         CString msg;
-        int activeCount = 0;
+        int renameCountCheck = 0;
         for (const auto& entry : m_entries)
         {
-            if (!entry.bIgnored && !entry.bMarkedDelete) activeCount++;
+            if (!entry.bIgnored && !entry.bMarkedDelete && entry.oldName != entry.newName)
+                renameCountCheck++;
         }
-        msg.Format(_T("将删除 %d 个文件，重命名 %d 个文件。确定继续？"), deleteCount, activeCount);
+        msg.Format(_T("将删除 %d 个文件，重命名 %d 个文件。确定继续？"), deleteCount, renameCountCheck);
         if (MessageBox(msg, _T("确认"), MB_YESNO | MB_ICONWARNING) != IDYES)
             return;
     }
@@ -1331,21 +1373,22 @@ void CBatchRenameDlg::OnBnClickedFileExecute()
             newNames.insert(entry.newName);
         }
 
-        if (MessageBox(_T("确定要执行重命名吗？此操作不可撤销。"), _T("确认"), MB_YESNO | MB_ICONWARNING) != IDYES)
+        if (MessageBox(_T("确定要执行重命名吗？"), _T("确认"), MB_YESNO | MB_ICONWARNING) != IDYES)
             return;
     }
 
     std::error_code ec;
 
-    // Execute delete first
-    int actualDeleted = 0;
-    for (auto& entry : m_entries)
-    {
-        if (entry.bIgnored || !entry.bMarkedDelete) continue;
-        fs::remove(entry.fullPath, ec);
-        if (ec) deleteFail++;
-        else actualDeleted++;
-    }
+    // Execute delete first (move to recycle bin)
+	int actualDeleted = 0;
+	for (auto& entry : m_entries)
+	{
+		if (entry.bIgnored || !entry.bMarkedDelete) continue;
+		if (MoveToRecycleBin(entry.fullPath))
+			actualDeleted++;
+		else
+			deleteFail++;
+	}
 
     // Then execute rename
     m_undoList.clear();

@@ -246,9 +246,11 @@ HBITMAP CScreenshotOCRDlg::CaptureRegion()
             p[i] = 0x78000000;
     }
 
-    // 3. Hide dialog
-    ShowWindow(SW_HIDE);
-    Sleep(200);
+    // 3. Hide both OCR dialog and main window
+	ShowWindow(SW_HIDE);
+	if (m_pMainWnd && IsWindow(m_pMainWnd->GetSafeHwnd()))
+		m_pMainWnd->ShowWindow(SW_HIDE);
+	Sleep(200);
 
     // 4. Register overlay window class
     WNDCLASS wc = {};
@@ -284,6 +286,8 @@ HBITMAP CScreenshotOCRDlg::CaptureRegion()
         if (hOverlayBmp) DeleteObject(hOverlayBmp);
         DeleteObject(hFullScreen);
         ShowWindow(SW_SHOW);
+        if (m_pMainWnd && IsWindow(m_pMainWnd->GetSafeHwnd()))
+            m_pMainWnd->ShowWindow(SW_SHOW);
         return nullptr;
     }
 
@@ -325,11 +329,13 @@ HBITMAP CScreenshotOCRDlg::CaptureRegion()
 
     DeleteObject(hFullScreen);
 
-    // 9. Restore dialog
-    ShowWindow(SW_SHOW);
-    ::SetForegroundWindow(m_hWnd);
+    // 9. Restore both OCR dialog and main window
+	ShowWindow(SW_SHOW);
+	if (m_pMainWnd && IsWindow(m_pMainWnd->GetSafeHwnd()))
+		m_pMainWnd->ShowWindow(SW_SHOW);
+	::SetForegroundWindow(m_hWnd);
 
-    return hResult;
+	return hResult;
 }
 
 IMPLEMENT_DYNAMIC(CScreenshotOCRDlg, CDialogEx)

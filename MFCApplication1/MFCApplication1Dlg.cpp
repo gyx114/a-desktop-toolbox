@@ -1010,10 +1010,9 @@ void CMFCApplication1Dlg::OnToolsQRCode()
 
 void CMFCApplication1Dlg::OnToolsScreenshotOCR()
 {
-    ShowWindow(SW_HIDE);
-    auto* pDlg = new CScreenshotOCRDlg(this, &m_autoClicker);
-    pDlg->Create(IDD_SCREENSHOT_OCR_DLG, this);
-    pDlg->ShowWindow(SW_SHOW);
+	auto* pDlg = new CScreenshotOCRDlg(this, &m_autoClicker);
+	pDlg->Create(IDD_SCREENSHOT_OCR_DLG, this);
+	pDlg->ShowWindow(SW_SHOW);
 }
 
 void CMFCApplication1Dlg::OnToolsBatchRename()
