@@ -56,6 +56,7 @@ class CMFCApplication1Dlg : public CDialogEx
 // Construction
 public:
 	CMFCApplication1Dlg(CWnd* pParent = nullptr);	// Standard constructor
+	virtual ~CMFCApplication1Dlg();
 
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	[[nodiscard]] void RefreshProcessList();

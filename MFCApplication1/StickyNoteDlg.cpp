@@ -33,7 +33,11 @@ void CStickyNoteDlg::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CStickyNoteDlg, CDialogEx)
 	ON_WM_CLOSE()
 	ON_WM_SIZE()
+	ON_WM_SYSCOMMAND()
+	ON_WM_NCLBUTTONDBLCLK()
+	ON_WM_NCRBUTTONUP()
 	ON_BN_CLICKED(IDC_BTN_STICKY_BROWSE, &CStickyNoteDlg::OnBnClickedBrowse)
+	ON_EN_CHANGE(IDC_EDIT_STICKY_NOTE, &CStickyNoteDlg::OnEnChangeEdit)
 END_MESSAGE_MAP()
 
 CString CStickyNoteDlg::GetSavePath()
@@ -48,6 +52,9 @@ CString CStickyNoteDlg::GetSavePath()
 		if (pos >= 0)
 			folder = folder.Left(pos + 1);
 	}
+	// Ensure trailing backslash
+	if (!folder.IsEmpty() && folder[folder.GetLength() - 1] != L'\\')
+		folder += L'\\';
 	return folder + L"sticky_note.txt";
 }
 
@@ -58,7 +65,7 @@ bool CStickyNoteDlg::EnsureSavePath()
 		return true;
 
 	CFolderPickerDialog dlg(nullptr, 0, this);
-	dlg.m_ofn.lpstrTitle = L"请选择便签保存目录";
+	dlg.m_ofn.lpstrTitle = L"Please select sticky note save directory";
 	if (dlg.DoModal() == IDOK)
 	{
 		AfxGetApp()->WriteProfileString(L"StickyNote", L"SaveFolder", dlg.GetPathName());
@@ -67,21 +74,44 @@ bool CStickyNoteDlg::EnsureSavePath()
 	return false;
 }
 
-void CStickyNoteDlg::SaveNote()
+void CStickyNoteDlg::LoadNote()
+{
+	CString filePath = GetSavePath();
+	if (std::filesystem::exists(std::filesystem::path(filePath.GetString())))
+	{
+		std::ifstream ifs(filePath, std::ios::in);
+		if (ifs.is_open())
+		{
+			std::string content((std::istreambuf_iterator<char>(ifs)),
+			                    std::istreambuf_iterator<char>());
+			ifs.close();
+			m_noteText = CString(CA2CT(content.c_str(), CP_UTF8));
+			UpdateData(FALSE);
+		}
+	}
+}
+
+void CStickyNoteDlg::OnEnChangeEdit()
 {
 	UpdateData(TRUE);
-	if (m_noteText.IsEmpty())
-		return;
+}
 
-	if (!EnsureSavePath())
-		return;
+void CStickyNoteDlg::SaveNote()
+{
+	// m_noteText is kept in sync via EN_CHANGE, so no need to re-read from control
+	// (reading from control during parent OnDestroy may fail)
 
 	CString filePath = GetSavePath();
+	// Ensure parent directory exists (create if needed, no dialog)
+	std::filesystem::path dir = std::filesystem::path(filePath.GetString()).parent_path();
+	if (!dir.empty() && !std::filesystem::exists(dir))
+		std::filesystem::create_directories(dir);
+
 	std::ofstream ofs(filePath, std::ios::out | std::ios::trunc);
 	if (ofs.is_open())
 	{
-		CStringA utf8(m_noteText);
-		ofs.write(utf8, utf8.GetLength());
+		CT2CA utf8(m_noteText, CP_UTF8);
+		ofs.write(utf8, (std::streamsize)strlen(utf8));
 		ofs.close();
 	}
 }
@@ -89,6 +119,53 @@ void CStickyNoteDlg::SaveNote()
 void CStickyNoteDlg::SaveIfNeeded()
 {
 	SaveNote();
+}
+
+void CStickyNoteDlg::CollapseWindow()
+{
+	if (m_bCollapsed)
+		return;
+
+	m_bCollapsed = true;
+
+	// Save current window rect
+	GetWindowRect(&m_rcNormal);
+
+	// Calculate title bar height (caption + borders)
+	int cyCaption = GetSystemMetrics(SM_CYCAPTION);
+	int cyBorder = GetSystemMetrics(SM_CYFRAME);
+	int titleBarHeight = cyCaption + cyBorder * 2 + 2;
+
+	// Hide the edit control
+	CWnd* pEdit = GetDlgItem(IDC_EDIT_STICKY_NOTE);
+	if (pEdit)
+		pEdit->ShowWindow(SW_HIDE);
+
+	// Resize to just title bar, using the original dialog width (not the current maximized width)
+	SetWindowPos(nullptr, 0, 0,
+		m_rcCollapsed.Width(), titleBarHeight,
+		SWP_NOZORDER | SWP_NOMOVE);
+}
+
+void CStickyNoteDlg::ExpandWindow()
+{
+	if (!m_bCollapsed)
+		return;
+
+	m_bCollapsed = false;
+
+	// Restore normal size
+	SetWindowPos(nullptr, 0, 0,
+		m_rcNormal.Width(), m_rcNormal.Height(),
+		SWP_NOZORDER | SWP_NOMOVE);
+
+	// Show the edit control
+	CWnd* pEdit = GetDlgItem(IDC_EDIT_STICKY_NOTE);
+	if (pEdit)
+	{
+		pEdit->ShowWindow(SW_SHOW);
+		ResizeEdit();
+	}
 }
 
 BOOL CStickyNoteDlg::OnInitDialog()
@@ -116,6 +193,12 @@ BOOL CStickyNoteDlg::OnInitDialog()
 		m_editMargins.bottom = rcClient.bottom - rcEdit.bottom;
 	}
 
+	// Save collapsed title bar width (the original dialog size)
+	GetWindowRect(&m_rcCollapsed);
+
+	// Load saved note
+	LoadNote();
+
 	return TRUE;
 }
 
@@ -123,7 +206,7 @@ void CStickyNoteDlg::OnBnClickedBrowse()
 {
 	CString currentFolder = AfxGetApp()->GetProfileString(L"StickyNote", L"SaveFolder", L"");
 	CFolderPickerDialog dlg(currentFolder.IsEmpty() ? nullptr : (LPCTSTR)currentFolder, 0, this);
-	dlg.m_ofn.lpstrTitle = L"选择便签保存目录";
+	dlg.m_ofn.lpstrTitle = L"Select sticky note save directory";
 	if (dlg.DoModal() == IDOK)
 	{
 		AfxGetApp()->WriteProfileString(L"StickyNote", L"SaveFolder", dlg.GetPathName());
@@ -133,25 +216,102 @@ void CStickyNoteDlg::OnBnClickedBrowse()
 void CStickyNoteDlg::OnClose()
 {
 	SaveNote();
-	ShowWindow(SW_HIDE);
+	if (IsZoomed())
+	{
+		// Maximized: restore to normal size instead of collapsing
+		ShowWindow(SW_RESTORE);
+	}
+	else if (m_bCollapsed)
+	{
+		DestroyWindow();
+	}
+	else
+	{
+		CollapseWindow();
+	}
 }
 
 void CStickyNoteDlg::OnOK()
 {
 	SaveNote();
-	ShowWindow(SW_HIDE);
+	CollapseWindow();
 }
 
 void CStickyNoteDlg::OnCancel()
 {
-	ShowWindow(SW_HIDE);
+	CollapseWindow();
 }
 
 void CStickyNoteDlg::OnSize(UINT nType, int cx, int cy)
 {
 	CDialogEx::OnSize(nType, cx, cy);
-	if (nType != SIZE_MINIMIZED)
+	if (nType != SIZE_MINIMIZED && !m_bCollapsed)
 		ResizeEdit();
+}
+
+void CStickyNoteDlg::OnSysCommand(UINT nID, LPARAM lParam)
+{
+	if (nID == SC_MINIMIZE)
+	{
+		if (IsZoomed())
+		{
+			ShowWindow(SW_RESTORE);
+		}
+		else
+		{
+			CollapseWindow();
+		}
+		return;
+	}
+	if (nID == SC_MAXIMIZE)
+	{
+		if (m_bCollapsed)
+		{
+			ExpandWindow();
+		}
+		else
+		{
+			CDialogEx::OnSysCommand(nID, lParam);
+		}
+		return;
+	}
+	CDialogEx::OnSysCommand(nID, lParam);
+}
+
+void CStickyNoteDlg::OnNcLButtonDblClk(UINT nHitTest, CPoint point)
+{
+	if (m_bCollapsed && nHitTest == HTCAPTION)
+	{
+		ExpandWindow();
+		return;
+	}
+	CDialogEx::OnNcLButtonDblClk(nHitTest, point);
+}
+
+void CStickyNoteDlg::OnNcRButtonUp(UINT nHitTest, CPoint point)
+{
+	if (nHitTest == HTCAPTION)
+	{
+		CMenu menu;
+		menu.CreatePopupMenu();
+		menu.AppendMenu(MF_STRING, 1, L"退出便签(&X)");
+
+		// point is already in screen coordinates for NC messages
+		menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
+		return;
+	}
+	CDialogEx::OnNcRButtonUp(nHitTest, point);
+}
+
+BOOL CStickyNoteDlg::OnCommand(WPARAM wParam, LPARAM lParam)
+{
+	if (LOWORD(wParam) == 1)
+	{
+		SaveNote();
+		DestroyWindow();
+		return TRUE;
+	}
+	return CDialogEx::OnCommand(wParam, lParam);
 }
 
 void CStickyNoteDlg::ResizeEdit()

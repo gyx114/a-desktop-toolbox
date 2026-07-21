@@ -3,6 +3,7 @@
 #include "MFCApplication1Dlg.h"
 #include "resource.h"
 #include "Utils.h"
+#include "StickyNoteDlg.h"
 #include <Shellapi.h>
 
 // ========== Tray-related functionality ==========
@@ -130,6 +131,12 @@ void CMFCApplication1Dlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2)
 
 void CMFCApplication1Dlg::OnClose()
 {
+    // Save sticky note before closing (minimize to tray or exit)
+    if (m_pStickyNoteDlg && ::IsWindow(m_pStickyNoteDlg->m_hWnd))
+    {
+        m_pStickyNoteDlg->SaveIfNeeded();
+    }
+
     // Based on m_bMinimizeOnClose, decide whether to minimize to tray or exit directly
     if (m_bMinimizeOnClose)
     {

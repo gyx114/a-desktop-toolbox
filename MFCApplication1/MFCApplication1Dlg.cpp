@@ -83,6 +83,15 @@ CMFCApplication1Dlg::CMFCApplication1Dlg(CWnd* pParent /*=nullptr*/)
     m_bPreventLockScreen = false;
 }
 
+CMFCApplication1Dlg::~CMFCApplication1Dlg()
+{
+	// Last-resort save: called when dialog object is destroyed
+	if (m_pStickyNoteDlg && ::IsWindow(m_pStickyNoteDlg->m_hWnd))
+	{
+		m_pStickyNoteDlg->SaveIfNeeded();
+	}
+}
+
 void CMFCApplication1Dlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);

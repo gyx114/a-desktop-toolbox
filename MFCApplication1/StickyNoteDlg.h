@@ -25,17 +25,29 @@ protected:
 	virtual void OnClose();
 	virtual void OnOK();
 	virtual void OnCancel();
+	virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);
 
 	DECLARE_MESSAGE_MAP()
 
 private:
 	CString m_noteText;
-	CString m_savePath;
 	CRect m_editMargins;
+	bool m_bCollapsed{false};
+	CRect m_rcNormal;    // saved window rect before collapse (for restoring)
+	CRect m_rcCollapsed; // original dialog rect at creation (for collapsed title bar width)
+
 	CString GetSavePath();
 	bool EnsureSavePath();
+	void LoadNote();
 	void SaveNote();
 	void ResizeEdit();
+	void CollapseWindow();
+	void ExpandWindow();
+
 	afx_msg void OnBnClickedBrowse();
+	afx_msg void OnEnChangeEdit();
 	afx_msg void OnSize(UINT nType, int cx, int cy);
+	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
+	afx_msg void OnNcLButtonDblClk(UINT nHitTest, CPoint point);
+	afx_msg void OnNcRButtonUp(UINT nHitTest, CPoint point);
 };
