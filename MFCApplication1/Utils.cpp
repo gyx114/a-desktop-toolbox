@@ -147,6 +147,29 @@ void CopyToClipboard(HWND hwnd, const CString& text)
     return static_cast<int>(total);
 }
 
+// Force-release stuck modifier keys by injecting a complete key-down + key-up cycle.
+// Only releases keys that are actually stuck to avoid triggering side effects
+// (e.g. pressing Alt would open the menu bar in the active window).
+void ForceReleaseModifierKeys()
+{
+    static const int vkeys[] = { VK_MENU, VK_CONTROL, VK_SHIFT };
+
+    for (int vk : vkeys)
+    {
+        if (::GetAsyncKeyState(vk) & 0x8000)
+        {
+            // Key is stuck: inject a complete key-down + key-up cycle
+            INPUT inputs[2] = {};
+            inputs[0].type = INPUT_KEYBOARD;
+            inputs[0].ki.wVk = vk;          // key-down (dwFlags = 0)
+            inputs[1].type = INPUT_KEYBOARD;
+            inputs[1].ki.wVk = vk;
+            inputs[1].ki.dwFlags = KEYEVENTF_KEYUP;
+            ::SendInput(2, inputs, sizeof(INPUT));
+        }
+    }
+}
+
 // Allow UIPI messages (for cross-privilege window communication)
 void AllowUIPIMessage(HWND hwnd, UINT msg, BOOL allow)
 {

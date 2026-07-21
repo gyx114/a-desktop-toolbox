@@ -30,3 +30,8 @@ bool LaunchProcessAsShellUser(LPCTSTR exe, LPCTSTR params, CString* pError = nul
 {
     return hWnd != nullptr && ::IsWindow(hWnd);
 }
+
+// Force-release stuck modifier keys (Alt/Ctrl/Shift) by injecting a complete
+// key-down + key-up cycle. Only releases keys that are actually stuck, to avoid
+// triggering side effects (e.g. Alt opening the menu bar).
+void ForceReleaseModifierKeys();
