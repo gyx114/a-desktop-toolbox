@@ -15,6 +15,7 @@ void CSettingsDlg::OnBrowseYuanbao() { BrowseFile(IDC_EDIT_YUANBAO_PATH, _T("选
 void CSettingsDlg::OnBrowseStudy() { BrowseFolder(IDC_EDIT_STUDY_PATH, _T("选择学习文件夹")); }
 void CSettingsDlg::OnBrowseDownload() { BrowseFolder(IDC_EDIT_DOWNLOAD_PATH, _T("选择下载文件夹")); }
 void CSettingsDlg::OnBrowseScreenshot() { BrowseFolder(IDC_EDIT_SCREENSHOT_DIR, _T("选择截图保存目录")); }
+void CSettingsDlg::OnBrowseStickyDir() { BrowseFolder(IDC_EDIT_STICKY_DIR, _T("选择便签保存目录")); }
 
 BEGIN_MESSAGE_MAP(CSettingsDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BROWSE_BILI, &CSettingsDlg::OnBrowseBili)
@@ -27,6 +28,7 @@ BEGIN_MESSAGE_MAP(CSettingsDlg, CDialogEx)
     ON_BN_CLICKED(IDC_BROWSE_STUDY, &CSettingsDlg::OnBrowseStudy)
     ON_BN_CLICKED(IDC_BROWSE_DOWNLOAD, &CSettingsDlg::OnBrowseDownload)
     ON_BN_CLICKED(IDC_BROWSE_SCREENSHOT, &CSettingsDlg::OnBrowseScreenshot)
+    ON_BN_CLICKED(IDC_BROWSE_STICKY_DIR, &CSettingsDlg::OnBrowseStickyDir)
     ON_WM_CLOSE()
 END_MESSAGE_MAP()
 
@@ -53,6 +55,10 @@ BOOL CSettingsDlg::OnInitDialog()
         strDefaultScreenshot = szDesktop;
     SetDlgItemText(IDC_EDIT_SCREENSHOT_DIR,
         AfxGetApp()->GetProfileString(_T("Paths"), _T("ScreenshotDir"), strDefaultScreenshot));
+
+    // Sticky note save directory
+    SetDlgItemText(IDC_EDIT_STICKY_DIR,
+        AfxGetApp()->GetProfileString(_T("StickyNote"), _T("SaveFolder"), _T("")));
 
     // Auto-clicker interval, default 100ms
     SetDlgItemInt(IDC_EDIT_CLICK_INTERVAL,
@@ -111,6 +117,7 @@ void CSettingsDlg::OnOK()
     GetDlgItemText(IDC_EDIT_STUDY_PATH, v); AfxGetApp()->WriteProfileString(_T("Paths"), _T("StudyFolder"), v);
     GetDlgItemText(IDC_EDIT_DOWNLOAD_PATH, v); AfxGetApp()->WriteProfileString(_T("Paths"), _T("DownloadFolder"), v);
     GetDlgItemText(IDC_EDIT_SCREENSHOT_DIR, v); AfxGetApp()->WriteProfileString(_T("Paths"), _T("ScreenshotDir"), v);
+    GetDlgItemText(IDC_EDIT_STICKY_DIR, v); AfxGetApp()->WriteProfileString(_T("StickyNote"), _T("SaveFolder"), v);
     GetDlgItemText(IDC_EDIT_MOOC_URL, v); AfxGetApp()->WriteProfileString(_T("Sites"), _T("MoocUrl"), v);
     GetDlgItemText(IDC_EDIT_SDUCS_URL, v); AfxGetApp()->WriteProfileString(_T("Sites"), _T("Sducs"), v);
     AfxGetApp()->WriteProfileInt(_T("AutoClicker"), _T("IntervalMs"), GetDlgItemInt(IDC_EDIT_CLICK_INTERVAL));

@@ -16,6 +16,7 @@
 #define IDD_REGEX_GUIDE_DLG             139
 #define IDD_FOLDER_PROCESS_DLG          140
 #define IDD_INPUT_DLG                   141
+#define IDD_STICKY_NOTE_DLG             142
 #define IDC_TAB1                        1000
 #define IDC_LIST1                       1001
 #define IDC_LIST2                       1002
@@ -188,6 +189,10 @@
 #define IDC_BTN_PROCESS_REGEX_HELP     1187
 #define IDC_BTN_RENAME_UNDO            1188
 #define IDM_KILL_SAME_NAME             1189
+#define IDC_EDIT_STICKY_NOTE           1190
+#define IDC_BTN_STICKY_BROWSE          1191
+#define IDC_EDIT_STICKY_DIR            1192
+#define IDC_BROWSE_STICKY_DIR          1193
 
 #define ID_FILE_SETTINGS                32775
 #define ID_FILE_EXIT                    32776
@@ -217,6 +222,7 @@
 #define ID_TOOLS_SCREENSHOT_OCR         32812
 #define ID_TOOLS_BATCH_RENAME           32813
 #define ID_HELP_REGEX_GUIDE             32814
+#define ID_TOOLS_STICKY_NOTE            32815
 
 // Next default values for new objects
 // 

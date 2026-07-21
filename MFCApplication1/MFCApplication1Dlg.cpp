@@ -17,6 +17,7 @@
 #include "ScreenshotOCRDlg.h"
 #include "BatchRenameDlg.h"
 #include "RegexGuideDlg.h"
+#include "StickyNoteDlg.h"
 #include <TlHelp32.h>
 #include <Shellapi.h>
 #include <Psapi.h>
@@ -171,6 +172,7 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_COMMAND(ID_TOOLS_QRCODE,         &CMFCApplication1Dlg::OnToolsQRCode)
     ON_COMMAND(ID_TOOLS_SCREENSHOT_OCR, &CMFCApplication1Dlg::OnToolsScreenshotOCR)
     ON_COMMAND(ID_TOOLS_BATCH_RENAME,   &CMFCApplication1Dlg::OnToolsBatchRename)
+    ON_COMMAND(ID_TOOLS_STICKY_NOTE,   &CMFCApplication1Dlg::OnToolsStickyNote)
     ON_COMMAND(ID_WINDOW_LOCATE,    &CMFCApplication1Dlg::OnWindowLocate)
     ON_COMMAND(ID_WINDOW_UNTOPMOST, &CMFCApplication1Dlg::OnWindowUntopmost)
     ON_COMMAND(ID_WINDOW_CLOSE,     &CMFCApplication1Dlg::OnWindowClose)
@@ -366,10 +368,13 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
 		}
 	}
 
+	// Auto-open sticky note on startup (deferred to after main dialog is fully initialized)
+	PostMessage(WM_COMMAND, ID_TOOLS_STICKY_NOTE);
+
 	// Global hotkey
 	CString strTitle;
 	GetWindowText(strTitle);
-	strTitle += _T(" (ctrl+alt+空格唤起此窗口)");
+	strTitle += _T("(ctrl+alt+空格唤起此窗口)");
 	SetWindowText(strTitle);
 	RegisterHotKey(m_hWnd, 1001, MOD_CONTROL | MOD_ALT, VK_SPACE);
 
@@ -384,6 +389,7 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
 		CVolumeManager::FetchVolumeAsync(m_hWnd);
 	}
 
+	// Global hotkey
 	return TRUE;
 }
 
@@ -392,6 +398,12 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
 
 void CMFCApplication1Dlg::OnDestroy()
 {
+    // Save sticky note before destroying
+    if (m_pStickyNoteDlg && ::IsWindow(m_pStickyNoteDlg->m_hWnd))
+    {
+        m_pStickyNoteDlg->SaveIfNeeded();
+    }
+
     UnregisterHotKey(m_hWnd, 1001);
 
     if (m_bTrayVisible)
@@ -1023,6 +1035,29 @@ void CMFCApplication1Dlg::OnToolsBatchRename()
     pDlg->Create(IDD_BATCH_RENAME_DLG, nullptr);
     pDlg->ShowWindow(SW_SHOW);
 }
+
+void CMFCApplication1Dlg::OnToolsStickyNote()
+{
+    if (m_pStickyNoteDlg && ::IsWindow(m_pStickyNoteDlg->m_hWnd))
+    {
+        // Toggle: if visible, hide it; if hidden, show it
+        if (m_pStickyNoteDlg->IsWindowVisible())
+            m_pStickyNoteDlg->ShowWindow(SW_HIDE);
+        else
+        {
+            m_pStickyNoteDlg->ShowWindow(SW_SHOW);
+            m_pStickyNoteDlg->SetForegroundWindow();
+        }
+    }
+    else
+    {
+        m_pStickyNoteDlg = new CStickyNoteDlg(nullptr);
+        m_pStickyNoteDlg->Create(IDD_STICKY_NOTE_DLG, nullptr);
+        m_pStickyNoteDlg->ShowWindow(SW_SHOW);
+    }
+}
+
+
 
 
 

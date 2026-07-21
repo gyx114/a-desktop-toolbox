@@ -20,6 +20,7 @@ public:
     void OnBrowseStudy();
     void OnBrowseDownload();
     void OnBrowseScreenshot();
+    void OnBrowseStickyDir();
 
 private:
     void BrowseFile(UINT id, LPCTSTR title);
