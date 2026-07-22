@@ -6,9 +6,10 @@
 #include "MFCApplication1.h"
 #include "MarkdownDlg.h"
 #include "afxdialogex.h"
-#include <sstream>
-#include <fstream>
+#include <MsHTML.h>
+#include <ExDisp.h>
 #include <vector>
+#include <fstream>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -45,7 +46,6 @@ BOOL CMarkdownDlg::OnInitDialog()
 
 	DragAcceptFiles(TRUE);
 
-	// Calculate margins for resize
 	CRect rcClient, rcEdit, rcPreview;
 	GetClientRect(&rcClient);
 
@@ -63,14 +63,12 @@ BOOL CMarkdownDlg::OnInitDialog()
 		pEdit->SetFont(&m_fontEdit);
 	}
 
-	// Create "Open File" button
 	if (m_btnOpen.Create(_T("Open File"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
 		CRect(0, 0, 80, 24), this, IDC_BTN_OPEN))
 	{
 		m_btnOpen.SetFont(GetFont());
 	}
 
-	// Get preview placeholder position, then destroy it
 	CWnd* pPlaceholder = GetDlgItem(IDC_MARKDOWN_PREVIEW);
 	if (pPlaceholder)
 	{
@@ -80,29 +78,33 @@ BOOL CMarkdownDlg::OnInitDialog()
 		m_previewMargins.top = rcPreview.top;
 		m_previewMargins.right = rcClient.right - rcPreview.right;
 		m_previewMargins.bottom = rcClient.bottom - rcPreview.bottom;
-
 		pPlaceholder->DestroyWindow();
 	}
 
-	// Create RichEdit for preview
 	int buttonHeight = 28;
-	CRect rcRich;
-	rcRich.left = m_previewMargins.left;
-	rcRich.top = m_previewMargins.top + buttonHeight;
-	rcRich.right = rcClient.Width() - m_previewMargins.right;
-	rcRich.bottom = rcClient.Height() - m_previewMargins.bottom;
+	CRect rcBrowser;
+	rcBrowser.left = m_previewMargins.left;
+	rcBrowser.top = m_previewMargins.top + buttonHeight;
+	rcBrowser.right = rcClient.Width() - m_previewMargins.right;
+	rcBrowser.bottom = rcClient.Height() - m_previewMargins.bottom;
 
-	if (m_richPreview.Create(WS_CHILD | WS_VISIBLE | ES_MULTILINE |
-		ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL,
-		rcRich, this, IDC_MARKDOWN_PREVIEW))
+	if (m_browser.CreateControl(CLSID_WebBrowser, nullptr,
+		WS_VISIBLE | WS_CHILD, rcBrowser, this, IDC_MARKDOWN_PREVIEW))
 	{
-		m_fontPreview.CreatePointFont(100, _T("Segoe UI"));
-		m_fontCode.CreatePointFont(90, _T("Consolas"));
-		m_richPreview.SetFont(&m_fontPreview);
-		m_richPreview.SetBackgroundColor(FALSE, RGB(255, 255, 255));
+		LPUNKNOWN pUnk = m_browser.GetControlUnknown();
+		if (pUnk)
+		{
+			IWebBrowser2* pWeb2 = nullptr;
+			if (SUCCEEDED(pUnk->QueryInterface(IID_IWebBrowser2, (void**)&pWeb2)))
+			{
+				BSTR bstrBlank = SysAllocString(L"about:blank");
+				pWeb2->Navigate(bstrBlank, nullptr, nullptr, nullptr, nullptr);
+				SysFreeString(bstrBlank);
+				pWeb2->Release();
+			}
+		}
 	}
 
-	// Position button
 	if (m_btnOpen.m_hWnd)
 	{
 		m_btnOpen.SetWindowPos(nullptr,
@@ -110,7 +112,6 @@ BOOL CMarkdownDlg::OnInitDialog()
 			80, 24, SWP_NOZORDER);
 	}
 
-	// Load sample
 	static const wchar_t* sample = L"# Markdown Preview\r\n"
 		L"\r\n"
 		L"Welcome to the **Markdown Editor**!\r\n"
@@ -146,15 +147,9 @@ BOOL CMarkdownDlg::OnInitDialog()
 
 	m_markdownText = sample;
 	UpdateData(FALSE);
-
 	RefreshPreview();
 
 	return TRUE;
-}
-
-void CMarkdownDlg::PostNcDestroy()
-{
-	delete this;
 }
 
 void CMarkdownDlg::OnDestroy()
@@ -201,6 +196,9 @@ void CMarkdownDlg::OnBnClickedOpen()
 
 void CMarkdownDlg::LoadFile(const CString& path)
 {
+	if (path.IsEmpty())
+		return;
+
 	CFile file;
 	if (!file.Open(path, CFile::modeRead))
 	{
@@ -221,12 +219,14 @@ void CMarkdownDlg::LoadFile(const CString& path)
 	file.Read(&raw[0], (UINT)size);
 	file.Close();
 
-	// Remove UTF-8 BOM if present
-	if (raw.size() >= 3 && (unsigned char)raw[0] == 0xEF &&
-		(unsigned char)raw[1] == 0xBB && (unsigned char)raw[2] == 0xBF)
+	if (raw.size() >= 3 &&
+		(unsigned char)raw[0] == 0xEF &&
+		(unsigned char)raw[1] == 0xBB &&
+		(unsigned char)raw[2] == 0xBF)
+	{
 		raw = raw.substr(3);
+	}
 
-	// Try UTF-8 first, fall back to system default (GBK on Chinese Windows)
 	int wlen = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, raw.c_str(), -1, nullptr, 0);
 	UINT cp = CP_UTF8;
 	if (wlen == 0)
@@ -255,7 +255,6 @@ void CMarkdownDlg::ResizeControls()
 	CRect rcClient;
 	GetClientRect(&rcClient);
 
-	// Resize edit control
 	CWnd* pEdit = GetDlgItem(IDC_EDIT_MARKDOWN);
 	if (pEdit && ::IsWindow(pEdit->m_hWnd))
 	{
@@ -266,7 +265,6 @@ void CMarkdownDlg::ResizeControls()
 			SWP_NOZORDER);
 	}
 
-	// Resize "Open File" button
 	if (m_btnOpen.m_hWnd && ::IsWindow(m_btnOpen.m_hWnd))
 	{
 		m_btnOpen.SetWindowPos(nullptr,
@@ -274,11 +272,10 @@ void CMarkdownDlg::ResizeControls()
 			80, 24, SWP_NOZORDER);
 	}
 
-	// Resize RichEdit preview
-	if (m_richPreview.m_hWnd && ::IsWindow(m_richPreview.m_hWnd))
+	if (m_browser.m_hWnd && ::IsWindow(m_browser.m_hWnd))
 	{
 		int buttonHeight = m_btnOpen.m_hWnd ? 28 : 0;
-		m_richPreview.SetWindowPos(nullptr,
+		m_browser.SetWindowPos(nullptr,
 			m_previewMargins.left, m_previewMargins.top + buttonHeight,
 			rcClient.Width() - m_previewMargins.left - m_previewMargins.right,
 			rcClient.Height() - m_previewMargins.top - m_previewMargins.bottom - buttonHeight,
@@ -288,341 +285,411 @@ void CMarkdownDlg::ResizeControls()
 
 void CMarkdownDlg::RefreshPreview()
 {
-	if (!m_richPreview.m_hWnd)
+	if (!m_browser.m_hWnd)
 		return;
-	RenderMarkdown();
+	SetBrowserHtml(MarkdownToHtml(m_markdownText));
 }
 
-// String-scanning helpers replacing std::regex (avoids MSVC regex crash in Release)
-void CMarkdownDlg::FindPaired(const std::wstring& text, int basePos,
-                              const wchar_t* marker, int markerLen,
-                              FormatType type, std::vector<FormatRange>& out)
+void CMarkdownDlg::SetBrowserHtml(const CString& html)
 {
-	size_t pos = 0;
-	while (true)
+	LPUNKNOWN pUnk = m_browser.GetControlUnknown();
+	if (!pUnk)
+		return;
+
+	IWebBrowser2* pWeb2 = nullptr;
+	if (FAILED(pUnk->QueryInterface(IID_IWebBrowser2, (void**)&pWeb2)))
+		return;
+
+	IDispatch* pDocDisp = nullptr;
+	if (FAILED(pWeb2->get_Document(&pDocDisp)) || !pDocDisp)
 	{
-		size_t open = text.find(marker, pos);
-		if (open == std::wstring::npos) break;
-		size_t close = text.find(marker, open + markerLen);
-		if (close == std::wstring::npos) break;
-		out.push_back({basePos + (int)(open + markerLen), basePos + (int)close, type});
-		pos = close + markerLen;
+		pWeb2->Release();
+		return;
 	}
+
+	IHTMLDocument2* pDoc = nullptr;
+	if (FAILED(pDocDisp->QueryInterface(IID_IHTMLDocument2, (void**)&pDoc)))
+	{
+		pDocDisp->Release();
+		pWeb2->Release();
+		return;
+	}
+
+	BSTR bstrHtml = html.AllocSysString();
+	SAFEARRAY* psa = SafeArrayCreateVector(VT_VARIANT, 0, 1);
+	if (psa)
+	{
+		VARIANT* pv = nullptr;
+		if (SUCCEEDED(SafeArrayAccessData(psa, (void**)&pv)))
+		{
+			pv->vt = VT_BSTR;
+			pv->bstrVal = bstrHtml;
+			SafeArrayUnaccessData(psa);
+			pDoc->close();
+			pDoc->write(psa);
+		}
+		SafeArrayDestroy(psa);
+	}
+	else
+	{
+		SysFreeString(bstrHtml);
+	}
+
+	pDoc->Release();
+	pDocDisp->Release();
+	pWeb2->Release();
 }
 
-void CMarkdownDlg::FindItalic(const std::wstring& text, int basePos, std::vector<FormatRange>& out)
+CString CMarkdownDlg::EscapeHtml(const CString& text)
 {
-	size_t i = 0;
-	while (i < text.size())
+	CString out;
+	out.Preallocate(text.GetLength() * 2);
+	for (int i = 0; i < text.GetLength(); ++i)
 	{
-		if (text[i] == L'*')
+		TCHAR ch = text[i];
+		switch (ch)
 		{
-			// Skip if part of **
-			if (i + 1 < text.size() && text[i + 1] == L'*') { i += 2; continue; }
-			if (i > 0 && text[i - 1] == L'*') { i++; continue; }
-			size_t j = i + 1;
-			while (j < text.size())
+		case L'&': out += _T("&amp;"); break;
+		case L'<': out += _T("&lt;"); break;
+		case L'>': out += _T("&gt;"); break;
+		case L'\"': out += _T("&quot;"); break;
+		default: out += ch; break;
+		}
+	}
+	return out;
+}
+
+CString CMarkdownDlg::FormatInline(const CString& text)
+{
+	CString out;
+	int i = 0;
+	int n = text.GetLength();
+	while (i < n)
+	{
+		// Link [text](url)
+		if (text[i] == _T('['))
+		{
+			int j = text.Find(_T(']'), i + 1);
+			if (j > i + 1 && j + 1 < n && text[j + 1] == _T('('))
 			{
-				if (text[j] == L'*')
+				int k = text.Find(_T(')'), j + 2);
+				if (k > j + 2)
 				{
-					if (j + 1 < text.size() && text[j + 1] == L'*') { j += 2; continue; }
-					if (j > 0 && text[j - 1] == L'*') { j++; continue; }
-					out.push_back({basePos + (int)(i + 1), basePos + (int)j, FMT_ITALIC});
-					i = j + 1;
-					break;
-				}
-				j++;
-			}
-			if (j >= text.size()) break;
-		}
-		else
-		{
-			i++;
-		}
-	}
-}
-
-void CMarkdownDlg::FindCode(const std::wstring& text, int basePos, std::vector<FormatRange>& out)
-{
-	size_t i = 0;
-	while (i < text.size())
-	{
-		if (text[i] == L'`')
-		{
-			size_t j = i + 1;
-			while (j < text.size() && text[j] != L'`') j++;
-			if (j < text.size())
-			{
-				out.push_back({basePos + (int)(i + 1), basePos + (int)j, FMT_CODE});
-				i = j + 1;
-			}
-			else
-			{
-				break;
-			}
-		}
-		else
-		{
-			i++;
-		}
-	}
-}
-
-void CMarkdownDlg::FindLinks(const std::wstring& text, int basePos, std::vector<FormatRange>& out)
-{
-	size_t i = 0;
-	while (i < text.size())
-	{
-		if (text[i] == L'[')
-		{
-			size_t closeBracket = text.find(L']', i + 1);
-			if (closeBracket != std::wstring::npos && closeBracket + 1 < text.size() && text[closeBracket + 1] == L'(')
-			{
-				size_t closeParen = text.find(L')', closeBracket + 2);
-				if (closeParen != std::wstring::npos)
-				{
-					out.push_back({basePos + (int)i, basePos + (int)(closeParen + 1), FMT_LINK});
-					i = closeParen + 1;
+					CString linkText = text.Mid(i + 1, j - i - 1);
+					CString url = text.Mid(j + 2, k - j - 2);
+					out += _T("<a href=\"") + EscapeHtml(url) + _T("\">") + FormatInline(linkText) + _T("</a>");
+					i = k + 1;
 					continue;
 				}
 			}
 		}
-		i++;
-	}
-}
 
-// ============================================================================
-// Markdown renderer using RichEdit formatting
-// ============================================================================
-
-void CMarkdownDlg::ApplyFormatting(const std::vector<FormatRange>& ranges)
-{
-	CRichEditCtrl& re = m_richPreview;
-
-	for (const auto& r : ranges)
-	{
-		re.SetSel(r.start, r.end);
-
-		CHARFORMAT2 cf = {};
-		cf.cbSize = sizeof(CHARFORMAT2);
-		cf.dwMask = CFM_BOLD | CFM_ITALIC | CFM_STRIKEOUT | CFM_FACE | CFM_SIZE | CFM_COLOR | CFM_BACKCOLOR;
-		cf.dwEffects = 0;
-		cf.crTextColor = RGB(0, 0, 0);
-		cf.crBackColor = RGB(255, 255, 255);
-
-		switch (r.type)
+		// Code `...`
+		if (text[i] == _T('`'))
 		{
-		case FMT_BOLD:
-			cf.dwEffects = CFE_BOLD;
-			break;
-		case FMT_ITALIC:
-			cf.dwEffects = CFE_ITALIC;
-			break;
-		case FMT_STRIKE:
-			cf.dwEffects = CFE_STRIKEOUT;
-			cf.crTextColor = RGB(160, 160, 160);
-			break;
-		case FMT_CODE:
-			wcscpy_s(cf.szFaceName, L"Consolas");
-			cf.yHeight = 180; // 9pt
-			cf.crBackColor = RGB(240, 240, 240);
-			cf.crTextColor = RGB(200, 40, 40);
-			break;
-		case FMT_HEADER:
-			cf.dwEffects = CFE_BOLD;
-			if (r.headerLevel == 1)
-				cf.yHeight = 360; // 18pt
-			else if (r.headerLevel == 2)
-				cf.yHeight = 280; // 14pt
-			else if (r.headerLevel == 3)
-				cf.yHeight = 240; // 12pt
-			else
-				cf.yHeight = 220; // 11pt
-			break;
-		case FMT_QUOTE:
-			cf.dwEffects = CFE_ITALIC;
-			cf.crTextColor = RGB(100, 100, 100);
-			break;
-		case FMT_LINK:
-			cf.crTextColor = RGB(0, 100, 200);
-			cf.dwEffects = CFE_UNDERLINE;
-			break;
+			int j = text.Find(_T('`'), i + 1);
+			if (j > i + 1)
+			{
+				CString code = text.Mid(i + 1, j - i - 1);
+				out += _T("<code>") + EscapeHtml(code) + _T("</code>");
+				i = j + 1;
+				continue;
+			}
 		}
 
-		re.SetSelectionCharFormat(cf);
+		// Bold **...**
+		if (i + 1 < n && text[i] == _T('*') && text[i + 1] == _T('*'))
+		{
+			int j = i + 2;
+			while (j + 1 < n && !(text[j] == _T('*') && text[j + 1] == _T('*'))) ++j;
+			if (j + 1 < n)
+			{
+				CString bold = text.Mid(i + 2, j - i - 2);
+				out += _T("<strong>") + FormatInline(bold) + _T("</strong>");
+				i = j + 2;
+				continue;
+			}
+		}
+
+		// Strikethrough ~~...~~
+		if (i + 1 < n && text[i] == _T('~') && text[i + 1] == _T('~'))
+		{
+			int j = text.Find(_T("~~"), i + 2);
+			if (j > i + 2)
+			{
+				CString strike = text.Mid(i + 2, j - i - 2);
+				out += _T("<del>") + FormatInline(strike) + _T("</del>");
+				i = j + 2;
+				continue;
+			}
+		}
+
+		// Italic *...* (single)
+		if (text[i] == _T('*'))
+		{
+			int j = text.Find(_T('*'), i + 1);
+			if (j > i + 1)
+			{
+				CString italic = text.Mid(i + 1, j - i - 1);
+				out += _T("<em>") + FormatInline(italic) + _T("</em>");
+				i = j + 1;
+				continue;
+			}
+		}
+
+		out += EscapeHtml(text.Mid(i, 1));
+		++i;
 	}
+	return out;
 }
 
-void CMarkdownDlg::RenderMarkdown()
+CString CMarkdownDlg::MarkdownToHtml(const CString& markdown)
 {
-	CRichEditCtrl& re = m_richPreview;
-	if (!re.m_hWnd)
-		return;
+	CString html;
+	html += _T("<!DOCTYPE html><html><head><meta charset=\"UTF-8\">");
+	html += _T("<style>");
+	html += _T("body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;");
+	html += _T("font-size:14px;line-height:1.6;color:#24292f;background:#ffffff;padding:16px;margin:0;}");
+	html += _T("h1,h2,h3,h4,h5,h6{font-weight:600;line-height:1.25;margin-top:24px;margin-bottom:16px;}");
+	html += _T("h1{font-size:2em;border-bottom:1px solid #d0d7de;padding-bottom:.3em;}");
+	html += _T("h2{font-size:1.5em;border-bottom:1px solid #d0d7de;padding-bottom:.3em;}");
+	html += _T("h3{font-size:1.25em;}");
+	html += _T("p{margin-top:0;margin-bottom:16px;}");
+	html += _T("a{color:#0969da;text-decoration:none;}a:hover{text-decoration:underline;}");
+	html += _T("code{font-family:ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,monospace;");
+	html += _T("font-size:85%;background-color:rgba(175,184,193,0.2);padding:.2em .4em;border-radius:6px;}");
+	html += _T("pre{background-color:#f6f8fa;border-radius:6px;padding:16px;overflow:auto;margin-bottom:16px;}");
+	html += _T("pre code{background:transparent;padding:0;font-size:100%;}");
+	html += _T("blockquote{color:#57606a;border-left:.25em solid #d0d7de;padding:0 1em;margin:0 0 16px 0;}");
+	html += _T("blockquote p{margin-bottom:0;}");
+	html += _T("ul,ol{padding-left:2em;margin-bottom:16px;}");
+	html += _T("li{margin-bottom:.25em;}");
+	html += _T("hr{height:.25em;padding:0;margin:24px 0;background:#d0d7de;border:0;}");
+	html += _T("table{border-collapse:collapse;border-spacing:0;margin-bottom:16px;width:auto;}");
+	html += _T("th,td{border:1px solid #d0d7de;padding:6px 13px;}");
+	html += _T("th{background:#f6f8fa;font-weight:600;}");
+	html += _T("tr:nth-child(2n){background:#f6f8fa;}");
+	html += _T("del{color:#57606a;text-decoration:line-through;}");
+	html += _T("</style></head><body>");
 
-	re.SetRedraw(FALSE);
-	re.SetWindowText(_T(""));
-
-	std::wstring text;
-	std::vector<FormatRange> ranges;
-
-	std::wstringstream ss(m_markdownText.GetString());
-	std::wstring line;
+	CString body;
 	bool inCodeBlock = false;
-	int pos = 0;
+	bool inList = false;
+	bool inQuote = false;
+	bool inTable = false;
+	bool inTHead = false;
+	bool inParagraph = false;
 
-	// RichEdit uses \r (not \r\n) as paragraph delimiter internally.
-	// We must use \r consistently so position calculations are correct.
-#define CR L"\r"
-#define CR_LEN 1
-
-	while (std::getline(ss, line))
+	CStringArray lines;
 	{
-		if (!line.empty() && line.back() == L'\r')
-			line.pop_back();
-
-		// Code block toggle
-		if (line.size() >= 3 && line.substr(0, 3) == L"```")
+		int start = 0;
+		while (start < markdown.GetLength())
 		{
-			inCodeBlock = !inCodeBlock;
+			int end = markdown.Find(_T("\n"), start);
+			if (end < 0)
+			{
+				lines.Add(markdown.Mid(start));
+				break;
+			}
+			CString line = markdown.Mid(start, end - start);
+			line.Remove(_T('\r'));
+			lines.Add(line);
+			start = end + 1;
+		}
+	}
+
+	auto CloseBlocks = [&](bool keepParagraph)
+	{
+		if (inCodeBlock) { body += _T("</code></pre>"); inCodeBlock = false; }
+		if (inList) { body += _T("</ul>"); inList = false; }
+		if (inQuote) { body += _T("</blockquote>"); inQuote = false; }
+		if (inTable) { body += _T("</tbody></table>"); inTable = false; inTHead = false; }
+		if (inParagraph && !keepParagraph) { body += _T("</p>"); inParagraph = false; }
+	};
+
+	for (int idx = 0; idx < lines.GetSize(); ++idx)
+	{
+		CString line = lines[idx];
+
+		if (line.GetLength() >= 3 && line.Left(3) == _T("```"))
+		{
+			if (inCodeBlock)
+			{
+				body += _T("</code></pre>");
+				inCodeBlock = false;
+			}
+			else
+			{
+				CloseBlocks(false);
+				CString lang = line.Mid(3).Trim();
+				body += _T("<pre><code");
+				if (!lang.IsEmpty())
+					body += _T(" class=\"language-") + EscapeHtml(lang) + _T("\"");
+				body += _T(">");
+				inCodeBlock = true;
+			}
 			continue;
 		}
 
 		if (inCodeBlock)
 		{
-			text += line + CR;
-			FormatRange fr;
-			fr.start = pos;
-			fr.end = pos + (int)line.size();
-			fr.type = FMT_CODE;
-			ranges.push_back(fr);
-			pos += (int)line.size() + CR_LEN;
+			body += EscapeHtml(line);
+			body += _T("\n");
 			continue;
 		}
 
-		if (line.empty())
+		if (line.IsEmpty())
 		{
-			text += CR;
-			pos += CR_LEN;
+			CloseBlocks(false);
 			continue;
 		}
 
-		// Horizontal rule
-		if (line == L"---" || line == L"***" || line == L"___")
+		if (line == _T("---") || line == _T("***") || line == _T("___"))
+			CloseBlocks(false);
+
+		bool isList = false;
+		bool isQuote = false;
+		bool isTable = false;
+		CString listContent;
+		CString quoteContent;
+
+		if ((line[0] == _T('-') || line[0] == _T('*') || line[0] == _T('+')) &&
+			line.GetLength() > 1 && line[1] == _T(' '))
 		{
-			std::wstring hr = L"\x2500\x2500\x2500\x2500\x2500\x2500\x2500\x2500\x2500\x2500\x2500\x2500\x2500\x2500\x2500\x2500\x2500\x2500\x2500\x2500";
-			text += hr + CR;
-			FormatRange fr;
-			fr.start = pos;
-			fr.end = pos + (int)hr.size();
-			fr.type = FMT_QUOTE;
-			ranges.push_back(fr);
-			pos += (int)hr.size() + CR_LEN;
-			continue;
+			isList = true;
+			listContent = line.Mid(2);
 		}
 
-		// Header
-		if (line[0] == L'#')
+		if (line[0] == _T('>'))
 		{
-			int level = 0;
-			while (level < (int)line.size() && line[level] == L'#')
-				level++;
-			if (level <= 6 && level < (int)line.size() && line[level] == L' ')
+			isQuote = true;
+			if (line.GetLength() > 1 && line[1] == _T(' '))
+				quoteContent = line.Mid(2);
+			else
+				quoteContent = line.Mid(1);
+		}
+
+		if (line.Find(_T('|')) >= 0)
+		{
+			isTable = true;
+		}
+
+		if (isTable)
+		{
+			CString trimmed = line.Trim(_T("|"));
+			if (trimmed.Find(_T("---")) >= 0)
 			{
-				std::wstring headerText = line.substr(level + 1);
-				text += headerText + CR;
-				FormatRange fr;
-				fr.start = pos;
-				fr.end = pos + (int)headerText.size();
-				fr.type = FMT_HEADER;
-				fr.headerLevel = level;
-				ranges.push_back(fr);
-				pos += (int)headerText.size() + CR_LEN;
+				inTHead = false;
+				continue;
+			}
+
+			if (!inTable)
+			{
+				CloseBlocks(false);
+				body += _T("<table><thead>");
+				inTable = true;
+				inTHead = true;
+			}
+
+			CStringArray cells;
+			{
+				int pos = 0;
+				while (pos < line.GetLength())
+				{
+					if (line[pos] == _T('|')) { ++pos; continue; }
+					int next = line.Find(_T('|'), pos);
+					CString cell = next < 0 ? line.Mid(pos) : line.Mid(pos, next - pos);
+					cell.Trim();
+					cells.Add(cell);
+					pos = next < 0 ? line.GetLength() : next + 1;
+				}
+			}
+
+			if (inTHead)
+			{
+				body += _T("<tr>");
+				for (int i = 0; i < cells.GetSize(); ++i)
+					body += _T("<th>") + FormatInline(cells[i]) + _T("</th>");
+				body += _T("</tr></thead><tbody>");
+				inTHead = false;
+			}
+			else
+			{
+				body += _T("<tr>");
+				for (int i = 0; i < cells.GetSize(); ++i)
+					body += _T("<td>") + FormatInline(cells[i]) + _T("</td>");
+				body += _T("</tr>");
+			}
+			continue;
+		}
+
+		if (inTable) { body += _T("</tbody></table>"); inTable = false; inTHead = false; }
+
+		if (isQuote)
+		{
+			if (!inQuote)
+			{
+				CloseBlocks(false);
+				body += _T("<blockquote>");
+				inQuote = true;
+			}
+			body += _T("<p>") + FormatInline(quoteContent) + _T("</p>");
+			continue;
+		}
+
+		if (inQuote) { body += _T("</blockquote>"); inQuote = false; }
+
+		if (isList)
+		{
+			if (!inList)
+			{
+				CloseBlocks(false);
+				body += _T("<ul>");
+				inList = true;
+			}
+			body += _T("<li>") + FormatInline(listContent) + _T("</li>");
+			continue;
+		}
+
+		if (inList) { body += _T("</ul>"); inList = false; }
+
+		if (line == _T("---") || line == _T("***") || line == _T("___"))
+		{
+			body += _T("<hr>");
+			continue;
+		}
+
+		if (line[0] == _T('#'))
+		{
+			CloseBlocks(false);
+			int level = 0;
+			while (level < line.GetLength() && level < 6 && line[level] == _T('#'))
+				++level;
+			if (level > 0 && level < line.GetLength() && line[level] == _T(' '))
+			{
+				CString title = line.Mid(level + 1);
+				CString tag;
+				tag.Format(_T("<h%d>%s</h%d>"), level, FormatInline(title), level);
+				body += tag;
 				continue;
 			}
 		}
 
-		// Blockquote
-		if (line[0] == L'>')
+		if (!inParagraph)
 		{
-			std::wstring quoteText;
-			if (line.size() > 1 && line[1] == L' ')
-				quoteText = L"  " + line.substr(2);
-			else
-				quoteText = L"  " + line.substr(1);
-			text += quoteText + CR;
-			FormatRange fr;
-			fr.start = pos;
-			fr.end = pos + (int)quoteText.size();
-			fr.type = FMT_QUOTE;
-			ranges.push_back(fr);
-			pos += (int)quoteText.size() + CR_LEN;
-			continue;
+			body += _T("<p>");
+			inParagraph = true;
 		}
-
-		// Unordered list
-		if ((line[0] == L'-' || line[0] == L'*' || line[0] == L'+') && line.size() > 1 && line[1] == L' ')
+		else
 		{
-			// "  \u2022 " = space(1) + space(1) + bullet(1) + space(1) = 4 chars
-			std::wstring itemText = L"  \u2022 " + line.substr(2);
-			text += itemText + CR;
-
-			std::wstring content = line.substr(2);
-			int basePos = pos + 4;
-
-			FindPaired(content, basePos, L"**", 2, FMT_BOLD, ranges);
-			FindItalic(content, basePos, ranges);
-			FindCode(content, basePos, ranges);
-
-			pos += (int)itemText.size() + CR_LEN;
-			continue;
+			body += _T(" ");
 		}
-
-		// Table (simplified: just show as indented text)
-		if (line.find(L'|') == 0 && line.find(L'|', 1) != std::wstring::npos)
-		{
-			if (line.find(L"---") != std::wstring::npos)
-				continue;
-			std::wstring tableLine = L"  " + line;
-			text += tableLine + CR;
-			pos += (int)tableLine.size() + CR_LEN;
-			continue;
-		}
-
-		// Regular paragraph with inline formatting
-		{
-			int lineStart = pos;
-			text += line + CR;
-
-			FindPaired(line, lineStart, L"**", 2, FMT_BOLD, ranges);
-			FindItalic(line, lineStart, ranges);
-			FindCode(line, lineStart, ranges);
-			FindPaired(line, lineStart, L"~~", 2, FMT_STRIKE, ranges);
-			FindLinks(line, lineStart, ranges);
-
-			pos += (int)line.size() + CR_LEN;
-		}
+		body += FormatInline(line);
 	}
 
-#undef CR
-#undef CR_LEN
+	CloseBlocks(false);
 
-	// Get the actual text length in RichEdit (may differ due to line ending conversion)
-	re.SetWindowText(CString(text.c_str()));
-	int actualLen = re.GetWindowTextLength();
-
-	// Clamp formatting ranges to the actual text length
-	for (auto& r : ranges)
-	{
-		if (r.start < 0) r.start = 0;
-		if (r.start > actualLen) r.start = actualLen;
-		if (r.end < 0) r.end = 0;
-		if (r.end > actualLen) r.end = actualLen;
-		if (r.start > r.end) r.start = r.end;
-	}
-
-	ApplyFormatting(ranges);
-
-	re.SetRedraw(TRUE);
-	re.Invalidate();
-	re.SetSel(0, 0);
+	html += body;
+	html += _T("</body></html>");
+	return html;
 }
