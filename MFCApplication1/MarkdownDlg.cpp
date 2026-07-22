@@ -157,6 +157,19 @@ void CMarkdownDlg::OnDestroy()
 	CDialogEx::OnDestroy();
 }
 
+BOOL CMarkdownDlg::PreTranslateMessage(MSG* pMsg)
+{
+	if (IsDialogMessage(pMsg))
+		return TRUE;
+	return CDialogEx::PreTranslateMessage(pMsg);
+}
+
+void CMarkdownDlg::PostNcDestroy()
+{
+	CDialogEx::PostNcDestroy();
+	delete this;
+}
+
 void CMarkdownDlg::OnSize(UINT nType, int cx, int cy)
 {
 	CDialogEx::OnSize(nType, cx, cy);

@@ -1071,8 +1071,18 @@ void CMFCApplication1Dlg::OnToolsStickyNote()
 
 void CMFCApplication1Dlg::OnToolsMarkdown()
 {
-	CMarkdownDlg dlg(this);
-	dlg.DoModal();
+	auto* pDlg = new CMarkdownDlg(nullptr);
+	if (!pDlg->Create(IDD_MARKDOWN_DLG, nullptr))
+	{
+		DWORD dwErr = GetLastError();
+		CString msg;
+		msg.Format(_T("Failed to create Markdown Preview dialog (error %lu)"), dwErr);
+		MessageBox(msg, _T("Error"), MB_ICONERROR);
+		delete pDlg;
+		return;
+	}
+	pDlg->ShowWindow(SW_SHOW);
+	pDlg->SetForegroundWindow();
 }
 
 
