@@ -193,6 +193,9 @@
 #define IDC_BTN_STICKY_BROWSE          1191
 #define IDC_EDIT_STICKY_DIR            1192
 #define IDC_BROWSE_STICKY_DIR          1193
+#define IDD_MARKDOWN_DLG               143
+#define IDC_EDIT_MARKDOWN              1194
+#define IDC_MARKDOWN_PREVIEW           1195
 
 #define ID_FILE_SETTINGS                32775
 #define ID_FILE_EXIT                    32776
@@ -223,6 +226,7 @@
 #define ID_TOOLS_BATCH_RENAME           32813
 #define ID_HELP_REGEX_GUIDE             32814
 #define ID_TOOLS_STICKY_NOTE            32815
+#define ID_TOOLS_MARKDOWN              32816
 
 // Next default values for new objects
 // 

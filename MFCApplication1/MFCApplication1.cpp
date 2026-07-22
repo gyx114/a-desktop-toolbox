@@ -62,6 +62,9 @@ BOOL CMFCApplication1App::InitInstance()
 
     AfxEnableControlContainer();
 
+    // Initialize RichEdit 4.1 for Markdown preview
+    AfxInitRichEdit2();
+
 #ifdef _DEBUG
 	// Enable CRT debug heap leak checking and automatic dump at program exit.
 	int dbgFlag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);

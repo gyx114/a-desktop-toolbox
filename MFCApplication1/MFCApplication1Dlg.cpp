@@ -18,6 +18,7 @@
 #include "BatchRenameDlg.h"
 #include "RegexGuideDlg.h"
 #include "StickyNoteDlg.h"
+#include "MarkdownDlg.h"
 #include <TlHelp32.h>
 #include <Shellapi.h>
 #include <Psapi.h>
@@ -182,6 +183,7 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_COMMAND(ID_TOOLS_SCREENSHOT_OCR, &CMFCApplication1Dlg::OnToolsScreenshotOCR)
     ON_COMMAND(ID_TOOLS_BATCH_RENAME,   &CMFCApplication1Dlg::OnToolsBatchRename)
     ON_COMMAND(ID_TOOLS_STICKY_NOTE,   &CMFCApplication1Dlg::OnToolsStickyNote)
+    ON_COMMAND(ID_TOOLS_MARKDOWN,     &CMFCApplication1Dlg::OnToolsMarkdown)
     ON_COMMAND(ID_WINDOW_LOCATE,    &CMFCApplication1Dlg::OnWindowLocate)
     ON_COMMAND(ID_WINDOW_UNTOPMOST, &CMFCApplication1Dlg::OnWindowUntopmost)
     ON_COMMAND(ID_WINDOW_CLOSE,     &CMFCApplication1Dlg::OnWindowClose)
@@ -1064,6 +1066,22 @@ void CMFCApplication1Dlg::OnToolsStickyNote()
         m_pStickyNoteDlg->Create(IDD_STICKY_NOTE_DLG, nullptr);
         m_pStickyNoteDlg->ShowWindow(SW_SHOW);
     }
+}
+
+void CMFCApplication1Dlg::OnToolsMarkdown()
+{
+    auto* pDlg = new CMarkdownDlg(nullptr);
+    if (!pDlg->Create(IDD_MARKDOWN_DLG, nullptr))
+    {
+        DWORD dwErr = GetLastError();
+        CString msg;
+        msg.Format(_T("Failed to create Markdown dialog (error %lu)"), dwErr);
+        MessageBox(msg, _T("Error"), MB_ICONERROR);
+        delete pDlg;
+        return;
+    }
+    pDlg->ShowWindow(SW_SHOW);
+    pDlg->SetForegroundWindow();
 }
 
 

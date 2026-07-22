@@ -210,6 +210,7 @@
     <ClInclude Include="OcrEngine.h" />
     <ClInclude Include="SettingsDlg.h" />
     <ClInclude Include="StickyNoteDlg.h" />
+    <ClInclude Include="MarkdownDlg.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
@@ -247,6 +248,7 @@
     <ClCompile Include="VolumeManager.cpp" />
     <ClCompile Include="ProcessManager.cpp" />
     <ClCompile Include="StickyNoteDlg.cpp" />
+    <ClCompile Include="MarkdownDlg.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="MFCApplication1.rc" />
