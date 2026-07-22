@@ -27,7 +27,6 @@ protected:
 private:
 	CString m_markdownText;
 	CFont m_fontEdit;
-	CButton m_btnOpen;
 	CWnd m_browser;
 	CRect m_editMargins;
 	CRect m_previewMargins;

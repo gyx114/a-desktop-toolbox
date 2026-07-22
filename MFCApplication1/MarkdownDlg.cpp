@@ -47,6 +47,7 @@ BOOL CMarkdownDlg::OnInitDialog()
 	CRect rcClient, rcEdit, rcPreview;
 	GetClientRect(&rcClient);
 
+	// Compute edit control margins from RC template positions
 	CWnd* pEdit = GetDlgItem(IDC_EDIT_MARKDOWN);
 	if (pEdit)
 	{
@@ -61,12 +62,7 @@ BOOL CMarkdownDlg::OnInitDialog()
 		pEdit->SetFont(&m_fontEdit);
 	}
 
-	if (m_btnOpen.Create(_T("Open File"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-		CRect(0, 0, 80, 24), this, IDC_BTN_OPEN))
-	{
-		m_btnOpen.SetFont(GetFont());
-	}
-
+	// Compute preview margins from the placeholder control in RC
 	CWnd* pPlaceholder = GetDlgItem(IDC_MARKDOWN_PREVIEW);
 	if (pPlaceholder)
 	{
@@ -79,12 +75,10 @@ BOOL CMarkdownDlg::OnInitDialog()
 		pPlaceholder->DestroyWindow();
 	}
 
-	int buttonHeight = 28;
-	CRect rcBrowser;
-	rcBrowser.left = m_previewMargins.left;
-	rcBrowser.top = m_previewMargins.top + buttonHeight;
-	rcBrowser.right = rcClient.Width() - m_previewMargins.right;
-	rcBrowser.bottom = rcClient.Height() - m_previewMargins.bottom;
+	// Create WebBrowser ActiveX control in place of the placeholder
+	CRect rcBrowser(m_previewMargins.left, m_previewMargins.top,
+		rcClient.Width() - m_previewMargins.right,
+		rcClient.Height() - m_previewMargins.bottom);
 
 	if (m_browser.CreateControl(CLSID_WebBrowser, nullptr,
 		WS_VISIBLE | WS_CHILD, rcBrowser, this, IDC_MARKDOWN_PREVIEW))
@@ -101,13 +95,6 @@ BOOL CMarkdownDlg::OnInitDialog()
 				pWeb2->Release();
 			}
 		}
-	}
-
-	if (m_btnOpen.m_hWnd)
-	{
-		m_btnOpen.SetWindowPos(nullptr,
-			m_previewMargins.left, m_previewMargins.top,
-			80, 24, SWP_NOZORDER);
 	}
 
 	static const wchar_t* sample = L"# Markdown Preview\r\n"
@@ -266,6 +253,7 @@ void CMarkdownDlg::ResizeControls()
 	CRect rcClient;
 	GetClientRect(&rcClient);
 
+	// Edit control: anchored to all four edges via margins
 	CWnd* pEdit = GetDlgItem(IDC_EDIT_MARKDOWN);
 	if (pEdit && ::IsWindow(pEdit->m_hWnd))
 	{
@@ -276,20 +264,23 @@ void CMarkdownDlg::ResizeControls()
 			SWP_NOZORDER);
 	}
 
-	if (m_btnOpen.m_hWnd && ::IsWindow(m_btnOpen.m_hWnd))
+	// Open button: fixed size, anchored to top of right panel
+	CWnd* pBtn = GetDlgItem(IDC_BTN_OPEN);
+	if (pBtn && ::IsWindow(pBtn->m_hWnd))
 	{
-		m_btnOpen.SetWindowPos(nullptr,
-			m_previewMargins.left, m_previewMargins.top,
-			80, 24, SWP_NOZORDER);
+		pBtn->SetWindowPos(nullptr,
+			m_previewMargins.left, 5,
+			75, 22, SWP_NOZORDER);
 	}
 
+	// WebBrowser: fills the right panel below the button
 	if (m_browser.m_hWnd && ::IsWindow(m_browser.m_hWnd))
 	{
-		int buttonHeight = m_btnOpen.m_hWnd ? 28 : 0;
+		int previewTop = 30; // button bottom (5+22) + 3px gap
 		m_browser.SetWindowPos(nullptr,
-			m_previewMargins.left, m_previewMargins.top + buttonHeight,
+			m_previewMargins.left, previewTop,
 			rcClient.Width() - m_previewMargins.left - m_previewMargins.right,
-			rcClient.Height() - m_previewMargins.top - m_previewMargins.bottom - buttonHeight,
+			rcClient.Height() - previewTop - m_previewMargins.bottom,
 			SWP_NOZORDER);
 	}
 }
