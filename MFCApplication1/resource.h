@@ -197,6 +197,7 @@
 #define IDC_EDIT_MARKDOWN              1194
 #define IDC_MARKDOWN_PREVIEW           1195
 #define IDC_BTN_OPEN                   1196
+#define IDC_STATIC_MARKDOWN_PATH       1197
 
 #define ID_FILE_SETTINGS                32775
 #define ID_FILE_EXIT                    32776
@@ -235,7 +236,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        133
 #define _APS_NEXT_COMMAND_VALUE         32799
-#define _APS_NEXT_CONTROL_VALUE         1103
+#define _APS_NEXT_CONTROL_VALUE         1198
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

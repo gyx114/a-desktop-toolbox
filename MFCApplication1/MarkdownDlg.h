@@ -28,20 +28,35 @@ private:
 	CString m_markdownText;
 	CFont m_fontEdit;
 	CWnd m_browser;
-	CRect m_editMargins;
-	CRect m_previewMargins;
+	int m_splitPos;        // current x position of the splitter
+	bool m_bDragging;      // whether the splitter is being dragged
+	int m_dragOffset;      // offset from mouse to splitter during drag
+	int m_btnLeft;         // button left (from RC)
+	int m_btnTop;          // button top (from RC)
+	int m_btnWidth;        // button width (from RC)
+	int m_btnHeight;       // button height (from RC)
+	int m_contentTop;      // top of edit/preview area (from RC)
+	int m_pathLabelLeft;    // path label left (from RC)
+	int m_pathLabelTop;     // path label top (from RC)
+	int m_pathLabelHeight;  // path label height (from RC)
 
 	void ResizeControls();
 	void RefreshPreview();
 	void LoadFile(const CString& path);
-	void SetBrowserHtml(const CString& html);
+	bool SetBrowserHtml(const CString& html);
 	static CString MarkdownToHtml(const CString& markdown);
 	static CString EscapeHtml(const CString& text);
 	static CString FormatInline(const CString& text);
 
 	afx_msg void OnSize(UINT nType, int cx, int cy);
+	afx_msg void OnPaint();
 	afx_msg void OnDestroy();
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	afx_msg void OnEnChangeEdit();
 	afx_msg void OnDropFiles(HDROP hDropInfo);
 	afx_msg void OnBnClickedOpen();
+	afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
+	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 };

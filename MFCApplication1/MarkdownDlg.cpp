@@ -17,6 +17,17 @@ IMPLEMENT_DYNAMIC(CMarkdownDlg, CDialogEx)
 
 CMarkdownDlg::CMarkdownDlg(CWnd* pParent)
 	: CDialogEx(IDD_MARKDOWN_DLG, pParent)
+	, m_splitPos(280)
+	, m_bDragging(false)
+	, m_dragOffset(0)
+	, m_btnLeft(6)
+	, m_btnTop(5)
+	, m_btnWidth(57)
+	, m_btnHeight(16)
+	, m_contentTop(27)
+	, m_pathLabelLeft(79)
+	, m_pathLabelTop(7)
+	, m_pathLabelHeight(12)
 {
 }
 
@@ -32,8 +43,14 @@ void CMarkdownDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CMarkdownDlg, CDialogEx)
 	ON_WM_SIZE()
+	ON_WM_PAINT()
 	ON_WM_DESTROY()
+	ON_WM_TIMER()
 	ON_WM_DROPFILES()
+	ON_WM_SETCURSOR()
+	ON_WM_LBUTTONDOWN()
+	ON_WM_LBUTTONUP()
+	ON_WM_MOUSEMOVE()
 	ON_EN_CHANGE(IDC_EDIT_MARKDOWN, &CMarkdownDlg::OnEnChangeEdit)
 	ON_BN_CLICKED(IDC_BTN_OPEN, &CMarkdownDlg::OnBnClickedOpen)
 END_MESSAGE_MAP()
@@ -44,44 +61,58 @@ BOOL CMarkdownDlg::OnInitDialog()
 
 	DragAcceptFiles(TRUE);
 
-	CRect rcClient, rcEdit, rcPreview;
-	GetClientRect(&rcClient);
+	// Read button dimensions from RC template
+	CWnd* pBtn = GetDlgItem(IDC_BTN_OPEN);
+	if (pBtn)
+	{
+		CRect rcBtn;
+		pBtn->GetWindowRect(&rcBtn);
+		ScreenToClient(&rcBtn);
+		m_btnLeft = rcBtn.left;
+		m_btnTop = rcBtn.top;
+		m_btnWidth = rcBtn.Width();
+		m_btnHeight = rcBtn.Height();
+	}
 
-	// Compute edit control margins from RC template positions
+	// Read path label position from RC template
+	CWnd* pPathLabel = GetDlgItem(IDC_STATIC_MARKDOWN_PATH);
+	if (pPathLabel)
+	{
+		CRect rcLabel;
+		pPathLabel->GetWindowRect(&rcLabel);
+		ScreenToClient(&rcLabel);
+		m_pathLabelLeft = rcLabel.left;
+		m_pathLabelTop = rcLabel.top;
+		m_pathLabelHeight = rcLabel.Height();
+	}
+
+	// Read content top from edit control's position in RC
 	CWnd* pEdit = GetDlgItem(IDC_EDIT_MARKDOWN);
 	if (pEdit)
 	{
+		CRect rcEdit;
 		pEdit->GetWindowRect(&rcEdit);
 		ScreenToClient(&rcEdit);
-		m_editMargins.left = rcEdit.left;
-		m_editMargins.top = rcEdit.top;
-		m_editMargins.right = rcClient.right - rcEdit.right;
-		m_editMargins.bottom = rcClient.bottom - rcEdit.bottom;
+		m_contentTop = rcEdit.top;
 
 		m_fontEdit.CreatePointFont(100, _T("Consolas"));
 		pEdit->SetFont(&m_fontEdit);
 	}
 
-	// Compute preview margins from the placeholder control in RC
+	// Compute initial split position from the preview placeholder in RC
 	CWnd* pPlaceholder = GetDlgItem(IDC_MARKDOWN_PREVIEW);
 	if (pPlaceholder)
 	{
+		CRect rcPreview;
 		pPlaceholder->GetWindowRect(&rcPreview);
 		ScreenToClient(&rcPreview);
-		m_previewMargins.left = rcPreview.left;
-		m_previewMargins.top = rcPreview.top;
-		m_previewMargins.right = rcClient.right - rcPreview.right;
-		m_previewMargins.bottom = rcClient.bottom - rcPreview.bottom;
+		m_splitPos = rcPreview.left;
 		pPlaceholder->DestroyWindow();
 	}
 
-	// Create WebBrowser ActiveX control in place of the placeholder
-	CRect rcBrowser(m_previewMargins.left, m_previewMargins.top,
-		rcClient.Width() - m_previewMargins.right,
-		rcClient.Height() - m_previewMargins.bottom);
-
+	// Create WebBrowser ActiveX control; position will be set in ResizeControls
 	if (m_browser.CreateControl(CLSID_WebBrowser, nullptr,
-		WS_VISIBLE | WS_CHILD, rcBrowser, this, IDC_MARKDOWN_PREVIEW))
+		WS_VISIBLE | WS_CHILD, CRect(0, 0, 0, 0), this, IDC_MARKDOWN_PREVIEW))
 	{
 		LPUNKNOWN pUnk = m_browser.GetControlUnknown();
 		if (pUnk)
@@ -96,6 +127,10 @@ BOOL CMarkdownDlg::OnInitDialog()
 			}
 		}
 	}
+
+	// Give the browser its real size immediately — a zero-size control
+	// will never render even if content is written to its document
+	ResizeControls();
 
 	static const wchar_t* sample = L"# Markdown Preview\r\n"
 		L"\r\n"
@@ -132,7 +167,10 @@ BOOL CMarkdownDlg::OnInitDialog()
 
 	m_markdownText = sample;
 	UpdateData(FALSE);
-	RefreshPreview();
+
+	// Navigate("about:blank") is async — the document won't be ready yet.
+	// Use a retry timer until SetBrowserHtml succeeds.
+	SetTimer(1, 100, nullptr);
 
 	return TRUE;
 }
@@ -140,6 +178,33 @@ BOOL CMarkdownDlg::OnInitDialog()
 void CMarkdownDlg::OnDestroy()
 {
 	CDialogEx::OnDestroy();
+}
+
+void CMarkdownDlg::OnPaint()
+{
+	CDialogEx::OnPaint();
+
+	// Draw the splitter bar
+	CRect rcClient;
+	GetClientRect(&rcClient);
+	const int splitterHalf = 2;
+
+	CRect rcSplitter(m_splitPos - splitterHalf, m_contentTop,
+		m_splitPos + splitterHalf, rcClient.Height());
+
+	CClientDC dc(this);
+	dc.FillSolidRect(&rcSplitter, RGB(200, 200, 200));
+}
+
+void CMarkdownDlg::OnTimer(UINT_PTR nIDEvent)
+{
+	if (nIDEvent == 1)
+	{
+		// Retry until the WebBrowser document is ready (about:blank is async)
+		if (SetBrowserHtml(MarkdownToHtml(m_markdownText)))
+			KillTimer(1);
+	}
+	CDialogEx::OnTimer(nIDEvent);
 }
 
 BOOL CMarkdownDlg::PreTranslateMessage(MSG* pMsg)
@@ -246,6 +311,9 @@ void CMarkdownDlg::LoadFile(const CString& path)
 	CString title;
 	title.Format(_T("Markdown Preview - %s"), PathFindFileName(path));
 	SetWindowText(title);
+
+	// Show file path in the label
+	SetDlgItemText(IDC_STATIC_MARKDOWN_PATH, path);
 }
 
 void CMarkdownDlg::ResizeControls()
@@ -253,35 +321,128 @@ void CMarkdownDlg::ResizeControls()
 	CRect rcClient;
 	GetClientRect(&rcClient);
 
-	// Edit control: anchored to all four edges via margins
+	const int splitterHalf = 2;
+
+	// Clamp split position to valid range
+	int minSplit = 100;
+	int maxSplit = rcClient.Width() - 100;
+	if (m_splitPos < minSplit) m_splitPos = minSplit;
+	if (m_splitPos > maxSplit) m_splitPos = maxSplit;
+
+	// Open button: stays at RC-defined position (fixed distance from top-left)
+	CWnd* pBtn = GetDlgItem(IDC_BTN_OPEN);
+	if (pBtn && ::IsWindow(pBtn->m_hWnd))
+	{
+		pBtn->SetWindowPos(nullptr, m_btnLeft, m_btnTop,
+			m_btnWidth, m_btnHeight, SWP_NOZORDER);
+	}
+
+	// Path label: fills from RC-defined left edge to window right edge
+	CWnd* pPathLabel = GetDlgItem(IDC_STATIC_MARKDOWN_PATH);
+	if (pPathLabel && ::IsWindow(pPathLabel->m_hWnd))
+	{
+		pPathLabel->SetWindowPos(nullptr,
+			m_pathLabelLeft, m_pathLabelTop,
+			rcClient.Width() - m_pathLabelLeft - 5, m_pathLabelHeight,
+			SWP_NOZORDER);
+	}
+
+	// Edit control: fills from left edge to splitter
 	CWnd* pEdit = GetDlgItem(IDC_EDIT_MARKDOWN);
 	if (pEdit && ::IsWindow(pEdit->m_hWnd))
 	{
 		pEdit->SetWindowPos(nullptr,
-			m_editMargins.left, m_editMargins.top,
-			rcClient.Width() - m_editMargins.left - m_editMargins.right,
-			rcClient.Height() - m_editMargins.top - m_editMargins.bottom,
+			5, m_contentTop,
+			m_splitPos - splitterHalf - 5,
+			rcClient.Height() - m_contentTop - 5,
 			SWP_NOZORDER);
 	}
 
-	// Open button: fixed size, anchored to top of right panel
-	CWnd* pBtn = GetDlgItem(IDC_BTN_OPEN);
-	if (pBtn && ::IsWindow(pBtn->m_hWnd))
-	{
-		pBtn->SetWindowPos(nullptr,
-			m_previewMargins.left, 5,
-			75, 22, SWP_NOZORDER);
-	}
-
-	// WebBrowser: fills the right panel below the button
+	// WebBrowser: fills from splitter to right edge
 	if (m_browser.m_hWnd && ::IsWindow(m_browser.m_hWnd))
 	{
-		int previewTop = 30; // button bottom (5+22) + 3px gap
+		int previewLeft = m_splitPos + splitterHalf;
 		m_browser.SetWindowPos(nullptr,
-			m_previewMargins.left, previewTop,
-			rcClient.Width() - m_previewMargins.left - m_previewMargins.right,
-			rcClient.Height() - previewTop - m_previewMargins.bottom,
+			previewLeft, m_contentTop,
+			rcClient.Width() - previewLeft - 5,
+			rcClient.Height() - m_contentTop - 5,
 			SWP_NOZORDER);
+	}
+
+	// Invalidate the splitter area to ensure it repaints
+	CRect rcSplitter(m_splitPos - splitterHalf, m_contentTop,
+		m_splitPos + splitterHalf, rcClient.Height());
+	InvalidateRect(&rcSplitter, FALSE);
+}
+
+BOOL CMarkdownDlg::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
+{
+	if (pWnd == this && nHitTest == HTCLIENT)
+	{
+		CPoint pt;
+		GetCursorPos(&pt);
+		ScreenToClient(&pt);
+
+		CRect rcClient;
+		GetClientRect(&rcClient);
+
+		// Check if cursor is over the splitter area (4px hot zone)
+		if (pt.y >= m_contentTop && pt.x >= m_splitPos - 4 && pt.x <= m_splitPos + 4)
+		{
+			::SetCursor(AfxGetApp()->LoadStandardCursor(IDC_SIZEWE));
+			return TRUE;
+		}
+	}
+	return CDialogEx::OnSetCursor(pWnd, nHitTest, message);
+}
+
+void CMarkdownDlg::OnLButtonDown(UINT nFlags, CPoint point)
+{
+	if (point.y >= m_contentTop && point.x >= m_splitPos - 4 && point.x <= m_splitPos + 4)
+	{
+		m_bDragging = true;
+		m_dragOffset = point.x - m_splitPos;
+		SetCapture();
+	}
+	else
+	{
+		CDialogEx::OnLButtonDown(nFlags, point);
+	}
+}
+
+void CMarkdownDlg::OnLButtonUp(UINT nFlags, CPoint point)
+{
+	if (m_bDragging)
+	{
+		m_bDragging = false;
+		ReleaseCapture();
+	}
+	else
+	{
+		CDialogEx::OnLButtonUp(nFlags, point);
+	}
+}
+
+void CMarkdownDlg::OnMouseMove(UINT nFlags, CPoint point)
+{
+	if (m_bDragging)
+	{
+		int newSplit = point.x - m_dragOffset;
+		// Clamp: minimum 100px for each side
+		CRect rcClient;
+		GetClientRect(&rcClient);
+		if (newSplit < 100) newSplit = 100;
+		if (newSplit > rcClient.Width() - 100) newSplit = rcClient.Width() - 100;
+
+		if (newSplit != m_splitPos)
+		{
+			m_splitPos = newSplit;
+			ResizeControls();
+		}
+	}
+	else
+	{
+		CDialogEx::OnMouseMove(nFlags, point);
 	}
 }
 
@@ -292,21 +453,22 @@ void CMarkdownDlg::RefreshPreview()
 	SetBrowserHtml(MarkdownToHtml(m_markdownText));
 }
 
-void CMarkdownDlg::SetBrowserHtml(const CString& html)
+bool CMarkdownDlg::SetBrowserHtml(const CString& html)
 {
 	LPUNKNOWN pUnk = m_browser.GetControlUnknown();
 	if (!pUnk)
-		return;
+		return false;
 
 	IWebBrowser2* pWeb2 = nullptr;
 	if (FAILED(pUnk->QueryInterface(IID_IWebBrowser2, (void**)&pWeb2)))
-		return;
+		return false;
 
 	IDispatch* pDocDisp = nullptr;
 	if (FAILED(pWeb2->get_Document(&pDocDisp)) || !pDocDisp)
 	{
+		// Document not ready yet (Navigate is async)
 		pWeb2->Release();
-		return;
+		return false;
 	}
 
 	IHTMLDocument2* pDoc = nullptr;
@@ -314,7 +476,7 @@ void CMarkdownDlg::SetBrowserHtml(const CString& html)
 	{
 		pDocDisp->Release();
 		pWeb2->Release();
-		return;
+		return false;
 	}
 
 	BSTR bstrHtml = html.AllocSysString();
@@ -329,6 +491,7 @@ void CMarkdownDlg::SetBrowserHtml(const CString& html)
 			SafeArrayUnaccessData(psa);
 			pDoc->close();
 			pDoc->write(psa);
+			pDoc->close();
 		}
 		SafeArrayDestroy(psa);
 	}
@@ -340,6 +503,7 @@ void CMarkdownDlg::SetBrowserHtml(const CString& html)
 	pDoc->Release();
 	pDocDisp->Release();
 	pWeb2->Release();
+	return true;
 }
 
 CString CMarkdownDlg::EscapeHtml(const CString& text)
