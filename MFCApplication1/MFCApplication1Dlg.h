@@ -282,6 +282,7 @@ public:
     afx_msg void OnToolsBatchRename();
     afx_msg void OnToolsStickyNote();
     afx_msg void OnToolsMarkdown();
+    afx_msg void OnToolsEncoding();
 
     // Sticky note dialog (modeless, auto-opened on startup)
     CStickyNoteDlg* m_pStickyNoteDlg{nullptr};

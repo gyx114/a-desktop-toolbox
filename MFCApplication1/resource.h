@@ -198,6 +198,16 @@
 #define IDC_MARKDOWN_PREVIEW           1195
 #define IDC_BTN_OPEN                   1196
 #define IDC_STATIC_MARKDOWN_PATH       1197
+#define IDD_ENCODING_CONVERTER_DLG     144
+#define IDC_EDIT_ENC_SOURCE            1198
+#define IDC_COMBO_ENC_SOURCE           1199
+#define IDC_EDIT_ENC_TARGET            1200
+#define IDC_COMBO_ENC_TARGET           1201
+#define IDC_BTN_ENC_OPEN               1202
+#define IDC_BTN_ENC_SAVEAS             1203
+#define IDC_BTN_ENC_OVERWRITE          1204
+#define IDC_STATIC_ENC_PATH            1205
+#define IDC_BTN_ENC_CONVERT            1206
 
 #define ID_FILE_SETTINGS                32775
 #define ID_FILE_EXIT                    32776
@@ -229,6 +239,7 @@
 #define ID_HELP_REGEX_GUIDE             32814
 #define ID_TOOLS_STICKY_NOTE            32815
 #define ID_TOOLS_MARKDOWN              32816
+#define ID_TOOLS_ENCODING              32817
 
 // Next default values for new objects
 // 
@@ -236,7 +247,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        133
 #define _APS_NEXT_COMMAND_VALUE         32799
-#define _APS_NEXT_CONTROL_VALUE         1198
+#define _APS_NEXT_CONTROL_VALUE         1207
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

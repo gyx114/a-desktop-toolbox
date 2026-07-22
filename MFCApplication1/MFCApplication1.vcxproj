@@ -229,6 +229,7 @@ if exist "$(OutDir)Unmerged" rmdir /s /q "$(OutDir)Unmerged"
     <ClInclude Include="SettingsDlg.h" />
     <ClInclude Include="StickyNoteDlg.h" />
     <ClInclude Include="MarkdownDlg.h" />
+    <ClInclude Include="EncodingConverterDlg.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
@@ -267,6 +268,7 @@ if exist "$(OutDir)Unmerged" rmdir /s /q "$(OutDir)Unmerged"
     <ClCompile Include="ProcessManager.cpp" />
     <ClCompile Include="StickyNoteDlg.cpp" />
     <ClCompile Include="MarkdownDlg.cpp" />
+    <ClCompile Include="EncodingConverterDlg.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="MFCApplication1.rc" />

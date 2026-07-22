@@ -19,6 +19,7 @@
 #include "BatchRenameDlg.h"
 #include "RegexGuideDlg.h"
 #include "StickyNoteDlg.h"
+#include "EncodingConverterDlg.h"
 #include <TlHelp32.h>
 #include <Shellapi.h>
 #include <Psapi.h>
@@ -185,6 +186,7 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_COMMAND(ID_TOOLS_BATCH_RENAME,   &CMFCApplication1Dlg::OnToolsBatchRename)
     ON_COMMAND(ID_TOOLS_STICKY_NOTE,   &CMFCApplication1Dlg::OnToolsStickyNote)
     ON_COMMAND(ID_TOOLS_MARKDOWN,     &CMFCApplication1Dlg::OnToolsMarkdown)
+    ON_COMMAND(ID_TOOLS_ENCODING,     &CMFCApplication1Dlg::OnToolsEncoding)
     ON_COMMAND(ID_WINDOW_LOCATE,    &CMFCApplication1Dlg::OnWindowLocate)
     ON_COMMAND(ID_WINDOW_UNTOPMOST, &CMFCApplication1Dlg::OnWindowUntopmost)
     ON_COMMAND(ID_WINDOW_CLOSE,     &CMFCApplication1Dlg::OnWindowClose)
@@ -1077,6 +1079,22 @@ void CMFCApplication1Dlg::OnToolsMarkdown()
 		DWORD dwErr = GetLastError();
 		CString msg;
 		msg.Format(_T("Failed to create Markdown Preview dialog (error %lu)"), dwErr);
+		MessageBox(msg, _T("Error"), MB_ICONERROR);
+		delete pDlg;
+		return;
+	}
+	pDlg->ShowWindow(SW_SHOW);
+	pDlg->SetForegroundWindow();
+}
+
+void CMFCApplication1Dlg::OnToolsEncoding()
+{
+	auto* pDlg = new CEncodingConverterDlg(nullptr);
+	if (!pDlg->Create(IDD_ENCODING_CONVERTER_DLG, nullptr))
+	{
+		DWORD dwErr = GetLastError();
+		CString msg;
+		msg.Format(_T("Failed to create Encoding Converter dialog (error %lu)"), dwErr);
 		MessageBox(msg, _T("Error"), MB_ICONERROR);
 		delete pDlg;
 		return;
