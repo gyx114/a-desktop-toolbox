@@ -196,6 +196,7 @@
 #define IDD_MARKDOWN_DLG               143
 #define IDC_EDIT_MARKDOWN              1194
 #define IDC_MARKDOWN_PREVIEW           1195
+#define IDC_BTN_OPEN                   1196
 
 #define ID_FILE_SETTINGS                32775
 #define ID_FILE_EXIT                    32776

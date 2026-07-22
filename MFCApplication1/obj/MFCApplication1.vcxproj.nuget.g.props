@@ -15,4 +15,7 @@
   <ImportGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
     <Import Project="$(NuGetPackageRoot)microsoft.windows.cppwinrt\2.0.240405.15\build\native\Microsoft.Windows.CppWinRT.props" Condition="Exists('$(NuGetPackageRoot)microsoft.windows.cppwinrt\2.0.240405.15\build\native\Microsoft.Windows.CppWinRT.props')" />
   </ImportGroup>
+  <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <PkgMicrosoft_Web_WebView2 Condition=" '$(PkgMicrosoft_Web_WebView2)' == '' ">C:\Users\guany\.nuget\packages\microsoft.web.webview2\1.0.4078.44</PkgMicrosoft_Web_WebView2>
+  </PropertyGroup>
 </Project>

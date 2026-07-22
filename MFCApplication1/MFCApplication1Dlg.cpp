@@ -13,12 +13,12 @@
 #include "AboutDlg.h"
 #include "AutoClickerSpeedDlg.h"
 #include "SettingsDlg.h"
+#include "MarkdownDlg.h"
 #include "QRCodeGenDlg.h"
 #include "ScreenshotOCRDlg.h"
 #include "BatchRenameDlg.h"
 #include "RegexGuideDlg.h"
 #include "StickyNoteDlg.h"
-#include "MarkdownDlg.h"
 #include <TlHelp32.h>
 #include <Shellapi.h>
 #include <Psapi.h>
@@ -27,6 +27,7 @@
 #include <Endpointvolume.h>
 #include <atomic>
 #include <algorithm>
+#include <fstream>
 #include <stdio.h>
 #include <string>
 #include <afxole.h>
@@ -1070,18 +1071,18 @@ void CMFCApplication1Dlg::OnToolsStickyNote()
 
 void CMFCApplication1Dlg::OnToolsMarkdown()
 {
-    auto* pDlg = new CMarkdownDlg(nullptr);
-    if (!pDlg->Create(IDD_MARKDOWN_DLG, nullptr))
-    {
-        DWORD dwErr = GetLastError();
-        CString msg;
-        msg.Format(_T("Failed to create Markdown dialog (error %lu)"), dwErr);
-        MessageBox(msg, _T("Error"), MB_ICONERROR);
-        delete pDlg;
-        return;
-    }
-    pDlg->ShowWindow(SW_SHOW);
-    pDlg->SetForegroundWindow();
+	auto* pDlg = new CMarkdownDlg(nullptr);
+	if (!pDlg->Create(IDD_MARKDOWN_DLG, nullptr))
+	{
+		DWORD dwErr = GetLastError();
+		CString msg;
+		msg.Format(_T("Failed to create Markdown Preview dialog (error %lu)"), dwErr);
+		MessageBox(msg, _T("Error"), MB_ICONERROR);
+		delete pDlg;
+		return;
+	}
+	pDlg->ShowWindow(SW_SHOW);
+	pDlg->SetForegroundWindow();
 }
 
 

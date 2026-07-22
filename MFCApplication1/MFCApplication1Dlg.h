@@ -16,7 +16,6 @@ class CQRCodeGenDlg;
 class CScreenshotOCRDlg;
 class CBatchRenameDlg;
 class CStickyNoteDlg;
-class CMarkdownDlg;
 
 // Semantic button aliases
 #define IDC_BTN_SHUTDOWN       IDC_BUTTON1   // Shutdown/Restart
