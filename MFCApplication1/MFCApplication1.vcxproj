@@ -101,12 +101,12 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <UACExecutionLevel>AsInvoker</UACExecutionLevel>
+      <AdditionalDependencies>WindowsApp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>if exist "$(OutDir)microsoft" rmdir /s /q "$(OutDir)microsoft"
 if exist "$(OutDir)Merged" rmdir /s /q "$(OutDir)Merged"
 if exist "$(OutDir)Unmerged" rmdir /s /q "$(OutDir)Unmerged"
-if exist "$(OutDir)runtimes" rmdir /s /q "$(OutDir)runtimes"
 </Command>
     </PostBuildEvent>
     <Midl>
@@ -133,6 +133,7 @@ if exist "$(OutDir)runtimes" rmdir /s /q "$(OutDir)runtimes"
     <Link>
       <SubSystem>Windows</SubSystem>
       <UACExecutionLevel>AsInvoker</UACExecutionLevel>
+      <AdditionalDependencies>WindowsApp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -162,6 +163,7 @@ if exist "$(OutDir)runtimes" rmdir /s /q "$(OutDir)runtimes"
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <UACExecutionLevel>AsInvoker</UACExecutionLevel>
+      <AdditionalDependencies>WindowsApp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -191,12 +193,12 @@ if exist "$(OutDir)runtimes" rmdir /s /q "$(OutDir)runtimes"
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <UACExecutionLevel>AsInvoker</UACExecutionLevel>
+      <AdditionalDependencies>WindowsApp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>if exist "$(OutDir)microsoft" rmdir /s /q "$(OutDir)microsoft"
 if exist "$(OutDir)Merged" rmdir /s /q "$(OutDir)Merged"
 if exist "$(OutDir)Unmerged" rmdir /s /q "$(OutDir)Unmerged"
-if exist "$(OutDir)runtimes" rmdir /s /q "$(OutDir)runtimes"
 </Command>
     </PostBuildEvent>
     <Midl>

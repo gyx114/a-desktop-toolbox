@@ -8,8 +8,6 @@
 #include "afxdialogex.h"
 #include <MsHTML.h>
 #include <ExDisp.h>
-#include <vector>
-#include <fstream>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
