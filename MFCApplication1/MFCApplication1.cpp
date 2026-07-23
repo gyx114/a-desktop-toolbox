@@ -128,11 +128,70 @@ BOOL CMFCApplication1App::InitInstance()
 	m_pszProfileName = _tcsdup(strIniPath);
 
     // Create and run the main dialog inside its own scope so that its
-	// destructor (which destroys all child controls, including any OLE
-	// related controls) runs before we call AfxOleTerm and free the
-	// profile string. This prevents leaked OLE objects reported by CRT.
+    // destructor (which destroys all child controls, including any OLE
+    // related controls) runs before we call AfxOleTerm and free the
+    // profile string. This prevents leaked OLE objects reported by CRT.
 	{
 		CMFCApplication1Dlg dlg;
+
+		// Parse command line: if a folder path is passed, open batch rename
+		CString strCmdLine = m_lpCmdLine;
+		strCmdLine.Trim();
+		if (!strCmdLine.IsEmpty() && strCmdLine[0] == _T('"'))
+		{
+			// Remove surrounding quotes
+			strCmdLine = strCmdLine.Mid(1);
+			int nLastQuote = strCmdLine.ReverseFind(_T('"'));
+			if (nLastQuote >= 0)
+				strCmdLine = strCmdLine.Left(nLastQuote);
+		}
+
+		// Single-instance check: if the main dialog is already running,
+		// forward the folder path via WM_COPYDATA and exit this instance.
+		{
+			HWND hWndExisting = nullptr;
+			HWND hWnd = FindWindowEx(nullptr, nullptr, _T("#32770"), nullptr);
+			while (hWnd)
+			{
+				TCHAR szTitle[256] = { 0 };
+				GetWindowText(hWnd, szTitle, 256);
+				if (CString(szTitle).Find(_T("ctrl+alt+空格唤起此窗口")) >= 0)
+				{
+					hWndExisting = hWnd;
+					break;
+				}
+				hWnd = FindWindowEx(nullptr, hWnd, _T("#32770"), nullptr);
+			}
+
+			if (hWndExisting)
+			{
+				// Forward the folder path to the existing instance
+				if (!strCmdLine.IsEmpty())
+				{
+					COPYDATASTRUCT cds;
+					cds.dwData = 1;
+					cds.cbData = (strCmdLine.GetLength() + 1) * sizeof(TCHAR);
+					cds.lpData = (PVOID)strCmdLine.GetString();
+					SendMessage(hWndExisting, WM_COPYDATA, 0, (LPARAM)&cds);
+				}
+				// Bring the existing window to the foreground
+				if (IsIconic(hWndExisting))
+					ShowWindow(hWndExisting, SW_RESTORE);
+				SetForegroundWindow(hWndExisting);
+				return FALSE;
+			}
+		}
+
+		// If launched from folder context menu, set initial folder for batch rename
+		if (!strCmdLine.IsEmpty())
+		{
+			DWORD attrs = GetFileAttributes(strCmdLine);
+			if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY))
+			{
+				dlg.m_strInitialFolder = strCmdLine;
+			}
+		}
+
 		m_pMainWnd = &dlg;
 		INT_PTR nResponse = dlg.DoModal();
 		if (nResponse == IDOK)

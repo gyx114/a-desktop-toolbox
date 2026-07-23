@@ -20,6 +20,7 @@
 #include "RegexGuideDlg.h"
 #include "StickyNoteDlg.h"
 #include "EncodingConverterDlg.h"
+#include "ContextMenuDlg.h"
 #include <TlHelp32.h>
 #include <Shellapi.h>
 #include <Psapi.h>
@@ -122,6 +123,7 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_BN_CLICKED(IDC_BUTTON2, &CMFCApplication1Dlg::OnBnClickedButton2)
     ON_CBN_SELCHANGE(IDC_COMBO1, &CMFCApplication1Dlg::OnCbnSelchangeCombo1)
     ON_WM_DROPFILES()
+    ON_WM_COPYDATA()
     ON_BN_CLICKED(IDC_BUTTON3, &CMFCApplication1Dlg::OnBnClickedButton3)
     ON_BN_CLICKED(IDC_BUTTON4, &CMFCApplication1Dlg::OnBnClickedButton4)
     ON_BN_CLICKED(IDC_CHECK1, &CMFCApplication1Dlg::OnBnClickedCheck1)
@@ -187,6 +189,7 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_COMMAND(ID_TOOLS_STICKY_NOTE,   &CMFCApplication1Dlg::OnToolsStickyNote)
     ON_COMMAND(ID_TOOLS_MARKDOWN,     &CMFCApplication1Dlg::OnToolsMarkdown)
     ON_COMMAND(ID_TOOLS_ENCODING,     &CMFCApplication1Dlg::OnToolsEncoding)
+	ON_COMMAND(ID_TOOLS_CONTEXT_MENU, &CMFCApplication1Dlg::OnToolsContextMenu)
     ON_COMMAND(ID_WINDOW_LOCATE,    &CMFCApplication1Dlg::OnWindowLocate)
     ON_COMMAND(ID_WINDOW_UNTOPMOST, &CMFCApplication1Dlg::OnWindowUntopmost)
     ON_COMMAND(ID_WINDOW_CLOSE,     &CMFCApplication1Dlg::OnWindowClose)
@@ -285,6 +288,15 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
 	else
 		RefreshStartupList();
 
+	// If launched from folder context menu, open batch rename dialog
+	if (!m_strInitialFolder.IsEmpty())
+	{
+		auto* pDlg = new CBatchRenameDlg(nullptr, m_strInitialFolder);
+		pDlg->Create(IDD_BATCH_RENAME_DLG, nullptr);
+		pDlg->ShowWindow(SW_SHOW);
+		m_strInitialFolder.Empty();
+	}
+
 	// Shutdown/restart combo initialization
 	CComboBox* pCombo = static_cast<CComboBox*>(GetDlgItem(IDC_COMBO1));
 	if (pCombo)
@@ -365,6 +377,12 @@ BOOL CMFCApplication1Dlg::OnInitDialog()
 				sei.fMask = SEE_MASK_FLAG_NO_UI;
 				sei.lpVerb = _T("runas");
 				sei.lpFile = path;
+				// Pass through the original command line (e.g. folder path from context menu)
+				// so the elevated instance can still open folder processing.
+				CString strCmd = AfxGetApp()->m_lpCmdLine;
+				strCmd.Trim();
+				if (!strCmd.IsEmpty())
+					sei.lpParameters = strCmd;
 				sei.nShow = SW_SHOWNORMAL;
 				return ShellExecuteEx(&sei) != FALSE;
 			}
@@ -1095,6 +1113,22 @@ void CMFCApplication1Dlg::OnToolsEncoding()
 		DWORD dwErr = GetLastError();
 		CString msg;
 		msg.Format(_T("Failed to create Encoding Converter dialog (error %lu)"), dwErr);
+		MessageBox(msg, _T("Error"), MB_ICONERROR);
+		delete pDlg;
+		return;
+	}
+	pDlg->ShowWindow(SW_SHOW);
+	pDlg->SetForegroundWindow();
+}
+
+void CMFCApplication1Dlg::OnToolsContextMenu()
+{
+	auto* pDlg = new CContextMenuDlg(nullptr);
+	if (!pDlg->Create(IDD_CONTEXT_MENU_DLG, nullptr))
+	{
+		DWORD dwErr = GetLastError();
+		CString msg;
+		msg.Format(_T("Failed to create Context Menu Manager dialog (error %lu)"), dwErr);
 		MessageBox(msg, _T("Error"), MB_ICONERROR);
 		delete pDlg;
 		return;

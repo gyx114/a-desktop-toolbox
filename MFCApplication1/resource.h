@@ -209,6 +209,16 @@
 #define IDC_STATIC_ENC_PATH            1205
 #define IDC_BTN_ENC_CONVERT            1206
 
+// Context Menu Manager dialog
+#define IDD_CONTEXT_MENU_DLG           145
+#define IDC_COMBO_CM_LOCATION          1207
+#define IDC_BTN_CM_REFRESH             1208
+#define IDC_BTN_CM_DELETE              1209
+#define IDC_BTN_CM_LOCATE              1210
+#define IDC_LIST_CM_ENTRIES            1211
+#define IDC_STATIC_CM_STATUS           1212
+#define IDC_CHECK_CM_FOLDER            1213
+
 #define ID_FILE_SETTINGS                32775
 #define ID_FILE_EXIT                    32776
 #define ID_HELP_ABOUT                   32777
@@ -240,14 +250,15 @@
 #define ID_TOOLS_STICKY_NOTE            32815
 #define ID_TOOLS_MARKDOWN              32816
 #define ID_TOOLS_ENCODING              32817
+#define ID_TOOLS_CONTEXT_MENU          32818
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        133
-#define _APS_NEXT_COMMAND_VALUE         32799
-#define _APS_NEXT_CONTROL_VALUE         1207
+#define _APS_NEXT_RESOURCE_VALUE        146
+#define _APS_NEXT_COMMAND_VALUE         32819
+#define _APS_NEXT_CONTROL_VALUE         1214
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

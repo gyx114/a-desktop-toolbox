@@ -16,6 +16,7 @@ class CQRCodeGenDlg;
 class CScreenshotOCRDlg;
 class CBatchRenameDlg;
 class CStickyNoteDlg;
+class CContextMenuDlg;
 
 // Semantic button aliases
 #define IDC_BTN_SHUTDOWN       IDC_BUTTON1   // Shutdown/Restart
@@ -107,8 +108,12 @@ protected:
 
 	// File management: drag-drop file path and make copy button
 	afx_msg void OnDropFiles(HDROP hDropInfo);
+	afx_msg BOOL OnCopyData(CWnd* pWnd, COPYDATASTRUCT* pCopyDataStruct);
 	afx_msg void OnBnClickedButton3();
 	CString m_strDroppedFilePath; // Stored drag-drop file path
+public:
+	CString m_strInitialFolder;   // Folder path passed via command line (context menu)
+protected:
 
 
 
@@ -283,6 +288,7 @@ public:
     afx_msg void OnToolsStickyNote();
     afx_msg void OnToolsMarkdown();
     afx_msg void OnToolsEncoding();
+	afx_msg void OnToolsContextMenu();
 
     // Sticky note dialog (modeless, auto-opened on startup)
     CStickyNoteDlg* m_pStickyNoteDlg{nullptr};

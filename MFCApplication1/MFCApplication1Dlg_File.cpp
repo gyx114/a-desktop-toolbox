@@ -68,6 +68,43 @@ void CMFCApplication1Dlg::OnDropFiles(HDROP hDropInfo)
     CDialogEx::OnDropFiles(hDropInfo);
 }
 
+// Single-instance forwarding: receive a folder path from a second launch
+// and open the batch rename dialog with it.
+BOOL CMFCApplication1Dlg::OnCopyData(CWnd* pWnd, COPYDATASTRUCT* pCopyDataStruct)
+{
+    if (pCopyDataStruct && pCopyDataStruct->dwData == 1 && pCopyDataStruct->cbData > 0)
+    {
+        CString strPath = (LPCTSTR)pCopyDataStruct->lpData;
+        strPath.Trim();
+        // Strip surrounding quotes if present
+        if (!strPath.IsEmpty() && strPath[0] == _T('"'))
+        {
+            strPath = strPath.Mid(1);
+            int nLastQuote = strPath.ReverseFind(_T('"'));
+            if (nLastQuote >= 0)
+                strPath = strPath.Left(nLastQuote);
+        }
+
+        if (!strPath.IsEmpty())
+        {
+            DWORD attrs = ::GetFileAttributes(strPath);
+            if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY))
+            {
+                auto* pDlg = new CBatchRenameDlg(nullptr, strPath);
+                pDlg->Create(IDD_BATCH_RENAME_DLG, nullptr);
+                pDlg->ShowWindow(SW_SHOW);
+            }
+        }
+    }
+
+    // Bring main window to the foreground
+    if (IsIconic())
+        ShowWindow(SW_RESTORE);
+    SetForegroundWindow();
+
+    return CDialogEx::OnCopyData(pWnd, pCopyDataStruct);
+}
+
 void CMFCApplication1Dlg::OnBnClickedButton3()
 {
     // Read current file path and requested new name
