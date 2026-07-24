@@ -252,14 +252,29 @@
 #define ID_TOOLS_MARKDOWN              32816
 #define ID_TOOLS_ENCODING              32817
 #define ID_TOOLS_CONTEXT_MENU          32818
+#define ID_TOOLS_ENVVAR                32819
+
+// Environment Variable Manager dialog
+#define IDD_ENVVAR_DLG                 146
+#define IDD_ENVVAR_INPUT_DLG           147
+#define IDC_LIST_ENV_SYSTEM            1215
+#define IDC_LIST_ENV_USER              1216
+#define IDC_BTN_ENV_ADD                1217
+#define IDC_BTN_ENV_EDIT               1218
+#define IDC_BTN_ENV_DELETE             1219
+#define IDC_BTN_ENV_REFRESH            1220
+#define IDC_BTN_ENV_EXPORT             1221
+#define IDC_STATIC_ENV_STATUS          1222
+#define IDC_ENV_INPUT_NAME             1223
+#define IDC_ENV_INPUT_VALUE            1224
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        146
-#define _APS_NEXT_COMMAND_VALUE         32819
-#define _APS_NEXT_CONTROL_VALUE         1214
+#define _APS_NEXT_RESOURCE_VALUE        148
+#define _APS_NEXT_COMMAND_VALUE         32820
+#define _APS_NEXT_CONTROL_VALUE         1225
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

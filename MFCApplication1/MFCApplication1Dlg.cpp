@@ -21,6 +21,7 @@
 #include "StickyNoteDlg.h"
 #include "EncodingConverterDlg.h"
 #include "ContextMenuDlg.h"
+#include "EnvVarDlg.h"
 #include <TlHelp32.h>
 #include <Shellapi.h>
 #include <Psapi.h>
@@ -190,6 +191,7 @@ BEGIN_MESSAGE_MAP(CMFCApplication1Dlg, CDialogEx)
     ON_COMMAND(ID_TOOLS_MARKDOWN,     &CMFCApplication1Dlg::OnToolsMarkdown)
     ON_COMMAND(ID_TOOLS_ENCODING,     &CMFCApplication1Dlg::OnToolsEncoding)
 	ON_COMMAND(ID_TOOLS_CONTEXT_MENU, &CMFCApplication1Dlg::OnToolsContextMenu)
+	ON_COMMAND(ID_TOOLS_ENVVAR, &CMFCApplication1Dlg::OnToolsEnvVar)
     ON_COMMAND(ID_WINDOW_LOCATE,    &CMFCApplication1Dlg::OnWindowLocate)
     ON_COMMAND(ID_WINDOW_UNTOPMOST, &CMFCApplication1Dlg::OnWindowUntopmost)
     ON_COMMAND(ID_WINDOW_CLOSE,     &CMFCApplication1Dlg::OnWindowClose)
@@ -1129,6 +1131,22 @@ void CMFCApplication1Dlg::OnToolsContextMenu()
 		DWORD dwErr = GetLastError();
 		CString msg;
 		msg.Format(_T("Failed to create Context Menu Manager dialog (error %lu)"), dwErr);
+		MessageBox(msg, _T("Error"), MB_ICONERROR);
+		delete pDlg;
+		return;
+	}
+	pDlg->ShowWindow(SW_SHOW);
+	pDlg->SetForegroundWindow();
+}
+
+void CMFCApplication1Dlg::OnToolsEnvVar()
+{
+	auto* pDlg = new CEnvVarDlg(nullptr);
+	if (!pDlg->Create(IDD_ENVVAR_DLG, nullptr))
+	{
+		DWORD dwErr = GetLastError();
+		CString msg;
+		msg.Format(_T("Failed to create Environment Variable Manager dialog (error %lu)"), dwErr);
 		MessageBox(msg, _T("Error"), MB_ICONERROR);
 		delete pDlg;
 		return;

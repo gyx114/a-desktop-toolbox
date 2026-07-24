@@ -17,6 +17,7 @@ class CScreenshotOCRDlg;
 class CBatchRenameDlg;
 class CStickyNoteDlg;
 class CContextMenuDlg;
+class CEnvVarDlg;
 
 // Semantic button aliases
 #define IDC_BTN_SHUTDOWN       IDC_BUTTON1   // Shutdown/Restart
@@ -289,6 +290,7 @@ public:
     afx_msg void OnToolsMarkdown();
     afx_msg void OnToolsEncoding();
 	afx_msg void OnToolsContextMenu();
+	afx_msg void OnToolsEnvVar();
 
     // Sticky note dialog (modeless, auto-opened on startup)
     CStickyNoteDlg* m_pStickyNoteDlg{nullptr};
