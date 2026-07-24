@@ -7,6 +7,7 @@
 #include "ContextMenuDlg.h"
 #include "afxdialogex.h"
 #include <algorithm>
+#include <set>
 #include <shobjidl.h>
 #include <shlwapi.h>
 #include <shlobj.h>
@@ -93,6 +94,12 @@ void CContextMenuDlg::InitLocations()
 	m_locations.push_back({ _T("文件夹背景 Shellex (COM)"),             _T("Directory\\Background\\shellex\\ContextMenuHandlers"), true });
 	m_locations.push_back({ _T("文件夹 Shellex (Folder COM)"),          _T("Folder\\shellex\\ContextMenuHandlers"), true });
 	m_locations.push_back({ _T("所有文件 Shellex (COM)"),               _T("AllFilesystemObjects\\shellex\\ContextMenuHandlers"), true });
+	m_locations.push_back({ _T("驱动器 Shellex (COM)"),                 _T("Drive\\shellex\\ContextMenuHandlers"), true });
+	m_locations.push_back({ _T("桌面 Shellex (COM)"),                   _T("DesktopBackground\\shellex\\ContextMenuHandlers"), true });
+	// Additional static verb locations
+	m_locations.push_back({ _T("快捷方式 (lnkfile)"),                   _T("lnkfile\\shell"), false });
+	m_locations.push_back({ _T("URL快捷方式"),                          _T("InternetShortcut\\shell"), false });
+	m_locations.push_back({ _T("库文件夹"),                             _T("LibraryFolder\\shell"), false });
 
 	CComboBox* pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_CM_LOCATION);
 	if (pCombo)
@@ -319,6 +326,149 @@ void CContextMenuDlg::ScanShellExLocation(const LocationFilter& loc)
 	RegCloseKey(hShell);
 }
 
+void CContextMenuDlg::ScanAllExtensions()
+{
+	// Enumerate all file extensions in HKCR and scan their shell verbs.
+	// This catches per-extension context menus that are missed by the
+	// fixed list of common extensions.
+	HKEY hCR = nullptr;
+	if (RegOpenKeyEx(HKEY_CLASSES_ROOT, nullptr, 0,
+		KEY_READ | KEY_ENUMERATE_SUB_KEYS, &hCR) != ERROR_SUCCESS)
+		return;
+
+	// Dedup set: track (regPath|keyName) to avoid duplicates with static scan
+	std::set<CString> seen;
+	for (const auto& e : m_entries)
+		seen.insert(e.regPath + _T("|") + e.keyName);
+
+	DWORD dwIndex = 0;
+	TCHAR szKey[MAX_PATH];
+	DWORD cbKey = MAX_PATH;
+
+	while (RegEnumKeyEx(hCR, dwIndex, szKey, &cbKey,
+		nullptr, nullptr, nullptr, nullptr) == ERROR_SUCCESS)
+	{
+		// Only process file extension keys (start with '.')
+		if (szKey[0] == _T('.') && szKey[1] != _T('\0'))
+		{
+			CString shellPath = CString(szKey) + _T("\\shell");
+			HKEY hShell = nullptr;
+			if (RegOpenKeyEx(HKEY_CLASSES_ROOT, shellPath, 0, KEY_READ, &hShell) == ERROR_SUCCESS)
+			{
+				CString locName = CString(_T("扩展名 ")) + szKey;
+
+				DWORD dwVerb = 0;
+				TCHAR szVerb[MAX_PATH];
+				DWORD cbVerb = MAX_PATH;
+				while (RegEnumKeyEx(hShell, dwVerb, szVerb, &cbVerb,
+					nullptr, nullptr, nullptr, nullptr) == ERROR_SUCCESS)
+				{
+					CString dedupKey = shellPath + _T("|") + szVerb;
+					if (seen.find(dedupKey) != seen.end())
+					{
+						dwVerb++;
+						cbVerb = MAX_PATH;
+						continue;
+					}
+					seen.insert(dedupKey);
+
+					CString verbPath = shellPath + _T("\\") + szVerb;
+
+					// Read display name
+					CString displayName = szVerb;
+					HKEY hVerb = nullptr;
+					if (RegOpenKeyEx(HKEY_CLASSES_ROOT, verbPath, 0, KEY_READ, &hVerb) == ERROR_SUCCESS)
+					{
+						TCHAR szVal[MAX_PATH] = { 0 };
+						DWORD cbVal = sizeof(szVal);
+						DWORD dwType = 0;
+						BOOL bFound = FALSE;
+						if (RegQueryValueEx(hVerb, _T("MUIVerb"), nullptr, &dwType,
+							(LPBYTE)szVal, &cbVal) == ERROR_SUCCESS && szVal[0])
+						{
+							CString strRaw = szVal;
+							if (strRaw[0] == _T('@'))
+							{
+								CString resolved = ResolveMUIString(strRaw);
+								if (!resolved.IsEmpty() && resolved[0] != _T('@'))
+								{ displayName = resolved; bFound = TRUE; }
+							}
+							else
+							{ displayName = strRaw; bFound = TRUE; }
+						}
+						if (!bFound)
+						{
+							cbVal = sizeof(szVal); szVal[0] = 0;
+							if (RegQueryValueEx(hVerb, nullptr, nullptr, &dwType,
+								(LPBYTE)szVal, &cbVal) == ERROR_SUCCESS && szVal[0])
+							{
+								CString strRaw = szVal;
+								if (strRaw[0] == _T('@'))
+								{
+									CString resolved = ResolveMUIString(strRaw);
+									if (!resolved.IsEmpty() && resolved[0] != _T('@'))
+										displayName = resolved;
+								}
+								else
+									displayName = strRaw;
+							}
+						}
+						RegCloseKey(hVerb);
+					}
+
+					// Read command
+					CString command;
+					CString cmdPath = verbPath + _T("\\command");
+					HKEY hCmd = nullptr;
+					if (RegOpenKeyEx(HKEY_CLASSES_ROOT, cmdPath, 0, KEY_READ, &hCmd) == ERROR_SUCCESS)
+					{
+						TCHAR szCmd[MAX_PATH * 2] = { 0 };
+						DWORD cbCmd = sizeof(szCmd);
+						DWORD dwType = 0;
+						if (RegQueryValueEx(hCmd, nullptr, nullptr, &dwType,
+							(LPBYTE)szCmd, &cbCmd) == ERROR_SUCCESS)
+							command = szCmd;
+						RegCloseKey(hCmd);
+					}
+
+					// Check visibility flags
+					BOOL bDisabled = FALSE;
+					HKEY hVerbChk = nullptr;
+					if (RegOpenKeyEx(HKEY_CLASSES_ROOT, verbPath, 0, KEY_READ, &hVerbChk) == ERROR_SUCCESS)
+					{
+						TCHAR szFlag[32] = { 0 };
+						DWORD cbFlag = sizeof(szFlag);
+						if (RegQueryValueEx(hVerbChk, _T("LegacyDisable"), nullptr, nullptr,
+							(LPBYTE)szFlag, &cbFlag) == ERROR_SUCCESS)
+							bDisabled = TRUE;
+						cbFlag = sizeof(szFlag);
+						if (RegQueryValueEx(hVerbChk, _T("ProgrammaticAccessOnly"), nullptr, nullptr,
+							(LPBYTE)szFlag, &cbFlag) == ERROR_SUCCESS)
+							bDisabled = TRUE;
+						RegCloseKey(hVerbChk);
+					}
+
+					m_entries.push_back({
+						locName, szVerb, displayName, command,
+						shellPath, HKEY_CLASSES_ROOT,
+						false,          // bIsShellEx
+						false,          // bExtended
+						bDisabled != FALSE,
+						!bDisabled      // bEnabled
+					});
+
+					dwVerb++;
+					cbVerb = MAX_PATH;
+				}
+				RegCloseKey(hShell);
+			}
+		}
+		dwIndex++;
+		cbKey = MAX_PATH;
+	}
+	RegCloseKey(hCR);
+}
+
 void CContextMenuDlg::ScanEntries(const CString& filter)
 {
 	m_entries.clear();
@@ -332,7 +482,6 @@ void CContextMenuDlg::ScanEntries(const CString& filter)
 		if (loc.isShellEx)
 		{
 			ScanShellExLocation(loc);
-			ScanHKLMShellExLocation(loc);
 			continue;
 		}
 
@@ -460,6 +609,12 @@ void CContextMenuDlg::ScanEntries(const CString& filter)
 			}
 			RegCloseKey(hShell);
 		}
+	}
+
+	// Scan all file extensions for their shell verbs (only when showing "全部")
+	if (filter.IsEmpty())
+	{
+		ScanAllExtensions();
 	}
 }
 
@@ -761,26 +916,14 @@ void CContextMenuDlg::OnBnClickedCheckWin11Classic()
 
 void CContextMenuDlg::OnBnClickedCheckPrecise()
 {
-	// When precise scan is checked, re-scan with COM for ShellEx locations
 	BOOL bPrecise = IsDlgButtonChecked(IDC_CHECK_CM_PRECISE);
 
 	if (bPrecise)
 	{
-		UpdateStatus(_T("正在精确扫描(COM)..."));
-		// Re-scan selected ShellEx locations with COM
-		CComboBox* pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_CM_LOCATION);
-		int sel = pCombo ? pCombo->GetCurSel() : 0;
-
-		for (const auto& loc : m_locations)
-		{
-			if (loc.isShellEx && loc.shellPath.GetLength() > 0)
-			{
-				if (sel <= 0 || loc.name == m_locations[sel].name)
-					ScanShellExWithCom(loc);
-			}
-		}
+		UpdateStatus(_T("正在精确扫描(Shell API)..."));
+		ScanWithShellAPI();
 		RefreshList();
-		UpdateStatus(_T("精确扫描完成"));
+		UpdateStatus(_T("精确扫描完成 - 与Explorer右键菜单一致"));
 	}
 	else
 	{
@@ -863,11 +1006,35 @@ void CContextMenuDlg::OnBnClickedDelete()
 	{
 		const auto& entry = m_entries[idx];
 		CString fullKey = entry.regPath + _T("\\") + entry.keyName;
+
+		// Check if this key is in HKLM (requires admin rights)
+		CString hklmPath = _T("Software\\Classes\\") + fullKey;
+		HKEY hTest = nullptr;
+		if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, hklmPath, 0, KEY_READ, &hTest) == ERROR_SUCCESS)
+		{
+			RegCloseKey(hTest);
+			if (!IsRunningAsAdmin())
+			{
+				CString errMsg;
+				errMsg.Format(_T("跳过：%s\n\n此项位于 HKLM，需要管理员权限才能删除。"),
+					entry.displayName);
+				MessageBox(errMsg, _T("权限不足"), MB_ICONWARNING);
+				continue;
+			}
+		}
+
 		if (DeleteRegistryKeyRecursive(HKEY_CLASSES_ROOT, fullKey))
 		{
 			pList->DeleteItem(idx);
 			m_entries.erase(m_entries.begin() + idx);
 			deleted++;
+		}
+		else
+		{
+			CString errMsg;
+			errMsg.Format(_T("无法删除：%s\n\n可能原因：系统保护、权限不足、或该项正在被使用。"),
+				entry.displayName);
+			MessageBox(errMsg, _T("删除失败"), MB_ICONERROR);
 		}
 	}
 
@@ -1001,6 +1168,28 @@ void CContextMenuDlg::ToggleEntry(int index)
 	CString parentPath = entry.regPath;
 	HKEY hRoot = entry.hRoot;
 
+	// Check if this registry key is under HKLM (requires admin rights)
+	if (hRoot == HKEY_CLASSES_ROOT)
+	{
+		// HKCR is a merged view. Check if the key actually lives in HKLM.
+		CString hklmPath = _T("Software\\Classes\\") + parentPath;
+		HKEY hTest = nullptr;
+		LONG lResult = RegOpenKeyEx(HKEY_LOCAL_MACHINE, hklmPath, 0, KEY_READ, &hTest);
+		if (lResult == ERROR_SUCCESS)
+		{
+			RegCloseKey(hTest);
+			// Key exists in HKLM - need admin rights to modify
+			if (!IsRunningAsAdmin())
+			{
+				MessageBox(
+					_T("此项位于 HKLM（本地计算机），需要管理员权限才能修改。\n\n")
+					_T("请以管理员身份重新运行本程序。"),
+					_T("权限不足"), MB_ICONWARNING);
+				return;
+			}
+		}
+	}
+
 	if (entry.bIsShellEx)
 	{
 		// ShellEx: disable by renaming key (add/remove '_' prefix)
@@ -1023,18 +1212,35 @@ void CContextMenuDlg::ToggleEntry(int index)
 		if (!newName.IsEmpty() && newName != oldName)
 		{
 			HKEY hParent = nullptr;
-			if (RegOpenKeyEx(hRoot, parentPath, 0, KEY_WRITE | KEY_READ, &hParent) == ERROR_SUCCESS)
+			LONG lResult = RegOpenKeyEx(hRoot, parentPath, 0, KEY_WRITE | KEY_READ, &hParent);
+			if (lResult != ERROR_SUCCESS)
 			{
-				// Delete the target key if it already exists (shouldn't happen normally)
-				SHDeleteKey(hParent, newName);
-				// Rename the key
-				if (RegRenameKey(hParent, oldName, newName) == ERROR_SUCCESS)
-				{
-					entry.keyName = newName;
-					entry.bEnabled = !entry.bEnabled;
-				}
-				RegCloseKey(hParent);
+				CString errMsg;
+				errMsg.Format(_T("无法打开注册表项：%s\n错误代码：%d"), parentPath, lResult);
+				MessageBox(errMsg, _T("操作失败"), MB_ICONERROR);
+				return;
 			}
+
+			// Delete the target key if it already exists (shouldn't happen normally)
+			SHDeleteKey(hParent, newName);
+			// Rename the key
+			lResult = RegRenameKey(hParent, oldName, newName);
+			if (lResult == ERROR_SUCCESS)
+			{
+				entry.keyName = newName;
+				entry.bEnabled = !entry.bEnabled;
+			}
+			else
+			{
+				CString errMsg;
+				errMsg.Format(_T("无法重命名注册表项：%s\n错误代码：%d\n\n")
+					_T("可能原因：系统保护、权限不足、或该项正在被使用。"),
+					oldName, lResult);
+				MessageBox(errMsg, _T("操作失败"), MB_ICONERROR);
+				RegCloseKey(hParent);
+				return;
+			}
+			RegCloseKey(hParent);
 		}
 	}
 	else
@@ -1042,26 +1248,60 @@ void CContextMenuDlg::ToggleEntry(int index)
 		// Static verb: disable by adding/removing LegacyDisable value
 		CString verbPath = parentPath + _T("\\") + entry.keyName;
 		HKEY hVerb = nullptr;
-		if (RegOpenKeyEx(hRoot, verbPath, 0, KEY_WRITE | KEY_READ, &hVerb) == ERROR_SUCCESS)
+		LONG lResult = RegOpenKeyEx(hRoot, verbPath, 0, KEY_WRITE | KEY_READ, &hVerb);
+		if (lResult != ERROR_SUCCESS)
 		{
-			if (entry.bEnabled)
+			CString errMsg;
+			if (lResult == ERROR_ACCESS_DENIED)
+				errMsg.Format(_T("无法修改：%s\n\n访问被拒绝。此项可能位于 HKLM，需要管理员权限。"),
+					entry.displayName);
+			else
+				errMsg.Format(_T("无法打开注册表项：%s\n错误代码：%d"), verbPath, lResult);
+			MessageBox(errMsg, _T("操作失败"), MB_ICONERROR);
+			return;
+		}
+
+		if (entry.bEnabled)
+		{
+			// Disable: add LegacyDisable
+			const TCHAR* szEmpty = _T("");
+			lResult = RegSetValueEx(hVerb, _T("LegacyDisable"), 0, REG_SZ,
+				(LPBYTE)szEmpty, sizeof(TCHAR));
+			if (lResult == ERROR_SUCCESS)
 			{
-				// Disable: add LegacyDisable
-				const TCHAR* szEmpty = _T("");
-				RegSetValueEx(hVerb, _T("LegacyDisable"), 0, REG_SZ,
-					(LPBYTE)szEmpty, sizeof(TCHAR));
 				entry.bEnabled = false;
 				entry.bDisabled = true;
 			}
 			else
 			{
-				// Enable: remove LegacyDisable
-				RegDeleteValue(hVerb, _T("LegacyDisable"));
+				CString errMsg;
+				errMsg.Format(_T("无法设置 LegacyDisable：%s\n错误代码：%d"),
+					entry.displayName, lResult);
+				MessageBox(errMsg, _T("操作失败"), MB_ICONERROR);
+				RegCloseKey(hVerb);
+				return;
+			}
+		}
+		else
+		{
+			// Enable: remove LegacyDisable
+			lResult = RegDeleteValue(hVerb, _T("LegacyDisable"));
+			if (lResult == ERROR_SUCCESS || lResult == ERROR_FILE_NOT_FOUND)
+			{
 				entry.bEnabled = true;
 				entry.bDisabled = false;
 			}
-			RegCloseKey(hVerb);
+			else
+			{
+				CString errMsg;
+				errMsg.Format(_T("无法删除 LegacyDisable：%s\n错误代码：%d"),
+					entry.displayName, lResult);
+				MessageBox(errMsg, _T("操作失败"), MB_ICONERROR);
+				RegCloseKey(hVerb);
+				return;
+			}
 		}
+		RegCloseKey(hVerb);
 	}
 
 	// Notify shell of changes
@@ -1075,79 +1315,19 @@ void CContextMenuDlg::ToggleEntry(int index)
 	UpdateStatus(msg);
 }
 
-void CContextMenuDlg::ScanHKLMShellExLocation(const LocationFilter& loc)
+bool CContextMenuDlg::IsRunningAsAdmin()
 {
-	// Scan HKLM directly for ShellEx handlers (HKCR is a merged view of HKLM\Software\Classes + HKCU\Software\Classes)
-	// Some handlers may only be visible in HKLM
-	CString hklmPath = _T("Software\\Classes\\") + loc.shellPath;
-
-	HKEY hShell = nullptr;
-	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, hklmPath, 0, KEY_READ, &hShell) != ERROR_SUCCESS)
-		return;
-
-	DWORD dwIndex = 0;
-	TCHAR szSubKey[MAX_PATH];
-	DWORD cbSubKey = MAX_PATH;
-
-	while (RegEnumKeyEx(hShell, dwIndex, szSubKey, &cbSubKey,
-		nullptr, nullptr, nullptr, nullptr) == ERROR_SUCCESS)
+	BOOL bIsAdmin = FALSE;
+	PSID pAdminGroup = nullptr;
+	SID_IDENTIFIER_AUTHORITY NtAuthority = SECURITY_NT_AUTHORITY;
+	if (AllocateAndInitializeSid(&NtAuthority, 2,
+		SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS,
+		0, 0, 0, 0, 0, 0, &pAdminGroup))
 	{
-		CString subKeyPath = hklmPath + _T("\\") + szSubKey;
-		CString keyName = szSubKey;
-
-		// Check if already added from HKCR scan
-		bool bDuplicate = false;
-		for (const auto& e : m_entries)
-		{
-			if (e.regPath == loc.shellPath && e.keyName == keyName)
-			{
-				bDuplicate = true;
-				break;
-			}
-		}
-
-		if (!bDuplicate)
-		{
-			// Read CLSID from default value
-			CString clsid;
-			HKEY hVerb = nullptr;
-			if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subKeyPath, 0, KEY_READ, &hVerb) == ERROR_SUCCESS)
-			{
-				TCHAR szVal[MAX_PATH] = { 0 };
-				DWORD cbVal = sizeof(szVal);
-				DWORD dwType = 0;
-				if (RegQueryValueEx(hVerb, nullptr, nullptr, &dwType,
-					(LPBYTE)szVal, &cbVal) == ERROR_SUCCESS && szVal[0])
-				{
-					clsid = szVal;
-				}
-				RegCloseKey(hVerb);
-			}
-
-			CString displayName = keyName;
-			bool bEnabled = !IsKeyDisabledByPrefix(keyName);
-
-			if (!clsid.IsEmpty())
-			{
-				CString friendly = ResolveClsidName(clsid);
-				if (!friendly.IsEmpty())
-					displayName = friendly;
-			}
-
-			m_entries.push_back({
-				loc.name, keyName, displayName, _T(""),
-				loc.shellPath, HKEY_CLASSES_ROOT,
-				true,   // bIsShellEx
-				false,  // bExtended
-				false,  // bDisabled
-				bEnabled // bEnabled
-			});
-		}
-
-		dwIndex++;
-		cbSubKey = MAX_PATH;
+		CheckTokenMembership(nullptr, pAdminGroup, &bIsAdmin);
+		FreeSid(pAdminGroup);
 	}
-	RegCloseKey(hShell);
+	return bIsAdmin != FALSE;
 }
 
 // SEH-protected helper: try to get display name from a ShellEx handler via COM
@@ -1387,4 +1567,319 @@ void CContextMenuDlg::ScanShellExWithCom(const LocationFilter& loc)
 	if (pParentFolder) pParentFolder->Release();
 	if (pidlFolder) CoTaskMemFree(pidlFolder);
 	pDesktopFolder->Release();
+}
+
+// SEH-safe helper: get verb string from IContextMenu (no CString in __try)
+static bool SafeGetVerb(IContextMenu* pCM, UINT cmdId, CString& outVerb)
+{
+	WCHAR szVerbW[256] = { 0 };
+	BOOL bOk = FALSE;
+	__try
+	{
+		HRESULT hr = pCM->GetCommandString(cmdId, GCS_VERBW, nullptr,
+			reinterpret_cast<LPSTR>(szVerbW), sizeof(szVerbW));
+		if (SUCCEEDED(hr) && szVerbW[0])
+		{
+			outVerb = szVerbW;
+			bOk = TRUE;
+		}
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+	}
+
+	if (bOk) return true;
+
+	char szVerbA[256] = { 0 };
+	__try
+	{
+		HRESULT hr = pCM->GetCommandString(cmdId, GCS_VERBA, nullptr, szVerbA, sizeof(szVerbA));
+		if (SUCCEEDED(hr) && szVerbA[0])
+		{
+			outVerb = szVerbA;
+			bOk = TRUE;
+		}
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+	}
+
+	return bOk;
+}
+
+// Helper: enumerate menu items from an IContextMenu into m_entries
+static void EnumerateShellMenu(HMENU hMenu, IContextMenu* pCM, UINT idCmdFirst,
+	const CString& ctxName, const CString& regBasePath,
+	std::vector<CContextMenuDlg::MenuEntry>& entries)
+{
+	int nCount = GetMenuItemCount(hMenu);
+	for (int i = 0; i < nCount; i++)
+	{
+		MENUITEMINFO mii = { sizeof(MENUITEMINFO) };
+		mii.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_ID | MIIM_SUBMENU;
+		mii.dwTypeData = nullptr;
+		mii.cch = 0;
+
+		GetMenuItemInfo(hMenu, i, TRUE, &mii);
+		mii.cch++;
+
+		TCHAR* szText = new TCHAR[mii.cch + 1];
+		mii.dwTypeData = szText;
+		GetMenuItemInfo(hMenu, i, TRUE, &mii);
+		szText[mii.cch] = 0;
+
+		CString displayName = szText;
+		delete[] szText;
+
+		// Skip separators
+		if (mii.fType & MFT_SEPARATOR)
+			continue;
+
+		displayName.Replace(_T("&"), _T(""));
+
+		// Try to get the verb string via SEH-safe helper
+		CString verb;
+		UINT cmdId = mii.wID - idCmdFirst;
+		if (cmdId < 30000)
+		{
+			SafeGetVerb(pCM, cmdId, verb);
+		}
+
+		// Determine if ShellEx or static
+		bool bIsShellEx = (!verb.IsEmpty() && verb[0] == _T('{'));
+		bool bIsSubmenu = (mii.hSubMenu != nullptr);
+		bool bFoundRegKey = false;
+		CString regKeyName = verb;
+		CString regPath = regBasePath;
+
+		if (!verb.IsEmpty())
+		{
+			if (bIsShellEx)
+			{
+				// Look up CLSID in shellex registrations
+				CString shellexPath = regBasePath;
+				shellexPath.Replace(_T("\\shell"), _T("\\shellex\\ContextMenuHandlers"));
+				CString fullPath = shellexPath + _T("\\") + verb;
+				HKEY hTest = nullptr;
+				if (RegOpenKeyEx(HKEY_CLASSES_ROOT, fullPath, 0, KEY_READ, &hTest) == ERROR_SUCCESS)
+				{
+					RegCloseKey(hTest);
+					regPath = shellexPath;
+					regKeyName = verb;
+					bFoundRegKey = true;
+				}
+				if (!bFoundRegKey)
+				{
+					CString starShellex = _T("*\\shellex\\ContextMenuHandlers\\") + verb;
+					if (RegOpenKeyEx(HKEY_CLASSES_ROOT, starShellex, 0, KEY_READ, &hTest) == ERROR_SUCCESS)
+					{
+						RegCloseKey(hTest);
+						regPath = _T("*\\shellex\\ContextMenuHandlers");
+						regKeyName = verb;
+						bFoundRegKey = true;
+					}
+				}
+			}
+			else
+			{
+				// Static verb: check if key exists
+				CString fullPath = regBasePath + _T("\\") + verb;
+				HKEY hTest = nullptr;
+				if (RegOpenKeyEx(HKEY_CLASSES_ROOT, fullPath, 0, KEY_READ, &hTest) == ERROR_SUCCESS)
+				{
+					RegCloseKey(hTest);
+					regKeyName = verb;
+					bFoundRegKey = true;
+				}
+			}
+		}
+
+		// Check if disabled
+		bool bEnabled = true;
+		bool bDisabled = false;
+		if (bFoundRegKey && !bIsShellEx)
+		{
+			CString verbPath = regPath + _T("\\") + regKeyName;
+			HKEY hVerb = nullptr;
+			if (RegOpenKeyEx(HKEY_CLASSES_ROOT, verbPath, 0, KEY_READ, &hVerb) == ERROR_SUCCESS)
+			{
+				TCHAR szFlag[32] = { 0 };
+				DWORD cbFlag = sizeof(szFlag);
+				if (RegQueryValueEx(hVerb, _T("LegacyDisable"), nullptr, nullptr,
+					(LPBYTE)szFlag, &cbFlag) == ERROR_SUCCESS)
+				{
+					bDisabled = true;
+					bEnabled = false;
+				}
+				RegCloseKey(hVerb);
+			}
+		}
+		if (bIsShellEx && regKeyName.GetLength() > 0 && regKeyName[0] == _T('_'))
+			bEnabled = false;
+
+		// Get command
+		CString command;
+		if (bFoundRegKey)
+		{
+			CString cmdPath = regPath + _T("\\") + regKeyName + _T("\\command");
+			HKEY hCmd = nullptr;
+			if (RegOpenKeyEx(HKEY_CLASSES_ROOT, cmdPath, 0, KEY_READ, &hCmd) == ERROR_SUCCESS)
+			{
+				TCHAR szCmd[MAX_PATH * 2] = { 0 };
+				DWORD cbCmd = sizeof(szCmd);
+				DWORD dwType = 0;
+				if (RegQueryValueEx(hCmd, nullptr, nullptr, &dwType,
+					(LPBYTE)szCmd, &cbCmd) == ERROR_SUCCESS)
+					command = szCmd;
+				RegCloseKey(hCmd);
+			}
+		}
+
+		// Check duplicates
+		bool bDuplicate = false;
+		for (const auto& e : entries)
+		{
+			if (e.displayName == displayName && e.location == ctxName)
+			{
+				bDuplicate = true;
+				break;
+			}
+		}
+
+		if (!bDuplicate)
+		{
+			entries.push_back({
+				ctxName,
+				bFoundRegKey ? regKeyName : verb,
+				displayName,
+				command,
+				bFoundRegKey ? regPath : regBasePath,
+				HKEY_CLASSES_ROOT,
+				bIsShellEx,
+				false,  // bExtended
+				bDisabled,
+				bEnabled
+			});
+		}
+	}
+}
+
+void CContextMenuDlg::ScanWithShellAPI()
+{
+	// Use SHCreateDefaultContextMenu to get the EXACT menu that Explorer shows.
+	// This is the same API Explorer uses internally — it merges static verbs
+	// and ShellEx handlers, eliminates duplicates, and handles dynamic menus.
+	m_entries.clear();
+
+	CComboBox* pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_CM_LOCATION);
+	int sel = pCombo ? pCombo->GetCurSel() : 0;
+
+	TCHAR szTempDir[MAX_PATH];
+	GetTempPath(MAX_PATH, szTempDir);
+
+	// Context type definitions
+	struct CtxDef { const TCHAR* name; const TCHAR* regPath; bool bFolder; bool bBg; bool bDrive; bool bDesktop; };
+	const CtxDef ctxDefs[] = {
+		{ _T("文件 (*)"),              _T("*\\shell"), false, false, false, false },
+		{ _T("文件夹 (Directory)"),    _T("Directory\\shell"), true, false, false, false },
+		{ _T("文件夹背景"),            _T("Directory\\Background\\shell"), true, true, false, false },
+		{ _T("桌面背景"),              _T("DesktopBackground\\shell"), false, true, false, true },
+		{ _T("驱动器"),                _T("Drive\\shell"), false, false, true, false },
+		{ _T("所有文件"),              _T("AllFilesystemObjects\\shell"), false, false, false, false },
+	};
+
+	for (const auto& ctx : ctxDefs)
+	{
+		if (sel > 0)
+		{
+			CString selName = m_locations[sel].name;
+			if (selName != _T("全部") && selName.Find(ctx.name) < 0)
+				continue;
+		}
+
+		IShellFolder* pDesktop = nullptr;
+		if (FAILED(SHGetDesktopFolder(&pDesktop)) || !pDesktop)
+			continue;
+
+		LPITEMIDLIST pidlFolder = nullptr;
+		LPCITEMIDLIST pidlChild = nullptr;
+		IShellFolder* pFolder = nullptr;
+		LPCITEMIDLIST* ppidlChild = nullptr;
+		UINT cidl = 0;
+		bool bIsBg = ctx.bBg || ctx.bDesktop;
+		CString strTempPath;
+
+		if (ctx.bDesktop)
+		{
+			SHGetSpecialFolderLocation(nullptr, CSIDL_DESKTOP, &pidlFolder);
+			pFolder = pDesktop;
+			pFolder->AddRef();
+		}
+		else if (ctx.bDrive)
+		{
+			SHParseDisplayName(_T("C:\\"), nullptr, &pidlFolder, 0, nullptr);
+			SHBindToParent(pidlFolder, IID_IShellFolder, (void**)&pFolder, &pidlChild);
+			if (pidlChild) { ppidlChild = &pidlChild; cidl = 1; }
+		}
+		else if (ctx.bBg)
+		{
+			SHParseDisplayName(szTempDir, nullptr, &pidlFolder, 0, nullptr);
+			pDesktop->BindToObject(pidlFolder, nullptr, IID_IShellFolder, (void**)&pFolder);
+		}
+		else if (ctx.bFolder)
+		{
+			strTempPath = CString(szTempDir) + _T("MFC_CM_Scan\\");
+			CreateDirectory(strTempPath, nullptr);
+			SHParseDisplayName(strTempPath, nullptr, &pidlFolder, 0, nullptr);
+			SHBindToParent(pidlFolder, IID_IShellFolder, (void**)&pFolder, &pidlChild);
+			if (pidlChild) { ppidlChild = &pidlChild; cidl = 1; }
+		}
+		else
+		{
+			strTempPath = CString(szTempDir) + _T("MFC_CM_Scan.txt");
+			HANDLE hFile = CreateFile(strTempPath, GENERIC_WRITE, 0, nullptr,
+				CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+			if (hFile != INVALID_HANDLE_VALUE)
+			{
+				CloseHandle(hFile);
+				SHParseDisplayName(strTempPath, nullptr, &pidlFolder, 0, nullptr);
+				SHBindToParent(pidlFolder, IID_IShellFolder, (void**)&pFolder, &pidlChild);
+				if (pidlChild) { ppidlChild = &pidlChild; cidl = 1; }
+			}
+		}
+
+		if (pFolder)
+		{
+			DEFCONTEXTMENU dcm = {};
+			dcm.hwnd = m_hWnd;
+			dcm.psf = pFolder;
+			dcm.pidlFolder = bIsBg ? pidlFolder : nullptr;
+			dcm.cidl = cidl;
+			dcm.apidl = ppidlChild;
+
+			IContextMenu* pCM = nullptr;
+			HRESULT hr = SHCreateDefaultContextMenu(&dcm, IID_IContextMenu, (void**)&pCM);
+			if (SUCCEEDED(hr) && pCM)
+			{
+				HMENU hMenu = CreatePopupMenu();
+				hr = pCM->QueryContextMenu(hMenu, 0, 1, 30000, CMF_NORMAL | CMF_EXPLORE);
+				if (SUCCEEDED(hr))
+				{
+					EnumerateShellMenu(hMenu, pCM, 1, ctx.name, ctx.regPath, m_entries);
+				}
+				DestroyMenu(hMenu);
+				pCM->Release();
+			}
+		}
+
+		if (pFolder && pFolder != pDesktop) pFolder->Release();
+		if (pidlFolder && pidlFolder != (LPITEMIDLIST)pidlChild) CoTaskMemFree(pidlFolder);
+		pDesktop->Release();
+
+		if (!strTempPath.IsEmpty())
+		{
+			if (ctx.bFolder) RemoveDirectory(strTempPath);
+			else if (!ctx.bBg && !ctx.bDrive && !ctx.bDesktop) DeleteFile(strTempPath);
+		}
+	}
 }

@@ -17,15 +17,7 @@ public:
 	enum { IDD = IDD_CONTEXT_MENU_DLG };
 #endif
 
-protected:
-	virtual void DoDataExchange(CDataExchange* pDX);
-	virtual BOOL OnInitDialog();
-	virtual BOOL PreTranslateMessage(MSG* pMsg);
-	virtual void PostNcDestroy();
-
-	DECLARE_MESSAGE_MAP()
-
-private:
+	// Public struct used by static helper functions
 	struct MenuEntry
 	{
 		CString location;      // scope name (e.g. "文件 (*)")
@@ -40,8 +32,15 @@ private:
 		bool   bEnabled;       // true: currently enabled (not disabled by user)
 	};
 
-	std::vector<MenuEntry> m_entries;
+protected:
+	virtual void DoDataExchange(CDataExchange* pDX);
+	virtual BOOL OnInitDialog();
+	virtual BOOL PreTranslateMessage(MSG* pMsg);
+	virtual void PostNcDestroy();
 
+	DECLARE_MESSAGE_MAP()
+
+private:
 	struct LocationFilter
 	{
 		CString name;
@@ -49,6 +48,7 @@ private:
 		bool isShellEx;  // true: scan shellex\ContextMenuHandlers (COM-based)
 	};
 
+	std::vector<MenuEntry> m_entries;
 	std::vector<LocationFilter> m_locations;
 
 	int m_listLeft, m_listTop;
@@ -57,8 +57,10 @@ private:
 	void InitLocations();
 	void ScanEntries(const CString& filter);
 	void ScanShellExLocation(const LocationFilter& loc);
-	void ScanHKLMShellExLocation(const LocationFilter& loc);
 	void ScanShellExWithCom(const LocationFilter& loc);
+	void ScanWithShellAPI();
+	void ScanAllExtensions();
+	static bool IsRunningAsAdmin();
 	static CString ResolveClsidName(const CString& clsid);
 	static CString GetShellExDisplayName(const CString& clsid, const CString& dllPath);
 	static CString ResolveMUIString(const CString& raw);
