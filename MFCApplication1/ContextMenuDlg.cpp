@@ -7,6 +7,9 @@
 #include "ContextMenuDlg.h"
 #include "afxdialogex.h"
 #include <algorithm>
+#include <shobjidl.h>
+#include <shlwapi.h>
+#pragma comment(lib, "shlwapi.lib")
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -40,6 +43,7 @@ BEGIN_MESSAGE_MAP(CContextMenuDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BTN_CM_DELETE, &CContextMenuDlg::OnBnClickedDelete)
 	ON_BN_CLICKED(IDC_BTN_CM_LOCATE, &CContextMenuDlg::OnBnClickedLocate)
 	ON_BN_CLICKED(IDC_CHECK_CM_FOLDER, &CContextMenuDlg::OnBnClickedCheckFolder)
+	ON_BN_CLICKED(IDC_CHECK_CM_WIN11_CLASSIC, &CContextMenuDlg::OnBnClickedCheckWin11Classic)
 	ON_NOTIFY(NM_RCLICK, IDC_LIST_CM_ENTRIES, &CContextMenuDlg::OnNMRClickList)
 	ON_COMMAND(ID_MENU_CM_DELETE, &CContextMenuDlg::OnMenuDelete)
 	ON_COMMAND(ID_MENU_CM_LOCATE, &CContextMenuDlg::OnMenuLocate)
@@ -116,6 +120,125 @@ CString CContextMenuDlg::ResolveClsidName(const CString& clsid)
 	return friendly;
 }
 
+// SEH-protected wrapper for IContextMenu::GetCommandString (Unicode)
+static BOOL SafeGetCommandStringW(IContextMenu* pMenu, LPWSTR pszBuf, UINT cchBuf)
+{
+	__try
+	{
+		HRESULT hr = pMenu->GetCommandString(0, GCS_VERBW, nullptr,
+			reinterpret_cast<LPSTR>(pszBuf), cchBuf * sizeof(WCHAR));
+		return SUCCEEDED(hr) ? TRUE : FALSE;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		pszBuf[0] = 0;
+		return FALSE;
+	}
+}
+
+// SEH-protected wrapper for IContextMenu::GetCommandString (ANSI)
+static BOOL SafeGetCommandStringA(IContextMenu* pMenu, LPSTR pszBuf, UINT cchBuf)
+{
+	__try
+	{
+		HRESULT hr = pMenu->GetCommandString(0, GCS_VERBA, nullptr, pszBuf, cchBuf);
+		return SUCCEEDED(hr) ? TRUE : FALSE;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		pszBuf[0] = 0;
+		return FALSE;
+	}
+}
+
+// Get real display name from COM context menu handler via GetCommandString
+// NOTE: QueryContextMenu is NOT called because most ShellEx handlers require
+// a valid IDataObject/IShellFolder context; calling it without context causes
+// crashes/hangs. We use GetCommandString which is safer.
+CString CContextMenuDlg::GetShellExDisplayName(const CString& clsid, const CString& dllPath)
+{
+	if (clsid.IsEmpty())
+		return _T("");
+
+	CString displayName;
+	CLSID clsidGuid;
+	if (CLSIDFromString(clsid.GetString(), &clsidGuid) != S_OK)
+		return _T("");
+
+	// Use CoCreateInstance — COM is already initialized by AfxOleInit()
+	// Use CLSCTX_INPROC_SERVER only: LOCAL_SERVER may launch Explorer/out-of-proc
+	// servers which can deadlock the UI thread via window message pumps.
+	IUnknown* pUnknown = nullptr;
+	HRESULT hr = CoCreateInstance(clsidGuid, nullptr,
+		CLSCTX_INPROC_SERVER,
+		IID_IUnknown, reinterpret_cast<void**>(&pUnknown));
+	if (FAILED(hr) || !pUnknown)
+		return _T("");
+
+	// Query IContextMenu interface
+	IContextMenu* pContextMenu = nullptr;
+	hr = pUnknown->QueryInterface(IID_IContextMenu, reinterpret_cast<void**>(&pContextMenu));
+
+	if (SUCCEEDED(hr) && pContextMenu)
+	{
+		// SEH-protected call to GetCommandString (handler may crash)
+		WCHAR szNameW[MAX_PATH] = { 0 };
+		BOOL bOk = SafeGetCommandStringW(pContextMenu, szNameW, MAX_PATH);
+		if (bOk && szNameW[0])
+		{
+			displayName = szNameW;
+		}
+		else
+		{
+			char szNameA[MAX_PATH] = { 0 };
+			bOk = SafeGetCommandStringA(pContextMenu, szNameA, MAX_PATH);
+			if (bOk && szNameA[0])
+				displayName = szNameA;
+		}
+		pContextMenu->Release();
+	}
+
+	pUnknown->Release();
+	return displayName;
+}
+
+// Resolve MUI resource reference string (e.g. @shell32.dll,-12345) to display text
+CString CContextMenuDlg::ResolveMUIString(const CString& raw)
+{
+	if (raw.IsEmpty() || raw[0] != _T('@'))
+		return raw;
+
+	CString result;
+	// Method 1: SHLoadIndirectString (handles language fallback automatically)
+	TCHAR szResult[1024] = { 0 };
+	HRESULT hr = SHLoadIndirectString(raw, szResult, 1024, nullptr);
+	if (SUCCEEDED(hr) && szResult[0])
+	{
+		result = szResult;
+		return result;
+	}
+
+	// Method 2: Manual LoadString fallback (@path,-id)
+	int nPos = raw.ReverseFind(_T(','));
+	if (nPos > 0)
+	{
+		CString strDll = raw.Mid(1, nPos - 1);  // skip leading @
+		int nId = _ttoi(raw.Mid(nPos + 1));
+		if (nId < 0) nId = -nId;
+
+		HMODULE hMod = LoadLibraryEx(strDll, nullptr, LOAD_LIBRARY_AS_DATAFILE);
+		if (hMod)
+		{
+			TCHAR szBuf[512] = { 0 };
+			if (LoadString(hMod, nId, szBuf, 512) > 0)
+				result = szBuf;
+			FreeLibrary(hMod);
+		}
+	}
+
+	return result.IsEmpty() ? raw : result;
+}
+
 void CContextMenuDlg::ScanShellExLocation(const LocationFilter& loc)
 {
 	HKEY hShell = nullptr;
@@ -168,6 +291,10 @@ void CContextMenuDlg::ScanShellExLocation(const LocationFilter& loc)
 					(LPBYTE)szDll, &cbDll) == ERROR_SUCCESS && szDll[0])
 				{
 					command = szDll;
+					// Try to get real display name by loading the COM DLL
+					CString realName = GetShellExDisplayName(clsid, szDll);
+					if (!realName.IsEmpty())
+						displayName = realName;
 				}
 				RegCloseKey(hInproc);
 			}
@@ -175,7 +302,10 @@ void CContextMenuDlg::ScanShellExLocation(const LocationFilter& loc)
 
 		m_entries.push_back({
 			loc.name, szSubKey, displayName, command,
-			loc.shellPath, HKEY_CLASSES_ROOT
+			loc.shellPath, HKEY_CLASSES_ROOT,
+			true,  // bIsShellEx
+			false, // bExtended
+			false  // bDisabled
 		});
 
 		dwIndex++;
@@ -213,34 +343,58 @@ void CContextMenuDlg::ScanEntries(const CString& filter)
 				CString subKeyPath = loc.shellPath + _T("\\") + szSubKey;
 
 				// Read display name: prefer MUIVerb, fall back to default value, then key name
-				CString displayName = szSubKey;
-				HKEY hVerb = nullptr;
-				if (RegOpenKeyEx(HKEY_CLASSES_ROOT, subKeyPath, 0, KEY_READ, &hVerb) == ERROR_SUCCESS)
+			CString displayName = szSubKey;
+			HKEY hVerb = nullptr;
+			if (RegOpenKeyEx(HKEY_CLASSES_ROOT, subKeyPath, 0, KEY_READ, &hVerb) == ERROR_SUCCESS)
+			{
+				TCHAR szVal[MAX_PATH] = { 0 };
+				DWORD cbVal = sizeof(szVal);
+				DWORD dwType = 0;
+				BOOL bFound = FALSE;
+				// Try MUIVerb first (Windows shell preference)
+				if (RegQueryValueEx(hVerb, _T("MUIVerb"), nullptr, &dwType,
+					(LPBYTE)szVal, &cbVal) == ERROR_SUCCESS && szVal[0])
 				{
-					TCHAR szVal[MAX_PATH] = { 0 };
-					DWORD cbVal = sizeof(szVal);
-					DWORD dwType = 0;
-					BOOL bFound = FALSE;
-					// Try MUIVerb first (Windows shell preference)
-					if (RegQueryValueEx(hVerb, _T("MUIVerb"), nullptr, &dwType,
-						(LPBYTE)szVal, &cbVal) == ERROR_SUCCESS && szVal[0] && szVal[0] != _T('@'))
+					CString strRaw = szVal;
+					if (strRaw[0] == _T('@'))
 					{
-						displayName = szVal;
-						bFound = TRUE;
-					}
-					// Fall back to default value
-					if (!bFound)
-					{
-						cbVal = sizeof(szVal);
-						szVal[0] = 0;
-						if (RegQueryValueEx(hVerb, nullptr, nullptr, &dwType,
-							(LPBYTE)szVal, &cbVal) == ERROR_SUCCESS && szVal[0] && szVal[0] != _T('@'))
+						// Resolve MUI resource reference (@dll,-id)
+						CString resolved = ResolveMUIString(strRaw);
+						if (!resolved.IsEmpty() && resolved[0] != _T('@'))
 						{
-							displayName = szVal;
+							displayName = resolved;
+							bFound = TRUE;
 						}
 					}
-					RegCloseKey(hVerb);
+					else
+					{
+						displayName = strRaw;
+						bFound = TRUE;
+					}
 				}
+				// Fall back to default value
+				if (!bFound)
+				{
+					cbVal = sizeof(szVal);
+					szVal[0] = 0;
+					if (RegQueryValueEx(hVerb, nullptr, nullptr, &dwType,
+						(LPBYTE)szVal, &cbVal) == ERROR_SUCCESS && szVal[0])
+					{
+						CString strRaw = szVal;
+						if (strRaw[0] == _T('@'))
+						{
+							CString resolved = ResolveMUIString(strRaw);
+							if (!resolved.IsEmpty() && resolved[0] != _T('@'))
+								displayName = resolved;
+						}
+						else
+						{
+							displayName = strRaw;
+						}
+					}
+				}
+				RegCloseKey(hVerb);
+			}
 
 				// Read command from "command" subkey
 				CString command;
@@ -259,10 +413,40 @@ void CContextMenuDlg::ScanEntries(const CString& filter)
 					RegCloseKey(hCmd);
 				}
 
+				// Check visibility flags on the verb key
+				BOOL bExtended = FALSE;
+				BOOL bDisabled = FALSE;
+				HKEY hVerbChk = nullptr;
+				if (RegOpenKeyEx(HKEY_CLASSES_ROOT, subKeyPath, 0, KEY_READ, &hVerbChk) == ERROR_SUCCESS)
+				{
+					// Extended subkey presence => Shift+right-click only
+					HKEY hExt = nullptr;
+					if (RegOpenKeyEx(hVerbChk, _T("Extended"), 0, KEY_READ, &hExt) == ERROR_SUCCESS)
+					{
+						bExtended = TRUE;
+						RegCloseKey(hExt);
+					}
+					// LegacyDisable value
+					TCHAR szFlag[32] = { 0 };
+					DWORD cbFlag = sizeof(szFlag);
+					if (RegQueryValueEx(hVerbChk, _T("LegacyDisable"), nullptr, nullptr,
+						(LPBYTE)szFlag, &cbFlag) == ERROR_SUCCESS)
+						bDisabled = TRUE;
+					// ProgrammaticAccessOnly value
+					cbFlag = sizeof(szFlag);
+					if (RegQueryValueEx(hVerbChk, _T("ProgrammaticAccessOnly"), nullptr, nullptr,
+						(LPBYTE)szFlag, &cbFlag) == ERROR_SUCCESS)
+						bDisabled = TRUE;
+					RegCloseKey(hVerbChk);
+				}
+
 				m_entries.push_back({
-					loc.name, szSubKey, displayName, command,
-					loc.shellPath, HKEY_CLASSES_ROOT
-				});
+				loc.name, szSubKey, displayName, command,
+				loc.shellPath, HKEY_CLASSES_ROOT,
+				false,          // bIsShellEx (static verb)
+				bExtended != FALSE,  // bExtended
+				bDisabled != FALSE   // bDisabled
+			});
 
 				dwIndex++;
 				cbSubKey = MAX_PATH;
@@ -284,8 +468,25 @@ void CContextMenuDlg::RefreshList()
 	{
 		int idx = pList->InsertItem((int)i, m_entries[i].location);
 		pList->SetItemText(idx, 1, m_entries[i].displayName);
-		pList->SetItemText(idx, 2, m_entries[i].keyName);
-		pList->SetItemText(idx, 3, m_entries[i].command);
+
+		// Column 2: type
+		pList->SetItemText(idx, 2, m_entries[i].bIsShellEx ? _T("ShellEx") : _T("静态"));
+
+		// Column 3: visibility
+		CString strVis;
+		if (m_entries[i].bDisabled)
+			strVis = _T("已禁用");
+		else if (m_entries[i].bExtended)
+			strVis = _T("Shift显示");
+		else
+			strVis = _T("正常");
+		pList->SetItemText(idx, 3, strVis);
+
+		// Column 4: key name
+		pList->SetItemText(idx, 4, m_entries[i].keyName);
+
+		// Column 5: command
+		pList->SetItemText(idx, 5, m_entries[i].command);
 	}
 	pList->SetRedraw(TRUE);
 
@@ -324,8 +525,10 @@ BOOL CContextMenuDlg::OnInitDialog()
 		pList->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
 		pList->InsertColumn(0, _T("位置"),     LVCFMT_LEFT, 50);
 		pList->InsertColumn(1, _T("显示名称"), LVCFMT_LEFT, 150);
-		pList->InsertColumn(2, _T("键名"),     LVCFMT_LEFT, 70);
-		pList->InsertColumn(3, _T("命令"),     LVCFMT_LEFT, 130);
+		pList->InsertColumn(2, _T("类型"),     LVCFMT_LEFT, 60);
+		pList->InsertColumn(3, _T("可见性"),   LVCFMT_LEFT, 70);
+		pList->InsertColumn(4, _T("键名"),     LVCFMT_LEFT, 70);
+		pList->InsertColumn(5, _T("命令"),     LVCFMT_LEFT, 130);
 	}
 
 	InitLocations();
@@ -337,6 +540,9 @@ BOOL CContextMenuDlg::OnInitDialog()
 
 	// Load self context menu state
 	LoadSelfContextMenuState();
+
+	// Load Win11 classic menu state
+	LoadWin11ClassicState();
 
 	return TRUE;
 }
@@ -470,6 +676,71 @@ void CContextMenuDlg::SaveSelfContextMenuState(bool bEnable)
 	}
 }
 
+void CContextMenuDlg::LoadWin11ClassicState()
+{
+	// Win11 new context menu is blocked by creating an empty InprocServer32
+	// under HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8a-a939-50982eeb33a6}
+	// When that key exists, Win11 falls back to the classic menu (Shift+right-click behavior).
+	const CString strKey = _T("Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8a-a939-50982eeb33a6}\\InprocServer32");
+
+	HKEY hKey = nullptr;
+	BOOL bEnabled = FALSE;
+	if (RegOpenKeyEx(HKEY_CURRENT_USER, strKey, 0, KEY_READ, &hKey) == ERROR_SUCCESS)
+	{
+		// Key exists => classic menu enabled (new menu blocked)
+		bEnabled = TRUE;
+		RegCloseKey(hKey);
+	}
+	CheckDlgButton(IDC_CHECK_CM_WIN11_CLASSIC, bEnabled ? BST_CHECKED : BST_UNCHECKED);
+}
+
+void CContextMenuDlg::SaveWin11ClassicState(bool bEnable)
+{
+	// The CLSID {86ca1aa0-34aa-4e8a-a939-50982eeb33a6} is the Win11 context menu
+	// filibuster handler. Creating an empty InprocServer32 under HKCU overrides
+	// it, forcing Explorer to show the classic menu (same as Shift+right-click).
+	const CString strBase = _T("Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8a-a939-50982eeb33a6}");
+	const CString strInproc = strBase + _T("\\InprocServer32");
+
+	if (bEnable)
+	{
+		// Create the InprocServer32 subkey with an empty default value
+		HKEY hKey = nullptr;
+		DWORD dwDisp = 0;
+		if (RegCreateKeyEx(HKEY_CURRENT_USER, strInproc, 0, nullptr, 0,
+			KEY_WRITE, nullptr, &hKey, &dwDisp) == ERROR_SUCCESS)
+		{
+			// Set empty string as default value
+			const TCHAR* szEmpty = _T("");
+			RegSetValueEx(hKey, nullptr, 0, REG_SZ,
+				(LPBYTE)szEmpty, sizeof(TCHAR));
+			RegCloseKey(hKey);
+		}
+	}
+	else
+	{
+		// Delete the entire CLSID key recursively under HKCU
+		DeleteRegistryKeyRecursive(HKEY_CURRENT_USER, strBase);
+	}
+
+	// Notify the shell that file associations changed
+	SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, nullptr, nullptr);
+}
+
+void CContextMenuDlg::OnBnClickedCheckWin11Classic()
+{
+	BOOL bCheck = IsDlgButtonChecked(IDC_CHECK_CM_WIN11_CLASSIC);
+	SaveWin11ClassicState(bCheck == BST_CHECKED);
+
+	CString msg;
+	if (bCheck)
+		msg = _T("已启用Win11经典菜单。需要重启Explorer或注销后生效。");
+	else
+		msg = _T("已恢复Win11新菜单。需要重启Explorer或注销后生效。");
+	UpdateStatus(msg);
+	AfxMessageBox(msg, MB_ICONINFORMATION | MB_OK);
+}
+
 void CContextMenuDlg::OnBnClickedRefresh()
 {
 	CComboBox* pCombo = (CComboBox*)GetDlgItem(IDC_COMBO_CM_LOCATION);
@@ -497,17 +768,22 @@ void CContextMenuDlg::AdjustColumnWidths()
 	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_CM_ENTRIES);
 	if (!pList || !pList->GetSafeHwnd()) return;
 
-	// Compute the list client width (account for vertical scrollbar)
 	CRect rcList;
 	pList->GetClientRect(&rcList);
 	int nWidth = rcList.Width();
 	if (nWidth <= 0) return;
 
-	// Distribute as 1/5, 2/5, 1/5, 1/5
-	pList->SetColumnWidth(0, nWidth / 5);
-	pList->SetColumnWidth(1, nWidth * 2 / 5);
-	pList->SetColumnWidth(2, nWidth / 5);
-	pList->SetColumnWidth(3, nWidth / 5);
+	// Set a minimum total width so columns are wider than the list,
+	// which triggers the horizontal scrollbar for long content.
+	// 6 columns: position, name, type, visibility, key, command
+	// Proportions: 8%, 20%, 8%, 10%, 12%, 42%
+	int nMinTotal = (nWidth + 1 > 1200) ? (nWidth + 1) : 1200;
+	pList->SetColumnWidth(0, nMinTotal * 8 / 100);
+	pList->SetColumnWidth(1, nMinTotal * 20 / 100);
+	pList->SetColumnWidth(2, nMinTotal * 8 / 100);
+	pList->SetColumnWidth(3, nMinTotal * 10 / 100);
+	pList->SetColumnWidth(4, nMinTotal * 12 / 100);
+	pList->SetColumnWidth(5, nMinTotal * 42 / 100);
 }
 
 void CContextMenuDlg::OnBnClickedDelete()

@@ -28,12 +28,15 @@ protected:
 private:
 	struct MenuEntry
 	{
-		CString location;
-		CString keyName;
-		CString displayName;
-		CString command;
-		CString regPath;
-		HKEY   hRoot;
+		CString location;      // scope name (e.g. "文件 (*)")
+		CString keyName;       // registry subkey name (verb or handler name)
+		CString displayName;   // resolved display text (MUIVerb/MUI resolved)
+		CString command;       // command line or DLL path
+		CString regPath;       // full registry path
+		HKEY   hRoot;          // registry root
+		bool   bIsShellEx;     // true: COM ShellEx handler, false: static verb
+		bool   bExtended;      // true: Shift+right-click only
+		bool   bDisabled;      // true: LegacyDisable/ProgrammaticAccessOnly set
 	};
 
 	std::vector<MenuEntry> m_entries;
@@ -54,6 +57,8 @@ private:
 	void ScanEntries(const CString& filter);
 	void ScanShellExLocation(const LocationFilter& loc);
 	static CString ResolveClsidName(const CString& clsid);
+	static CString GetShellExDisplayName(const CString& clsid, const CString& dllPath);
+	static CString ResolveMUIString(const CString& raw);
 	void RefreshList();
 	void UpdateStatus(const CString& text);
 	void AdjustColumnWidths();
@@ -61,6 +66,8 @@ private:
 	void OpenRegEditToPath(HKEY hRoot, const CString& path);
 	void LoadSelfContextMenuState();
 	void SaveSelfContextMenuState(bool bEnable);
+	void LoadWin11ClassicState();
+	void SaveWin11ClassicState(bool bEnable);
 
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg void OnBnClickedRefresh();
@@ -68,6 +75,7 @@ private:
 	afx_msg void OnBnClickedDelete();
 	afx_msg void OnBnClickedLocate();
 	afx_msg void OnBnClickedCheckFolder();
+	afx_msg void OnBnClickedCheckWin11Classic();
 	afx_msg void OnNMRClickList(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnMenuDelete();
 	afx_msg void OnMenuLocate();
