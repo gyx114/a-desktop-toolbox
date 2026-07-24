@@ -51,6 +51,264 @@ protected:
 	}
 };
 
+// Local PATH editor dialog for multi-value variables like PATH
+class CEnvPathDlg : public CDialogEx
+{
+public:
+	CString m_strValue;
+	std::vector<CString> m_entries;
+	CString m_strVarName;
+
+	CEnvPathDlg(const CString& varName, CWnd* pParent)
+		: CDialogEx(IDD_ENVVAR_PATH_DLG, pParent), m_strVarName(varName) {}
+
+protected:
+	virtual BOOL OnInitDialog()
+	{
+		CDialogEx::OnInitDialog();
+
+		CString title;
+		title.Format(_T("编辑 %s 变量"), m_strVarName);
+		SetWindowText(title);
+
+		CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_PATH_ENTRIES);
+		if (pList)
+		{
+			pList->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+			pList->InsertColumn(0, _T("路径条目"), LVCFMT_LEFT, 800);
+		}
+
+		// Parse semicolon-separated value into entries
+		int start = 0;
+		while (start < m_strValue.GetLength())
+		{
+			int end = m_strValue.Find(_T(';'), start);
+			if (end == -1) end = m_strValue.GetLength();
+			CString entry = m_strValue.Mid(start, end - start);
+			entry.Trim();
+			if (!entry.IsEmpty())
+				m_entries.push_back(entry);
+			start = end + 1;
+		}
+
+		RefreshList();
+		return TRUE;
+	}
+
+	virtual void OnOK()
+	{
+		// Join entries back into semicolon-separated string
+		m_strValue.Empty();
+		for (size_t i = 0; i < m_entries.size(); ++i)
+		{
+			if (i > 0) m_strValue += _T(";");
+			m_strValue += m_entries[i];
+		}
+		CDialogEx::OnOK();
+	}
+
+	void RefreshList()
+	{
+		CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_PATH_ENTRIES);
+		if (!pList) return;
+		pList->SetRedraw(FALSE);
+		pList->DeleteAllItems();
+		for (size_t i = 0; i < m_entries.size(); ++i)
+			pList->InsertItem((int)i, m_entries[i]);
+		pList->SetRedraw(TRUE);
+	}
+
+	int GetSelectedIndex()
+	{
+		CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_PATH_ENTRIES);
+		if (!pList) return -1;
+		POSITION pos = pList->GetFirstSelectedItemPosition();
+		if (!pos) return -1;
+		return pList->GetNextSelectedItem(pos);
+	}
+
+	void OnAddEntry()
+	{
+		CString entry;
+		CFolderPickerDialog dlg(nullptr, 0, this);
+		dlg.m_ofn.lpstrTitle = _T("选择要添加的路径");
+		if (dlg.DoModal() == IDOK)
+			entry = dlg.GetPathName();
+
+		if (entry.IsEmpty()) return;
+
+		int idx = GetSelectedIndex();
+		if (idx >= 0 && idx < (int)m_entries.size())
+			m_entries.insert(m_entries.begin() + idx + 1, entry);
+		else
+			m_entries.push_back(entry);
+
+		RefreshList();
+	}
+
+	void OnEditEntry()
+	{
+		int idx = GetSelectedIndex();
+		if (idx < 0 || idx >= (int)m_entries.size())
+		{
+			MessageBox(_T("请先选择要编辑的条目。"), _T("提示"), MB_ICONINFORMATION);
+			return;
+		}
+
+		CFolderPickerDialog dlg(nullptr, 0, this);
+		dlg.m_ofn.lpstrTitle = _T("选择新的路径");
+		if (dlg.DoModal() == IDOK)
+		{
+			m_entries[idx] = dlg.GetPathName();
+			RefreshList();
+		}
+	}
+
+	void OnDeleteEntry()
+	{
+		int idx = GetSelectedIndex();
+		if (idx < 0 || idx >= (int)m_entries.size())
+		{
+			MessageBox(_T("请先选择要删除的条目。"), _T("提示"), MB_ICONINFORMATION);
+			return;
+		}
+
+		m_entries.erase(m_entries.begin() + idx);
+		RefreshList();
+	}
+
+	void OnMoveUp()
+	{
+		int idx = GetSelectedIndex();
+		if (idx <= 0 || idx >= (int)m_entries.size()) return;
+		std::swap(m_entries[idx], m_entries[idx - 1]);
+		RefreshList();
+		// Reselect the moved item
+		CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_PATH_ENTRIES);
+		if (pList)
+		{
+			pList->SetItemState(idx - 1, LVIS_SELECTED | LVIS_FOCUSED,
+				LVIS_SELECTED | LVIS_FOCUSED);
+		}
+	}
+
+	void OnMoveDown()
+	{
+		int idx = GetSelectedIndex();
+		if (idx < 0 || idx >= (int)m_entries.size() - 1) return;
+		std::swap(m_entries[idx], m_entries[idx + 1]);
+		RefreshList();
+		CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_PATH_ENTRIES);
+		if (pList)
+		{
+			pList->SetItemState(idx + 1, LVIS_SELECTED | LVIS_FOCUSED,
+				LVIS_SELECTED | LVIS_FOCUSED);
+		}
+	}
+
+	void OnCopyEntry()
+	{
+		int idx = GetSelectedIndex();
+		if (idx < 0 || idx >= (int)m_entries.size()) return;
+
+		if (OpenClipboard())
+		{
+			EmptyClipboard();
+			int nLen = (m_entries[idx].GetLength() + 1) * sizeof(TCHAR);
+			HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, nLen);
+			if (hMem)
+			{
+				memcpy(GlobalLock(hMem), m_entries[idx].GetString(), nLen);
+				GlobalUnlock(hMem);
+				SetClipboardData(CF_UNICODETEXT, hMem);
+			}
+			CloseClipboard();
+		}
+	}
+
+	void OnRclickPathList(NMHDR* pNMHDR, LRESULT* pResult)
+	{
+		*pResult = 0;
+		NMITEMACTIVATE* pNMItem = (NMITEMACTIVATE*)pNMHDR;
+		CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_PATH_ENTRIES);
+		if (!pList) return;
+
+		// Select the right-clicked item
+		int nItem = pNMItem->iItem;
+		if (nItem >= 0)
+		{
+			if (pList->GetItemState(nItem, LVIS_SELECTED) != LVIS_SELECTED)
+			{
+				for (int i = pList->GetItemCount() - 1; i >= 0; --i)
+					pList->SetItemState(i, 0, LVIS_SELECTED);
+				pList->SetItemState(nItem, LVIS_SELECTED, LVIS_SELECTED);
+			}
+		}
+
+		CMenu menu;
+		menu.CreatePopupMenu();
+		menu.AppendMenu(MF_STRING, 1, _T("编辑"));
+		menu.AppendMenu(MF_STRING, 2, _T("复制"));
+		menu.AppendMenu(MF_STRING, 3, _T("删除"));
+		menu.AppendMenu(MF_SEPARATOR);
+		menu.AppendMenu(MF_STRING, 4, _T("上移"));
+		menu.AppendMenu(MF_STRING, 5, _T("下移"));
+
+		CPoint pt;
+		GetCursorPos(&pt);
+		int nCmd = menu.TrackPopupMenu(TPM_LEFTALIGN | TPM_RETURNCMD, pt.x, pt.y, this);
+		menu.DestroyMenu();
+
+		switch (nCmd)
+		{
+		case 1: OnEditEntry(); break;
+		case 2: OnCopyEntry(); break;
+		case 3: OnDeleteEntry(); break;
+		case 4: OnMoveUp(); break;
+		case 5: OnMoveDown(); break;
+		}
+	}
+
+	afx_msg void OnCustomDrawPathList(NMHDR* pNMHDR, LRESULT* pResult)
+	{
+		NMLVCUSTOMDRAW* pLVCD = (NMLVCUSTOMDRAW*)pNMHDR;
+		*pResult = CDRF_DODEFAULT;
+
+		if (pLVCD->nmcd.dwDrawStage == CDDS_PREPAINT)
+		{
+			*pResult = CDRF_NOTIFYITEMDRAW;
+		}
+		else if (pLVCD->nmcd.dwDrawStage == CDDS_ITEMPREPAINT)
+		{
+			// Draw horizontal grid lines with a more visible color
+			CDC* pDC = CDC::FromHandle(pLVCD->nmcd.hdc);
+			CRect rc = pLVCD->nmcd.rc;
+
+			CPen pen(PS_SOLID, 1, RGB(160, 160, 160));
+			CPen* pOldPen = pDC->SelectObject(&pen);
+
+			pDC->MoveTo(rc.left, rc.bottom - 1);
+			pDC->LineTo(rc.right, rc.bottom - 1);
+
+			pDC->SelectObject(pOldPen);
+
+			*pResult = CDRF_DODEFAULT;
+		}
+	}
+
+	DECLARE_MESSAGE_MAP()
+};
+
+BEGIN_MESSAGE_MAP(CEnvPathDlg, CDialogEx)
+	ON_BN_CLICKED(IDC_BTN_PATH_ADD, &CEnvPathDlg::OnAddEntry)
+	ON_BN_CLICKED(IDC_BTN_PATH_EDIT, &CEnvPathDlg::OnEditEntry)
+	ON_BN_CLICKED(IDC_BTN_PATH_DELETE, &CEnvPathDlg::OnDeleteEntry)
+	ON_BN_CLICKED(IDC_BTN_PATH_UP, &CEnvPathDlg::OnMoveUp)
+	ON_BN_CLICKED(IDC_BTN_PATH_DOWN, &CEnvPathDlg::OnMoveDown)
+	ON_NOTIFY(NM_RCLICK, IDC_LIST_PATH_ENTRIES, &CEnvPathDlg::OnRclickPathList)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_LIST_PATH_ENTRIES, &CEnvPathDlg::OnCustomDrawPathList)
+END_MESSAGE_MAP()
+
 IMPLEMENT_DYNAMIC(CEnvVarDlg, CDialogEx)
 
 CEnvVarDlg::CEnvVarDlg(CWnd* pParent)
@@ -82,6 +340,9 @@ BEGIN_MESSAGE_MAP(CEnvVarDlg, CDialogEx)
 	ON_NOTIFY(NM_DBLCLK, IDC_LIST_ENV_USER, &CEnvVarDlg::OnNMDblclkListEnv)
 	ON_NOTIFY(NM_RCLICK, IDC_LIST_ENV_SYSTEM, &CEnvVarDlg::OnNMRclickListEnv)
 	ON_NOTIFY(NM_RCLICK, IDC_LIST_ENV_USER, &CEnvVarDlg::OnNMRclickListEnv)
+	ON_EN_CHANGE(IDC_EDIT_ENV_SEARCH, &CEnvVarDlg::OnEnChangeEnvSearch)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_LIST_ENV_SYSTEM, &CEnvVarDlg::OnCustomDrawListEnv)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_LIST_ENV_USER, &CEnvVarDlg::OnCustomDrawListEnv)
 END_MESSAGE_MAP()
 
 BOOL CEnvVarDlg::PreTranslateMessage(MSG* pMsg)
@@ -112,7 +373,7 @@ bool CEnvVarDlg::ReadEnvVars(bool bSystem, std::vector<EnvVarEntry>& outVars)
 	DWORD dwIndex = 0;
 	TCHAR szName[MAX_PATH];
 	DWORD cbName = MAX_PATH;
-	TCHAR szValue[32768];
+	TCHAR szValue[65536];
 	DWORD cbValue = sizeof(szValue);
 	DWORD dwType = 0;
 
@@ -192,6 +453,44 @@ void CEnvVarDlg::BroadcastEnvChange()
 		(LPARAM)_T("Environment"), SMTO_ABORTIFHUNG, 5000, nullptr);
 }
 
+CString CEnvVarDlg::BackupEnvVars(const std::vector<EnvVarEntry>& sysVars,
+	const std::vector<EnvVarEntry>& userVars)
+{
+	// Get temp directory
+	TCHAR szTempPath[MAX_PATH];
+	GetTempPath(MAX_PATH, szTempPath);
+
+	// Generate timestamped filename
+	SYSTEMTIME st;
+	GetLocalTime(&st);
+	CString filename;
+	filename.Format(_T("%senv_backup_%04d%02d%02d_%02d%02d%02d.txt"),
+		szTempPath, st.wYear, st.wMonth, st.wDay,
+		st.wHour, st.wMinute, st.wSecond);
+
+	std::ofstream ofs(filename.GetString(), std::ios::out | std::ios::trunc);
+	if (!ofs.is_open()) return _T("");
+
+	ofs << "# System Environment Variables\n";
+	for (const auto& v : sysVars)
+	{
+		CStringA nameA(v.name);
+		CStringA valueA(v.value);
+		ofs << nameA.GetString() << "=" << valueA.GetString() << "\n";
+	}
+
+	ofs << "\n# User Environment Variables\n";
+	for (const auto& v : userVars)
+	{
+		CStringA nameA(v.name);
+		CStringA valueA(v.value);
+		ofs << nameA.GetString() << "=" << valueA.GetString() << "\n";
+	}
+
+	ofs.close();
+	return filename;
+}
+
 // ========== Dialog initialization ==========
 
 BOOL CEnvVarDlg::OnInitDialog()
@@ -206,16 +505,16 @@ BOOL CEnvVarDlg::OnInitDialog()
 	};
 
 	CRect rcSys = ReadRect(IDC_LIST_ENV_SYSTEM);
-	m_listSysLeft = rcSys.left; m_listSysTop = rcSys.top;
+	m_listSysLeft = rcSys.left; m_listSysTop = 39;
 
 	CRect rcUser = ReadRect(IDC_LIST_ENV_USER);
-	m_listUserLeft = rcUser.left; m_listUserTop = rcUser.top;
+	m_listUserLeft = rcUser.left; m_listUserTop = 39;
 
 	CRect rcBtn = ReadRect(IDC_BTN_ENV_ADD);
-	m_buttonTop = rcBtn.top;
+	m_buttonTop = 184;
 
 	CRect rcStatus = ReadRect(IDC_STATIC_ENV_STATUS);
-	m_statusTop = rcStatus.top;
+	m_statusTop = 213;
 
 	CListCtrl* pListSys = (CListCtrl*)GetDlgItem(IDC_LIST_ENV_SYSTEM);
 	if (pListSys)
@@ -293,13 +592,7 @@ void CEnvVarDlg::RefreshAll()
 	ReadEnvVars(true, m_systemVars);
 	ReadEnvVars(false, m_userVars);
 
-	PopulateList(IDC_LIST_ENV_SYSTEM, m_systemVars);
-	PopulateList(IDC_LIST_ENV_USER, m_userVars);
-
-	CString status;
-	status.Format(_T("系统变量: %d 个  |  用户变量: %d 个"),
-		(int)m_systemVars.size(), (int)m_userVars.size());
-	UpdateStatus(status);
+	DoSearchFilter();
 }
 
 void CEnvVarDlg::PopulateList(int listId, const std::vector<EnvVarEntry>& vars)
@@ -322,6 +615,117 @@ void CEnvVarDlg::PopulateList(int listId, const std::vector<EnvVarEntry>& vars)
 void CEnvVarDlg::UpdateStatus(const CString& text)
 {
 	SetDlgItemText(IDC_STATIC_ENV_STATUS, text);
+}
+
+void CEnvVarDlg::OnEnChangeEnvSearch()
+{
+	GetDlgItemText(IDC_EDIT_ENV_SEARCH, m_strSearchFilter);
+	DoSearchFilter();
+}
+
+void CEnvVarDlg::DoSearchFilter()
+{
+	FilterList(IDC_LIST_ENV_SYSTEM, m_systemVars);
+	FilterList(IDC_LIST_ENV_USER, m_userVars);
+
+	int nSysVisible = 0, nUserVisible = 0;
+	CListCtrl* pSys = (CListCtrl*)GetDlgItem(IDC_LIST_ENV_SYSTEM);
+	CListCtrl* pUser = (CListCtrl*)GetDlgItem(IDC_LIST_ENV_USER);
+	if (pSys) nSysVisible = pSys->GetItemCount();
+	if (pUser) nUserVisible = pUser->GetItemCount();
+
+	if (m_strSearchFilter.IsEmpty())
+	{
+		CString status;
+		status.Format(_T("系统变量: %d 个  |  用户变量: %d 个"),
+			(int)m_systemVars.size(), (int)m_userVars.size());
+		UpdateStatus(status);
+	}
+	else
+	{
+		CString status;
+		status.Format(_T("搜索 \"%s\": 系统 %d/%d, 用户 %d/%d"),
+			m_strSearchFilter, nSysVisible, (int)m_systemVars.size(),
+			nUserVisible, (int)m_userVars.size());
+		UpdateStatus(status);
+	}
+}
+
+void CEnvVarDlg::FilterList(int listId, const std::vector<EnvVarEntry>& vars)
+{
+	CListCtrl* pList = (CListCtrl*)GetDlgItem(listId);
+	if (!pList) return;
+
+	pList->SetRedraw(FALSE);
+	pList->DeleteAllItems();
+
+	if (m_strSearchFilter.IsEmpty())
+	{
+		// No filter: show all
+		for (size_t i = 0; i < vars.size(); ++i)
+		{
+			int idx = pList->InsertItem((int)i, vars[i].name);
+			pList->SetItemText(idx, 1, vars[i].value);
+		}
+	}
+	else
+	{
+		CString filter = m_strSearchFilter;
+		filter.MakeLower();
+		int nIdx = 0;
+		for (size_t i = 0; i < vars.size(); ++i)
+		{
+			CString nameLower = vars[i].name;
+			nameLower.MakeLower();
+			CString valueLower = vars[i].value;
+			valueLower.MakeLower();
+
+			if (nameLower.Find(filter) >= 0 || valueLower.Find(filter) >= 0)
+			{
+				int idx = pList->InsertItem(nIdx++, vars[i].name);
+				pList->SetItemText(idx, 1, vars[i].value);
+			}
+		}
+	}
+
+	pList->SetRedraw(TRUE);
+}
+
+void CEnvVarDlg::OnCustomDrawListEnv(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	NMLVCUSTOMDRAW* pLVCD = (NMLVCUSTOMDRAW*)pNMHDR;
+	*pResult = CDRF_DODEFAULT;
+
+	if (pLVCD->nmcd.dwDrawStage == CDDS_PREPAINT)
+	{
+		*pResult = CDRF_NOTIFYITEMDRAW;
+	}
+	else if (pLVCD->nmcd.dwDrawStage == CDDS_ITEMPREPAINT)
+	{
+		*pResult = CDRF_NOTIFYSUBITEMDRAW;
+	}
+	else if (pLVCD->nmcd.dwDrawStage == (CDDS_ITEMPREPAINT | CDDS_SUBITEM))
+	{
+		// Draw cell borders with a more visible color
+		CDC* pDC = CDC::FromHandle(pLVCD->nmcd.hdc);
+		CRect rc = pLVCD->nmcd.rc;
+
+		// Darker grid lines: use dark gray instead of default light gray
+		CPen pen(PS_SOLID, 1, RGB(160, 160, 160));
+		CPen* pOldPen = pDC->SelectObject(&pen);
+
+		// Draw right border
+		pDC->MoveTo(rc.right - 1, rc.top);
+		pDC->LineTo(rc.right - 1, rc.bottom);
+
+		// Draw bottom border
+		pDC->MoveTo(rc.left, rc.bottom - 1);
+		pDC->LineTo(rc.right, rc.bottom - 1);
+
+		pDC->SelectObject(pOldPen);
+
+		*pResult = CDRF_DODEFAULT;
+	}
 }
 
 // ========== Button handlers ==========
@@ -407,6 +811,31 @@ static bool GetSelectedEnvVar(CWnd* pParent, int idSys, int idUser,
 	return false;
 }
 
+// Find the actual data vector index by matching text from the (possibly filtered) list
+static bool FindSelectedInData(CWnd* pParent, int listId,
+	const std::vector<CEnvVarDlg::EnvVarEntry>& vars, int& outIdx)
+{
+	CListCtrl* pList = (CListCtrl*)pParent->GetDlgItem(listId);
+	if (!pList) return false;
+
+	POSITION pos = pList->GetFirstSelectedItemPosition();
+	if (!pos) return false;
+
+	int selIdx = pList->GetNextSelectedItem(pos);
+	CString selName = pList->GetItemText(selIdx, 0);
+	CString selValue = pList->GetItemText(selIdx, 1);
+
+	for (int i = 0; i < (int)vars.size(); ++i)
+	{
+		if (vars[i].name == selName && vars[i].value == selValue)
+		{
+			outIdx = i;
+			return true;
+		}
+	}
+	return false;
+}
+
 // ========== Actions ==========
 
 void CEnvVarDlg::OnAdd()
@@ -419,6 +848,9 @@ void CEnvVarDlg::OnAdd()
 	CEnvInputDlg dlg(false, _T("添加环境变量"), this);
 	if (dlg.DoModal() != IDOK) return;
 
+	// Backup before modification
+	CString backupPath = BackupEnvVars(m_systemVars, m_userVars);
+
 	if (!WriteEnvVar(dlg.m_strName, dlg.m_strValue, bSystem))
 	{
 		CString errMsg;
@@ -430,7 +862,8 @@ void CEnvVarDlg::OnAdd()
 	{
 		RefreshAll();
 		CString status;
-		status.Format(_T("已添加%s变量: %s"), bSystem ? _T("系统") : _T("用户"), dlg.m_strName);
+		status.Format(_T("已添加%s变量: %s  |  备份: %s"),
+			bSystem ? _T("系统") : _T("用户"), dlg.m_strName, backupPath);
 		UpdateStatus(status);
 	}
 }
@@ -440,6 +873,7 @@ void CEnvVarDlg::OnEdit()
 	CListCtrl* pList = nullptr;
 	std::vector<EnvVarEntry>* pVars = nullptr;
 	bool bSystem = false;
+	int listId = 0;
 
 	// Check system list
 	CListCtrl* pListSys = (CListCtrl*)GetDlgItem(IDC_LIST_ENV_SYSTEM);
@@ -449,6 +883,7 @@ void CEnvVarDlg::OnEdit()
 		pList = pListSys;
 		pVars = &m_systemVars;
 		bSystem = true;
+		listId = IDC_LIST_ENV_SYSTEM;
 	}
 	else
 	{
@@ -459,6 +894,7 @@ void CEnvVarDlg::OnEdit()
 			pList = pListUser;
 			pVars = &m_userVars;
 			bSystem = false;
+			listId = IDC_LIST_ENV_USER;
 		}
 	}
 
@@ -468,15 +904,51 @@ void CEnvVarDlg::OnEdit()
 		return;
 	}
 
-	int idx = pList->GetNextSelectedItem(pos);
-	if (idx < 0 || idx >= (int)pVars->size()) return;
+	int idx = -1;
+	if (!FindSelectedInData(this, listId, *pVars, idx)) return;
 
 	const auto& entry = (*pVars)[idx];
 
+	// Check if this is a PATH-like variable (semicolon-separated)
+	bool bIsPathVar = (entry.name.CompareNoCase(_T("Path")) == 0 ||
+		entry.name.CompareNoCase(_T("PATH")) == 0);
+
+	if (bIsPathVar)
+	{
+		// Use specialized PATH editor
+		CEnvPathDlg dlg(entry.name, this);
+		dlg.m_strValue = entry.value;
+		if (dlg.DoModal() != IDOK) return;
+
+		// Backup before modification
+		CString backupPath = BackupEnvVars(m_systemVars, m_userVars);
+
+		if (!WriteEnvVar(entry.name, dlg.m_strValue, bSystem))
+		{
+			CString errMsg;
+			errMsg.Format(_T("无法写入变量 %s。\n\n可能需要管理员权限来修改系统变量。"),
+				entry.name);
+			MessageBox(errMsg, _T("写入失败"), MB_ICONERROR);
+		}
+		else
+		{
+			RefreshAll();
+			CString status;
+			status.Format(_T("已更新%s变量: %s  |  备份: %s"),
+				bSystem ? _T("系统") : _T("用户"), entry.name, backupPath);
+			UpdateStatus(status);
+		}
+		return;
+	}
+
+	// Generic input dialog for regular variables
 	CEnvInputDlg dlg(true, _T("编辑环境变量"), this);
 	dlg.m_strName = entry.name;
 	dlg.m_strValue = entry.value;
 	if (dlg.DoModal() != IDOK) return;
+
+	// Backup before modification
+	CString backupPath = BackupEnvVars(m_systemVars, m_userVars);
 
 	if (!WriteEnvVar(dlg.m_strName, dlg.m_strValue, bSystem))
 	{
@@ -489,7 +961,8 @@ void CEnvVarDlg::OnEdit()
 	{
 		RefreshAll();
 		CString status;
-		status.Format(_T("已更新%s变量: %s"), bSystem ? _T("系统") : _T("用户"), dlg.m_strName);
+		status.Format(_T("已更新%s变量: %s  |  备份: %s"),
+			bSystem ? _T("系统") : _T("用户"), dlg.m_strName, backupPath);
 		UpdateStatus(status);
 	}
 }
@@ -499,37 +972,36 @@ void CEnvVarDlg::OnDelete()
 	CListCtrl* pListSys = (CListCtrl*)GetDlgItem(IDC_LIST_ENV_SYSTEM);
 	CListCtrl* pListUser = (CListCtrl*)GetDlgItem(IDC_LIST_ENV_USER);
 
-	CListCtrl* pList = nullptr;
 	std::vector<EnvVarEntry>* pVars = nullptr;
 	bool bSystem = false;
-	POSITION pos = nullptr;
+	int listId = 0;
 
-	pos = pListSys->GetFirstSelectedItemPosition();
+	POSITION pos = pListSys->GetFirstSelectedItemPosition();
 	if (pos)
 	{
-		pList = pListSys;
 		pVars = &m_systemVars;
 		bSystem = true;
+		listId = IDC_LIST_ENV_SYSTEM;
 	}
 	else
 	{
 		pos = pListUser->GetFirstSelectedItemPosition();
 		if (pos)
 		{
-			pList = pListUser;
 			pVars = &m_userVars;
 			bSystem = false;
+			listId = IDC_LIST_ENV_USER;
 		}
 	}
 
-	if (!pList || !pVars)
+	if (!pVars)
 	{
 		MessageBox(_T("请先选择要删除的变量。"), _T("提示"), MB_ICONINFORMATION);
 		return;
 	}
 
-	int idx = pList->GetNextSelectedItem(pos);
-	if (idx < 0 || idx >= (int)pVars->size()) return;
+	int idx = -1;
+	if (!FindSelectedInData(this, listId, *pVars, idx)) return;
 
 	const auto& entry = (*pVars)[idx];
 
@@ -538,6 +1010,9 @@ void CEnvVarDlg::OnDelete()
 		bSystem ? _T("系统") : _T("用户"), entry.name);
 	if (MessageBox(msg, _T("确认删除"), MB_ICONWARNING | MB_YESNO) != IDYES)
 		return;
+
+	// Backup before modification
+	CString backupPath = BackupEnvVars(m_systemVars, m_userVars);
 
 	if (!DeleteEnvVar(entry.name, bSystem))
 	{
@@ -550,7 +1025,8 @@ void CEnvVarDlg::OnDelete()
 	{
 		RefreshAll();
 		CString status;
-		status.Format(_T("已删除%s变量: %s"), bSystem ? _T("系统") : _T("用户"), entry.name);
+		status.Format(_T("已删除%s变量: %s  |  备份: %s"),
+			bSystem ? _T("系统") : _T("用户"), entry.name, backupPath);
 		UpdateStatus(status);
 	}
 }
@@ -561,18 +1037,18 @@ void CEnvVarDlg::OnCopyName()
 	CListCtrl* pListUser = (CListCtrl*)GetDlgItem(IDC_LIST_ENV_USER);
 
 	std::vector<EnvVarEntry>* pVars = nullptr;
-	POSITION pos = nullptr;
+	int listId = 0;
 	int idx = -1;
 
-	pos = pListSys->GetFirstSelectedItemPosition();
-	if (pos) { pVars = &m_systemVars; idx = pListSys->GetNextSelectedItem(pos); }
+	POSITION pos = pListSys->GetFirstSelectedItemPosition();
+	if (pos) { pVars = &m_systemVars; listId = IDC_LIST_ENV_SYSTEM; }
 	else
 	{
 		pos = pListUser->GetFirstSelectedItemPosition();
-		if (pos) { pVars = &m_userVars; idx = pListUser->GetNextSelectedItem(pos); }
+		if (pos) { pVars = &m_userVars; listId = IDC_LIST_ENV_USER; }
 	}
 
-	if (!pVars || idx < 0 || idx >= (int)pVars->size()) return;
+	if (!pVars || !FindSelectedInData(this, listId, *pVars, idx)) return;
 
 	const auto& entry = (*pVars)[idx];
 
@@ -598,18 +1074,18 @@ void CEnvVarDlg::OnCopyValue()
 	CListCtrl* pListUser = (CListCtrl*)GetDlgItem(IDC_LIST_ENV_USER);
 
 	std::vector<EnvVarEntry>* pVars = nullptr;
-	POSITION pos = nullptr;
+	int listId = 0;
 	int idx = -1;
 
-	pos = pListSys->GetFirstSelectedItemPosition();
-	if (pos) { pVars = &m_systemVars; idx = pListSys->GetNextSelectedItem(pos); }
+	POSITION pos = pListSys->GetFirstSelectedItemPosition();
+	if (pos) { pVars = &m_systemVars; listId = IDC_LIST_ENV_SYSTEM; }
 	else
 	{
 		pos = pListUser->GetFirstSelectedItemPosition();
-		if (pos) { pVars = &m_userVars; idx = pListUser->GetNextSelectedItem(pos); }
+		if (pos) { pVars = &m_userVars; listId = IDC_LIST_ENV_USER; }
 	}
 
-	if (!pVars || idx < 0 || idx >= (int)pVars->size()) return;
+	if (!pVars || !FindSelectedInData(this, listId, *pVars, idx)) return;
 
 	const auto& entry = (*pVars)[idx];
 

@@ -268,13 +268,24 @@
 #define IDC_ENV_INPUT_NAME             1223
 #define IDC_ENV_INPUT_VALUE            1224
 
+// PATH editor dialog
+#define IDD_ENVVAR_PATH_DLG            148
+#define IDC_LIST_PATH_ENTRIES          1225
+#define IDC_BTN_PATH_ADD               1226
+#define IDC_BTN_PATH_EDIT              1227
+#define IDC_BTN_PATH_DELETE            1228
+#define IDC_BTN_PATH_UP                1229
+#define IDC_BTN_PATH_DOWN              1230
+#define IDC_EDIT_PATH_PREVIEW          1231
+#define IDC_EDIT_ENV_SEARCH            1232
+
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        148
+#define _APS_NEXT_RESOURCE_VALUE        149
 #define _APS_NEXT_COMMAND_VALUE         32820
-#define _APS_NEXT_CONTROL_VALUE         1225
+#define _APS_NEXT_CONTROL_VALUE         1233
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
