@@ -219,6 +219,7 @@
 #define IDC_STATIC_CM_STATUS           1212
 #define IDC_CHECK_CM_FOLDER            1213
 #define IDC_CHECK_CM_WIN11_CLASSIC     1214
+#define IDC_CHECK_CM_PRECISE           1215
 
 #define ID_FILE_SETTINGS                32775
 #define ID_FILE_EXIT                    32776
