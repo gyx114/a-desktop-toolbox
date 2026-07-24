@@ -59,11 +59,12 @@ private:
 	void ScanShellExLocation(const LocationFilter& loc);
 	void ScanShellExWithCom(const LocationFilter& loc);
 	void ScanWithShellAPI();
-	void ScanAllExtensions();
+	void ScanAllExtensions(const CString& filterExt = _T(""));
 	static bool IsRunningAsAdmin();
 	static CString ResolveClsidName(const CString& clsid);
 	static CString GetShellExDisplayName(const CString& clsid, const CString& dllPath);
 	static CString ResolveMUIString(const CString& raw);
+	static CString ResolveProgID(const CString& ext);
 	void RefreshList();
 	void UpdateStatus(const CString& text);
 	void AdjustColumnWidths();
@@ -84,7 +85,6 @@ private:
 	afx_msg void OnBnClickedLocate();
 	afx_msg void OnBnClickedCheckFolder();
 	afx_msg void OnBnClickedCheckWin11Classic();
-	afx_msg void OnBnClickedCheckPrecise();
 	afx_msg void OnNMRClickList(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnMenuDelete();
 	afx_msg void OnMenuLocate();
